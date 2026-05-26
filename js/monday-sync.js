@@ -245,9 +245,13 @@ const MondaySync = (() => {
     return count;
   }
 
-  /* ── 2. Distratos & Retomadas ─────────────────────────────── */
+  /* ── 2. Distratos (board JUR DISTRATOS E DESISTÊNCIAS) ─────
+     Apenas distratos/desistências entram aqui. Retomadas vêm do board
+     dedicado (JUR) RETOMADAS via syncRetomadas() — evita conflito
+     onde esta função inseria retomadas que syncRetomadas apagava em
+     seguida. */
   async function syncDistratosRetomadas(comiteId, mesRef) {
-    log('Buscando Distratos e Retomadas…', 'wait');
+    log('Buscando Distratos…', 'wait');
     const items = await fetchAllItems(BOARDS.distratos);
     const { start, end } = mesRange(mesRef);
 
@@ -258,48 +262,33 @@ const MondaySync = (() => {
     });
 
     DB.forComite('distratos', comiteId).forEach(d => DB.remove('distratos', d.id));
-    DB.forComite('retomadas', comiteId).forEach(r => DB.remove('retomadas', r.id));
 
-    let ndist = 0, nret = 0;
+    let ndist = 0, nretSkip = 0;
     filtered.forEach(item => {
+      const grupoTit    = (item.group?.title || '').toUpperCase();
+      const isRetomada  = grupoTit.includes('RETOMADA');
+      if (isRetomada) { nretSkip++; return; } // retomadas vêm de syncRetomadas()
+
       const emprId      = findOrMakeEmpr(cv(item, 'color_mm28cam9'));
       const motivo      = cv(item, 'color_mm1km2gz') || 'Outros';
-      const equipe      = cv(item, 'color_mm2knzbk') || 'Jurídico';
       const dataRef     = cv(item, 'data') || (item.created_at||'').substring(0,10);
       const dataVenda   = cv(item, 'date_mm1zzqfm') || '';
       const tempoDias   = parseInt(cv(item, 'formula_mm1tmz3a')) || 0;
-      const grupoTit    = (item.group?.title || '').toUpperCase();
-      const isRetomada  = grupoTit.includes('RETOMADA');
 
-      if (isRetomada) {
-        DB.insert('retomadas', {
-          comite_id:        comiteId,
-          empreendimento_id: emprId,
-          motivo,
-          equipe,
-          data_inicio:   dataVenda,
-          data_retomada: dataRef,
-          tempo_dias:    tempoDias,
-          unidade:       item.name,
-        });
-        nret++;
-      } else {
-        // DISTRATO or DESISTÊNCIA
-        DB.insert('distratos', {
-          comite_id:        comiteId,
-          empreendimento_id: emprId,
-          motivo,
-          data_venda:    dataVenda,
-          data_distrato: dataRef,
-          tempo_dias:    tempoDias,
-          unidade:       item.name,
-        });
-        ndist++;
-      }
+      DB.insert('distratos', {
+        comite_id:        comiteId,
+        empreendimento_id: emprId,
+        motivo,
+        data_venda:    dataVenda,
+        data_distrato: dataRef,
+        tempo_dias:    tempoDias,
+        unidade:       item.name,
+      });
+      ndist++;
     });
 
-    log(`${ndist} distratos + ${nret} retomadas (${filtered.length} do mês de ${mesRef})`, 'ok');
-    return { ndist, nret };
+    log(`${ndist} distratos (${nretSkip} itens do grupo "Retomada" ignorados — vêm do board dedicado)`, 'ok');
+    return { ndist };
   }
 
   /* ── 2b. Retomadas (quadro dedicado) ──────────────────────── */
@@ -611,7 +600,7 @@ const MondaySync = (() => {
     };
 
     await run('Processos',          () => syncProcessos(comiteId));
-    await run('Distratos/Retomadas',() => syncDistratosRetomadas(comiteId, mesRef));
+    await run('Distratos',          () => syncDistratosRetomadas(comiteId, mesRef));
     await run('Retomadas',          () => syncRetomadas(comiteId, mesRef));
     await run('Notificações',       () => syncNotificacoes(comiteId, mesRef));
     await run('Carpe Diem',         () => syncCarpedie(comiteId));

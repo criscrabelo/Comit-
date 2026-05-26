@@ -4,9 +4,11 @@
 
 ---
 
+> **Status das correções críticas (atualizado):** C1, C2, C3 e C4 foram aplicados nesta branch. C5 segue pendente — requer refactor mais amplo dos `confirmDelete` em muitos call sites.
+
 ## 🔴 CRÍTICO — Bugs que afetam funcionamento atual
 
-### C1. Rota `retomadas` quebrada — `renderRetomadas` não existe
+### ✅ C1. Rota `retomadas` quebrada — `renderRetomadas` não existe **[CORRIGIDO]**
 **Arquivo**: [js/app.js:10](js/app.js#L10) (referência) — função **nunca foi definida** em `views.js`.
 
 O router declara:
@@ -15,11 +17,11 @@ retomadas: renderRetomadas,
 ```
 mas **não há nenhuma função `renderRetomadas`** em todo o projeto. Clicar em **🔁 Retomadas** na sidebar resulta em `ReferenceError: renderRetomadas is not defined` (o item é cadastrável apenas via sync do Monday e via geração de slides; o usuário não consegue editar/adicionar manualmente pela UI).
 
-**Correção**: criar `renderRetomadas()` em `views.js` seguindo o padrão de `renderDistratos` (lista + KPIs + modal CRUD). Já existe a estrutura de dados e o seed (`js/seed.js:101-106`).
+**Correção aplicada**: criada `renderRetomadas()` em `views.js` seguindo o padrão de `renderDistratos` (lista + KPIs + modal CRUD com motivos `MOTIVOS_RET` e equipes `EQUIPES_RET`).
 
 ---
 
-### C2. Inconsistência no sync de Distratos/Retomadas — chamadas duplicadas
+### ✅ C2. Inconsistência no sync de Distratos/Retomadas — chamadas duplicadas **[CORRIGIDO]**
 **Arquivo**: [js/monday-sync.js:613-615](js/monday-sync.js#L613)
 
 ```js
@@ -29,24 +31,20 @@ await run('Retomadas',          () => syncRetomadas(comiteId, mesRef));
 
 `syncDistratosRetomadas` (board `distratos`) **insere** retomadas (linhas 274-285) — depois `syncRetomadas` (board `retomadas`) **apaga TODAS** as retomadas do comitê (linha 330) e re-insere apenas as do board dedicado. Resultado: as retomadas inseridas no passo anterior são **silenciosamente apagadas**, e o passo 1 desperdiça processamento.
 
-**Correção**: remover a inserção de retomadas em `syncDistratosRetomadas` (deixar só distratos) **ou** remover a chamada de `syncRetomadas` se o board "distratos" já consolida ambos.
+**Correção aplicada**: `syncDistratosRetomadas` agora **ignora** itens do grupo "Retomada" (board distratos) e o board dedicado `(JUR) RETOMADAS` continua sendo a única fonte para a tabela `retomadas` via `syncRetomadas`. Sem perda de funcionalidade — a integração Monday continua intacta.
 
 ---
 
-### C3. Versão "print" não aparece quando se imprime
+### ✅ C3. Versão "print" não aparece quando se imprime **[CORRIGIDO]**
 **Arquivo**: [js/comite.js:118-120](js/comite.js#L118) + [css/print.css](css/print.css)
 
 O HTML gera `<div id="printSlides" style="display:none;">` — mas o `print.css` **nunca** faz `display:block !important` para esse container, e **nunca** esconde o `#slidesPreview`. Resultado: o `Ctrl+P` imprime os **cards de preview** (com etiquetas "Slide 1 · Capa") em vez dos slides limpos.
 
-**Correção**: em `print.css`, dentro do `@media print`:
-```css
-#slidesPreview { display: none !important; }
-#printSlides   { display: block !important; }
-```
+**Correção aplicada**: adicionadas as regras em `print.css` dentro do `@media print` e ajustada a remoção de `.page-header` (em vez de só `.page-header .page-actions`) para esconder o cabeçalho da preview na impressão.
 
 ---
 
-### C4. Loop de carregamento ao trocar de aba pode falhar
+### ✅ C4. Loop de carregamento ao trocar de aba pode falhar **[CORRIGIDO]**
 **Arquivo**: [js/db.js:84-89](js/db.js#L84)
 
 ```js
@@ -58,11 +56,7 @@ document.addEventListener('visibilitychange', () => {
 ```
 A função `_loadFromServer` é declarada como **IIFE** anônima (linha 46) — o identificador `_loadFromServer` não existe no escopo. Esse `visibilitychange` lança `ReferenceError` toda vez que o usuário troca de aba e volta.
 
-**Correção**: extrair em uma função nomeada acessível dentro do módulo IIFE do `DB`:
-```js
-async function _loadFromServer() { ... }
-const ready = _loadFromServer();
-```
+**Correção aplicada**: `_loadFromServer` extraída em função nomeada dentro da IIFE; `const ready = _loadFromServer();` na inicialização e `visibilitychange` agora consegue chamá-la corretamente.
 
 ---
 

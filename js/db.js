@@ -43,7 +43,7 @@ const DB = (() => {
 
   // Carrega dados do servidor na inicialização
   // Resolve imediatamente se servidor estiver offline (usa localStorage)
-  const ready = (async function _loadFromServer() {
+  async function _loadFromServer() {
     try {
       const ctrl = new AbortController();
       const timeout = setTimeout(() => ctrl.abort(), 4000);
@@ -77,7 +77,9 @@ const DB = (() => {
       // Servidor offline ou timeout — continua com localStorage
       console.log('[DB] Servidor offline, usando dados locais.');
     }
-  })();
+  }
+
+  const ready = _loadFromServer();
 
   // Recarrega ao voltar para a aba (sincroniza alterações de outros usuários)
   document.addEventListener('visibilitychange', () => {

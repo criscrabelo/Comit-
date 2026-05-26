@@ -3,7 +3,7 @@
   * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
 
   body { background: #fff; overflow: visible; }
-  .sidebar, .page-header .page-actions, .btn, #modal, #toast, .filter-bar { display: none !important; }
+  .sidebar, .page-header, .btn, #modal, #toast, .filter-bar { display: none !important; }
 
   .main {
     height: auto !important;
@@ -11,6 +11,12 @@
   }
 
   .content { padding: 0; }
+
+  /* Ao imprimir, mostra apenas a versão print (#printSlides) e oculta o preview
+     em tela (#slidesPreview). Sem isso, o Ctrl+P imprime os cards com a etiqueta
+     "Slide X · ..." em vez dos slides limpos da apresentação. */
+  #slidesPreview { display: none !important; }
+  #printSlides   { display: block !important; }
 
   /* ===== SLIDE LAYOUT ===== */
   .slide-page {
