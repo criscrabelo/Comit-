@@ -247,18 +247,40 @@ const MondaySync = (() => {
 
   /* ── 2. Distratos (board JUR DISTRATOS E DESISTÊNCIAS) ─────
      Apenas distratos/desistências entram aqui. Retomadas vêm do board
-     dedicado (JUR) RETOMADAS via syncRetomadas() — evita conflito
-     onde esta função inseria retomadas que syncRetomadas apagava em
-     seguida. */
+     dedicado (JUR) RETOMADAS via syncRetomadas().
+
+     Filtro de mês usa a coluna DATA DA SOLICITAÇÃO (resolvida dinamicamente
+     por título via fetchColumnMap), não o created_at do item — alinhado
+     com o comportamento de syncRetomadas. Mantém fallback para IDs
+     hardcoded antigos (compatibilidade com versões mais antigas do board). */
   async function syncDistratosRetomadas(comiteId, mesRef) {
     log('Buscando Distratos…', 'wait');
+
+    // Resolve colunas pelo título — robusto a mudanças de ID no board
+    const colMap = await fetchColumnMap(BOARDS.distratos);
+    const idEmpr     = colId(colMap, 'EMPREENDIMENTO');
+    const idMotivo   = colId(colMap, 'MOTIVO');
+    const idDataSol  = colId(colMap, 'DATA DA SOLICITAÇÃO', 'DATA SOLICITAÇÃO', 'SOLICITAÇÃO');
+    const idDataDist = colId(colMap, 'DATA DO DISTRATO', 'DATA DISTRATO',
+                                     'DATA DA FINALIZAÇÃO', 'DATA DE FINALIZAÇÃO', 'FINALIZAÇÃO');
+    const idDataVenda= colId(colMap, 'DATA DA VENDA', 'DATA VENDA');
+    const idDias     = colId(colMap, 'PERÍODO (DIAS)', 'PERIODO (DIAS)', 'DIAS', 'TEMPO');
+
+    try {
+      console.log('[Distratos] colunas resolvidas:', {
+        empr: idEmpr, motivo: idMotivo, dataSol: idDataSol,
+        dataDist: idDataDist, dataVenda: idDataVenda, dias: idDias
+      });
+    } catch(_) {}
+
     const items = await fetchAllItems(BOARDS.distratos);
     const { start, end } = mesRange(mesRef);
 
-    // Filter: items whose created_at falls in the reference month
+    // Filtra por DATA DA SOLICITAÇÃO; se vazia, cai para created_at
     const filtered = items.filter(item => {
-      const d = (item.created_at || '').substring(0, 10);
-      return inRange(d, start, end);
+      const dataSol = cv(item, idDataSol);
+      const ca = (item.created_at || '').substring(0, 10);
+      return inRange(dataSol, start, end) || (!dataSol && inRange(ca, start, end));
     });
 
     DB.forComite('distratos', comiteId).forEach(d => DB.remove('distratos', d.id));
@@ -269,25 +291,30 @@ const MondaySync = (() => {
       const isRetomada  = grupoTit.includes('RETOMADA');
       if (isRetomada) { nretSkip++; return; } // retomadas vêm de syncRetomadas()
 
-      const emprId      = findOrMakeEmpr(cv(item, 'color_mm28cam9'));
-      const motivo      = cv(item, 'color_mm1km2gz') || 'Outros';
-      const dataRef     = cv(item, 'data') || (item.created_at||'').substring(0,10);
-      const dataVenda   = cv(item, 'date_mm1zzqfm') || '';
-      const tempoDias   = parseInt(cv(item, 'formula_mm1tmz3a')) || 0;
+      // Fallback: lookup por título primeiro, depois IDs antigos hardcoded
+      const emprNome    = cv(item, idEmpr)     || cv(item, 'color_mm28cam9');
+      const motivo      = cv(item, idMotivo)   || cv(item, 'color_mm1km2gz') || 'Outros';
+      const dataSol     = cv(item, idDataSol);
+      const dataDist    = cv(item, idDataDist) || cv(item, 'data') || '';
+      const dataVenda   = cv(item, idDataVenda)|| cv(item, 'date_mm1zzqfm') || '';
+      const tempoDias   = parseInt(cv(item, idDias) || cv(item, 'formula_mm1tmz3a')) || 0;
+      const emprId      = findOrMakeEmpr(emprNome);
 
       DB.insert('distratos', {
-        comite_id:        comiteId,
+        comite_id:         comiteId,
         empreendimento_id: emprId,
         motivo,
-        data_venda:    dataVenda,
-        data_distrato: dataRef,
-        tempo_dias:    tempoDias,
-        unidade:       item.name,
+        data_solicitacao:  dataSol,
+        data_venda:        dataVenda,
+        data_distrato:     dataDist || dataSol,
+        tempo_dias:        tempoDias,
+        unidade:           item.name,
       });
       ndist++;
     });
 
-    log(`${ndist} distratos (${nretSkip} itens do grupo "Retomada" ignorados — vêm do board dedicado)`, 'ok');
+    log(`${ndist} distratos (filtrado por DATA DA SOLICITAÇÃO no mês ${mesRef}; ${nretSkip} itens "Retomada" ignorados)`,
+        ndist > 0 ? 'ok' : 'warn');
     return { ndist };
   }
 

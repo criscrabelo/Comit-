@@ -683,12 +683,13 @@ function renderDistratos() {
       </div>
       <div class="table-wrap">
         <table><thead><tr>
-          <th>Unidade</th><th>Empreendimento</th><th>Motivo</th><th>Data Venda</th><th>Data Distrato</th><th>Dias</th><th>Ações</th>
+          <th>Unidade</th><th>Empreendimento</th><th>Motivo</th><th>Solicitação</th><th>Data Venda</th><th>Data Distrato</th><th>Dias</th><th>Ações</th>
         </tr></thead><tbody>
         ${list.map(d => `<tr>
           <td>${d.unidade ? `<code style="font-size:11px">${esc(d.unidade)}</code>` : '—'}</td>
           <td><span class="empr-chip">${esc(emprName(d.empreendimento_id))}</span></td>
           <td>${badge(d.motivo,'red')}</td>
+          <td>${fmtDate(d.data_solicitacao)}</td>
           <td>${fmtDate(d.data_venda)}</td>
           <td>${fmtDate(d.data_distrato)}</td>
           <td>${d.tempo_dias||'—'}</td>
@@ -696,7 +697,7 @@ function renderDistratos() {
             <button class="btn btn-ghost btn-sm" onclick="openDistModal('${d.id}')">✏️</button>
             <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteDist('${d.id}')">🗑️</button>
           </td>
-        </tr>`).join('') || '<tr class="empty-row"><td colspan="7">Nenhum distrato cadastrado</td></tr>'}
+        </tr>`).join('') || '<tr class="empty-row"><td colspan="8">Nenhum distrato cadastrado</td></tr>'}
         </tbody></table>
       </div>
     </div>
@@ -716,6 +717,7 @@ function openDistModal(id) {
     `<div class="form-grid">
       <div class="form-group"><label class="field-label">Empreendimento *</label><select id="di_empr">${emprOptions(d?.empreendimento_id)}</select></div>
       <div class="form-group"><label class="field-label">Motivo</label><select id="di_motivo">${opts(MOTIVOS_DIST,d?.motivo)}</select></div>
+      <div class="form-group"><label class="field-label">Data da Solicitação</label><input type="date" id="di_sol" value="${d?.data_solicitacao||''}" /></div>
       <div class="form-group"><label class="field-label">Data da Venda</label><input type="date" id="di_venda" value="${d?.data_venda||''}" /></div>
       <div class="form-group"><label class="field-label">Data do Distrato</label><input type="date" id="di_dist" value="${d?.data_distrato||isoToday()}" /></div>
       <div class="form-group"><label class="field-label">Dias até Distrato</label><input type="number" id="di_dias" value="${d?.tempo_dias||''}" min="0" /></div>
@@ -729,6 +731,7 @@ function saveDist(id, cid) {
   const d = {
     empreendimento_id: document.getElementById('di_empr').value,
     motivo: document.getElementById('di_motivo').value,
+    data_solicitacao: document.getElementById('di_sol').value,
     data_venda: document.getElementById('di_venda').value,
     data_distrato: document.getElementById('di_dist').value,
     tempo_dias: parseInt(document.getElementById('di_dias').value)||0,
