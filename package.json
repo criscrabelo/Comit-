@@ -1,0 +1,12 @@
+{
+  "name": "plataforma-comites-juridico",
+  "version": "1.0.0",
+  "description": "Plataforma de Comitês Mensais — Jurídico Grupo Patrono",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

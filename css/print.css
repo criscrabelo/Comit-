@@ -1,0 +1,186 @@
+/* ===== PRINT STYLES ===== */
+@media print {
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+
+  body { background: #fff; overflow: visible; }
+  .sidebar, .page-header .page-actions, .btn, #modal, #toast, .filter-bar { display: none !important; }
+
+  .main {
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  .content { padding: 0; }
+
+  /* ===== SLIDE LAYOUT ===== */
+  .slide-page {
+    width: 100%;
+    min-height: 100vh;
+    page-break-after: always;
+    break-after: page;
+    position: relative;
+    overflow: hidden;
+    padding: 0;
+  }
+
+  .slide-page:last-child { page-break-after: avoid; break-after: avoid; }
+
+  /* ===== CAPA ===== */
+  .slide-capa {
+    background: #1E2A3B !important;
+    color: #fff !important;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    min-height: 100vh;
+  }
+  .slide-capa .logo { font-size: 64px; margin-bottom: 20px; }
+  .slide-capa h1 { font-size: 42px; font-weight: 900; letter-spacing: -1px; }
+  .slide-capa h2 { font-size: 22px; font-weight: 400; opacity: .75; margin-top: 8px; }
+  .slide-capa .mes-badge {
+    margin-top: 32px;
+    background: #2563EB;
+    color: #fff;
+    padding: 10px 32px;
+    border-radius: 99px;
+    font-size: 18px; font-weight: 700;
+    display: inline-block;
+  }
+
+  /* ===== SLIDE PADRAO ===== */
+  .slide-body {
+    padding: 36px 48px;
+  }
+  .slide-title {
+    font-size: 26px; font-weight: 900;
+    color: #1E2A3B;
+    border-bottom: 3px solid #2563EB;
+    padding-bottom: 8px;
+    margin-bottom: 20px;
+  }
+  .slide-subtitle {
+    font-size: 16px; color: #6B7280;
+    margin-top: -14px; margin-bottom: 20px;
+  }
+
+  /* KPIs em slide */
+  .slide-kpi-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .slide-kpi {
+    background: #F3F4F6;
+    border-radius: 8px;
+    padding: 14px;
+    text-align: center;
+    border-top: 4px solid #2563EB;
+  }
+  .slide-kpi.green { border-top-color: #16A34A; }
+  .slide-kpi.red   { border-top-color: #DC2626; }
+  .slide-kpi.orange{ border-top-color: #E66C37; }
+  .slide-kpi-val { font-size: 32px; font-weight: 900; color: #111827; }
+  .slide-kpi-lbl { font-size: 11px; color: #6B7280; text-transform: uppercase; letter-spacing: .05em; margin-top: 4px; }
+
+  /* Charts em slide */
+  .slide-charts-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-top: 16px;
+  }
+  .slide-chart-box {
+    border: 1px solid #E5E7EB;
+    border-radius: 8px;
+    padding: 14px;
+  }
+  .slide-chart-label { font-size: 12px; font-weight: 700; color: #374151; margin-bottom: 10px; }
+
+  /* Fatos relevantes em slide */
+  .slide-empr-block { margin-bottom: 18px; }
+  .slide-empr-name {
+    font-size: 14px; font-weight: 800; color: #2563EB;
+    text-transform: uppercase; letter-spacing: .05em;
+    border-bottom: 1px solid #E5E7EB;
+    padding-bottom: 4px; margin-bottom: 8px;
+  }
+  .slide-fato-row { display: flex; gap: 10px; margin-bottom: 6px; }
+  .slide-fato-date { font-size: 12px; font-weight: 700; color: #374151; white-space: nowrap; }
+  .slide-fato-text { font-size: 12px; color: #374151; line-height: 1.5; }
+
+  /* Risco */
+  .slide-risco-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  .slide-risco-box {
+    border: 1px solid #E5E7EB;
+    border-radius: 8px;
+    padding: 14px;
+  }
+  .slide-risco-num {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 26px; height: 26px;
+    background: #DC2626; color: #fff;
+    border-radius: 50%; font-size: 12px; font-weight: 700;
+    margin-bottom: 6px;
+  }
+  .slide-risco-title { font-size: 13px; font-weight: 700; margin-bottom: 6px; }
+  .slide-risco-text  { font-size: 12px; color: #374151; line-height: 1.5; }
+  .slide-risco-base  { font-size: 11px; color: #6B7280; margin-top: 6px; }
+
+  /* Recomendações */
+  .slide-rec-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 14px;
+  }
+  .slide-rec-box {
+    background: #EFF6FF;
+    border-radius: 8px; padding: 14px;
+    text-align: center;
+  }
+  .slide-rec-num { font-size: 28px; font-weight: 900; color: #2563EB; }
+  .slide-rec-text { font-size: 12px; color: #374151; margin-top: 6px; }
+
+  /* NR-1 / Regulatório */
+  .slide-check-list { list-style: none; }
+  .slide-check-item {
+    display: flex; gap: 10px;
+    padding: 8px 0; border-bottom: 1px solid #F3F4F6;
+  }
+  .slide-check-icon { font-size: 16px; flex-shrink: 0; }
+
+  /* Obrigada */
+  .slide-fim {
+    background: #1E2A3B !important;
+    color: #fff !important;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    text-align: center;
+  }
+  .slide-fim h2 { font-size: 48px; font-weight: 900; }
+  .slide-fim p  { font-size: 18px; opacity: .7; margin-top: 12px; }
+
+  /* Tabela em slide */
+  .slide-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .slide-table th {
+    background: #F3F4F6; padding: 8px 10px;
+    text-align: left; font-size: 11px; font-weight: 700;
+    text-transform: uppercase; color: #6B7280;
+    border-bottom: 1px solid #E5E7EB;
+  }
+  .slide-table td { padding: 7px 10px; border-bottom: 1px solid #F3F4F6; color: #374151; }
+
+  @page {
+    size: A4 landscape;
+    margin: 0;
+  }
+}

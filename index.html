@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Plataforma de Comitês — Jurídico</title>
+  <link rel="stylesheet" href="css/styles.css?v=10" />
+  <link rel="stylesheet" href="css/print.css?v=10" media="print" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="brand-mark">JC</div>
+      <div>
+        <div class="brand-title">Comitês</div>
+        <div class="brand-sub">Jurídico</div>
+      </div>
+    </div>
+
+    <div class="month-picker">
+      <label>Mês de referência</label>
+      <select id="monthSelector"></select>
+      <button class="btn-mini" id="btnNewMonth" title="Criar novo comitê mensal">+ Mês</button>
+    </div>
+
+    <nav class="nav">
+      <div class="nav-group-title">Resumo</div>
+      <a class="nav-item" data-route="dashboard">📊 Dashboard</a>
+      <a class="nav-item" data-route="comite">📑 Gerar Comitê do Mês</a>
+
+      <div class="nav-group-title">Cadastros do Mês</div>
+      <a class="nav-item" data-route="fatos">📌 Fatos Relevantes</a>
+      <a class="nav-item" data-route="notificacoes">📨 Notificações</a>
+      <a class="nav-item" data-route="contratos">📄 Contratos</a>
+      <a class="nav-item" data-route="retomadas">🔁 Retomadas</a>
+      <a class="nav-item" data-route="distratos">❌ Distratos</a>
+      <a class="nav-item" data-route="processos">⚖️ Processos Judiciais</a>
+      <a class="nav-item" data-route="risco">🏦 Análise de Risco</a>
+      <a class="nav-item" data-route="regulatorio">📋 Temas Regulatórios</a>
+
+      <div class="nav-group-title">Base</div>
+      <a class="nav-item" data-route="empreendimentos">🏗️ Empreendimentos</a>
+      <a class="nav-item" data-route="unidades">🏠 Unidades / Habite-se</a>
+
+      <div class="nav-group-title">Sistema</div>
+      <a class="nav-item" data-route="backup">💾 Backup / Restaurar</a>
+
+      <div class="nav-group-title">Monday.com</div>
+      <a class="nav-item" id="nav-sync" onclick="MondaySync.openSyncModal()">
+        🔄 Sincronizar Monday
+        <span id="monday-token-dot" class="token-dot" title="Token não configurado"></span>
+      </a>
+      <a class="nav-item" onclick="MondaySync.openTokenSettings()">⚙️ Configurar Token</a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <small id="storageInfo">—</small>
+    </div>
+  </aside>
+
+  <main class="main" id="main">
+    <div id="view"></div>
+  </main>
+
+  <div id="modal" class="modal hidden">
+    <div class="modal-box">
+      <div class="modal-head">
+        <h3 id="modalTitle">Título</h3>
+        <button class="btn-icon" onclick="closeModal()">×</button>
+      </div>
+      <div class="modal-body" id="modalBody"></div>
+      <div class="modal-foot" id="modalFoot"></div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="js/db.js?v=10"></script>
+  <script src="js/seed.js?v=10"></script>
+  <script src="js/utils.js?v=10"></script>
+  <script src="js/charts.js?v=12"></script>
+  <script src="js/views.js?v=18"></script>
+  <script src="js/comite.js?v=10"></script>
+  <script src="js/monday-sync.js?v=16"></script>
+  <script src="js/app.js?v=10"></script>
+</body>
+</html>
