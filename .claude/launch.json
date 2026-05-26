@@ -3,8 +3,8 @@
   "configurations": [
     {
       "name": "plataforma-comites",
-      "runtimeExecutable": "npx",
-      "runtimeArgs": ["serve", "-l", "3131", "."],
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["server.js"],
       "port": 3131
     }
   ]

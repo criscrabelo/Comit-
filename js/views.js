@@ -743,6 +743,101 @@ function deleteDist(id) {
 }
 
 // ============================================================
+// RETOMADAS
+// ============================================================
+const MOTIVOS_RET = ['Inadimplência','Distrato','Desistência','Outros'];
+const EQUIPES_RET = ['Equipe A','Equipe B','Jurídico','Outros'];
+
+function renderRetomadas() {
+  const cid    = DB.getActiveComite()?.id;
+  const comite = DB.getActiveComite();
+  if (!cid) { noComiteAlert(); return; }
+  const list = DB.forComite('retomadas', cid);
+  const tMed = list.length ? Math.round(list.reduce((s,r)=>s+(r.tempo_dias||0),0)/list.length) : null;
+
+  setView(`
+    <div class="page-header">
+      <div><div class="page-title">🔁 Retomadas</div><div class="page-sub">${esc(comite.label)}</div></div>
+      <div class="page-actions"><button class="btn btn-primary" onclick="openRetModal()">+ Nova Retomada</button></div>
+    </div>
+    <div class="content">
+      <div class="kpi-grid">
+        <div class="kpi-card green"><div class="kpi-label">Total Retomadas</div><div class="kpi-value">${list.length}</div></div>
+        <div class="kpi-card orange"><div class="kpi-label">Tempo Médio</div><div class="kpi-value" style="font-size:20px">${tMed!==null?tMed+' dias':'—'}</div></div>
+        <div class="kpi-card"><div class="kpi-label">Empreendimentos</div><div class="kpi-value">${new Set(list.map(r=>r.empreendimento_id)).size}</div></div>
+      </div>
+      <div class="charts-grid">
+        <div class="chart-card"><div class="chart-title">Por Motivo</div><div class="chart-wrap"><canvas id="ch_rm"></canvas></div></div>
+        <div class="chart-card"><div class="chart-title">Por Equipe</div><div class="chart-wrap"><canvas id="ch_re"></canvas></div></div>
+      </div>
+      <div class="table-wrap">
+        <table><thead><tr>
+          <th>Unidade</th><th>Empreendimento</th><th>Motivo</th><th>Equipe</th><th>Data Início</th><th>Data Retomada</th><th>Dias</th><th>Ações</th>
+        </tr></thead><tbody>
+        ${list.map(r => `<tr>
+          <td>${r.unidade ? `<code style="font-size:11px">${esc(r.unidade)}</code>` : '—'}</td>
+          <td><span class="empr-chip">${esc(emprName(r.empreendimento_id))}</span></td>
+          <td>${badge(r.motivo,'orange')}</td>
+          <td>${esc(r.equipe||'—')}</td>
+          <td>${fmtDate(r.data_inicio)}</td>
+          <td>${fmtDate(r.data_retomada)}</td>
+          <td>${r.tempo_dias||'—'}</td>
+          <td>
+            <button class="btn btn-ghost btn-sm" onclick="openRetModal('${r.id}')">✏️</button>
+            <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteRet('${r.id}')">🗑️</button>
+          </td>
+        </tr>`).join('') || '<tr class="empty-row"><td colspan="8">Nenhuma retomada cadastrada</td></tr>'}
+        </tbody></table>
+      </div>
+    </div>
+  `);
+  setTimeout(() => {
+    const rm = mapToLabelData(countBy(list,'motivo'));
+    ChartManager.donut('ch_rm', rm.labels, rm.data, {pie:true});
+    const re = mapToLabelData(countBy(list,'equipe'));
+    ChartManager.bar('ch_re', re.labels, [{data: re.data}]);
+  }, 50);
+}
+
+function openRetModal(id) {
+  const r = id ? DB.getById('retomadas', id) : null;
+  const cid = DB.getActiveComite()?.id;
+  openModal(r?'Editar Retomada':'Nova Retomada',
+    `<div class="form-grid">
+      <div class="form-group"><label class="field-label">Empreendimento *</label><select id="re_empr">${emprOptions(r?.empreendimento_id)}</select></div>
+      <div class="form-group"><label class="field-label">Unidade</label><input type="text" id="re_unidade" value="${esc(r?.unidade||'')}" placeholder="Ex: 205A" /></div>
+      <div class="form-group"><label class="field-label">Motivo</label><select id="re_motivo">${opts(MOTIVOS_RET,r?.motivo)}</select></div>
+      <div class="form-group"><label class="field-label">Equipe</label><select id="re_equipe">${opts(EQUIPES_RET,r?.equipe)}</select></div>
+      <div class="form-group"><label class="field-label">Data de Início</label><input type="date" id="re_inicio" value="${r?.data_inicio||''}" /></div>
+      <div class="form-group"><label class="field-label">Data da Retomada</label><input type="date" id="re_retomada" value="${r?.data_retomada||isoToday()}" /></div>
+      <div class="form-group span-2"><label class="field-label">Dias até Retomada</label><input type="number" id="re_dias" value="${r?.tempo_dias||''}" min="0" /></div>
+    </div>`,
+    `<button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
+     <button class="btn btn-primary" onclick="saveRet('${id||''}','${cid}')">Salvar</button>`
+  );
+}
+
+function saveRet(id, cid) {
+  const d = {
+    empreendimento_id: document.getElementById('re_empr').value,
+    unidade:       document.getElementById('re_unidade').value.trim(),
+    motivo:        document.getElementById('re_motivo').value,
+    equipe:        document.getElementById('re_equipe').value,
+    data_inicio:   document.getElementById('re_inicio').value,
+    data_retomada: document.getElementById('re_retomada').value,
+    tempo_dias:    parseInt(document.getElementById('re_dias').value)||0,
+  };
+  if (!d.empreendimento_id) { toast('Empreendimento obrigatório','error'); return; }
+  if (id) { DB.update('retomadas',id,d); toast('Retomada atualizada!','success'); }
+  else { DB.insert('retomadas',{comite_id:cid,...d}); toast('Retomada adicionada!','success'); }
+  closeModal(); renderRetomadas();
+}
+
+function deleteRet(id) {
+  confirmDelete('Excluir esta retomada?', `()=>{ DB.remove('retomadas','${id}'); toast('Excluído!'); renderRetomadas(); }`);
+}
+
+// ============================================================
 // PROCESSOS JUDICIAIS
 // ============================================================
 const MOTIVOS_PROC = ['Trabalhista','Consumidor','Cível','Ambiental','Outros'];
