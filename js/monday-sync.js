@@ -234,6 +234,7 @@ const MondaySync = (() => {
         tipo,
         acao:     cv(item, 'status4'),
         data_aud: cv(item, 'data6'),
+        ciencia:  cv(item, 'data__1'),
         acomp:    cv(item, 'status5'),
       });
       count++;

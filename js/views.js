@@ -878,9 +878,11 @@ function renderProcessos() {
   const renderResumo = (ext, int) => {
     const all = ext.concat(int);
     const cnt = s => all.filter(p => p.status === s).length;
+    // TOTAL = processos com CIÊNCIA no mês do comitê ativo (comite.ref = YYYY-MM)
+    const totalMes = all.filter(p => (p.ciencia || '').slice(0,7) === comite.ref).length;
     return `
       <div class="kpi-grid">
-        <div class="kpi-card"><div class="kpi-label">Total Geral</div><div class="kpi-value">${all.length}</div></div>
+        <div class="kpi-card"><div class="kpi-label">Total</div><div class="kpi-value">${totalMes}</div></div>
         <div class="kpi-card blue"><div class="kpi-label">Externos</div><div class="kpi-value">${ext.length}</div></div>
         <div class="kpi-card purple"><div class="kpi-label">Internos</div><div class="kpi-value">${int.length}</div></div>
         <div class="kpi-card blue"><div class="kpi-label">Acompanhando</div><div class="kpi-value">${cnt('Acompanhando')}</div></div>
