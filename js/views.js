@@ -869,7 +869,32 @@ function renderProcessos() {
   const ext = DB.forComite('processos', cid).filter(p => !p.interno);
   const int = DB.forComite('processos', cid).filter(p =>  p.interno);
 
-  let tabAtiva = window._procTab || 'externos';
+  let tabAtiva = window._procTab || 'resumo';
+  const MESES_FULL = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  const [cy, cm] = (comite.ref || '').split('-').map(Number);
+  const resumoLabel = (cy && cm) ? `${MESES_FULL[cm-1]} ${cy}` : (comite.label || 'Resumo');
+
+  // Aba "Resumo do mês": KPIs e gráficos somando externos + internos
+  const renderResumo = (ext, int) => {
+    const all = ext.concat(int);
+    const cnt = s => all.filter(p => p.status === s).length;
+    return `
+      <div class="kpi-grid">
+        <div class="kpi-card"><div class="kpi-label">Total Geral</div><div class="kpi-value">${all.length}</div></div>
+        <div class="kpi-card blue"><div class="kpi-label">Externos</div><div class="kpi-value">${ext.length}</div></div>
+        <div class="kpi-card purple"><div class="kpi-label">Internos</div><div class="kpi-value">${int.length}</div></div>
+        <div class="kpi-card blue"><div class="kpi-label">Acompanhando</div><div class="kpi-value">${cnt('Acompanhando')}</div></div>
+        <div class="kpi-card green"><div class="kpi-label">Finalizados</div><div class="kpi-value">${cnt('Finalizado')}</div></div>
+        <div class="kpi-card purple"><div class="kpi-label">Em Acordo</div><div class="kpi-value">${cnt('Em Acordo')}</div></div>
+      </div>
+      <div class="charts-grid">
+        <div class="chart-card"><div class="chart-title">Externos × Internos</div><div class="chart-wrap"><canvas id="ch_res_ei"></canvas></div></div>
+        <div class="chart-card"><div class="chart-title">Por Empreendimento</div><div class="chart-wrap"><canvas id="ch_res_emp"></canvas></div></div>
+        <div class="chart-card"><div class="chart-title">Por Motivo</div><div class="chart-wrap"><canvas id="ch_res_mot"></canvas></div></div>
+        <div class="chart-card"><div class="chart-title">Por Status</div><div class="chart-wrap"><canvas id="ch_res_st"></canvas></div></div>
+      </div>
+    `;
+  };
 
   const renderTab = (list, tipo) => {
     return `
@@ -916,16 +941,30 @@ function renderProcessos() {
     </div>
     <div class="content">
       <div class="tabs">
+        <button class="tab-btn ${tabAtiva==='resumo'?'active':''}" onclick="window._procTab='resumo';renderProcessos()">${esc(resumoLabel)} (${ext.length+int.length})</button>
         <button class="tab-btn ${tabAtiva==='externos'?'active':''}" onclick="window._procTab='externos';renderProcessos()">Externos (${ext.length})</button>
         <button class="tab-btn ${tabAtiva==='internos'?'active':''}" onclick="window._procTab='internos';renderProcessos()">Internos (${int.length})</button>
       </div>
       <div id="proc_content">
-        ${tabAtiva==='externos' ? renderTab(ext,'externos') : renderTab(int,'internos')}
+        ${tabAtiva==='resumo' ? renderResumo(ext,int)
+          : tabAtiva==='externos' ? renderTab(ext,'externos')
+          : renderTab(int,'internos')}
       </div>
     </div>
   `);
 
   setTimeout(() => {
+    if (tabAtiva === 'resumo') {
+      const all = ext.concat(int);
+      ChartManager.donut('ch_res_ei', ['Externos','Internos'], [ext.length, int.length], {pie:true});
+      const emp = mapToLabelData(countBy(all.map(p=>({...p,_en:emprName(p.empreendimento_id)})),'_en'));
+      ChartManager.donut('ch_res_emp', emp.labels, emp.data);
+      const mot = mapToLabelData(countBy(all,'motivo'));
+      ChartManager.donut('ch_res_mot', mot.labels, mot.data, {pie:true});
+      const st = mapToLabelData(countBy(all,'status'));
+      ChartManager.donut('ch_res_st', st.labels, st.data, {pie:true});
+      return;
+    }
     const list = tabAtiva === 'externos' ? ext : int;
     const tipo = tabAtiva;
     const pe = mapToLabelData(countBy(list.map(p=>({...p,_en:emprName(p.empreendimento_id)})),'_en'));
