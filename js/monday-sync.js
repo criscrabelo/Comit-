@@ -266,6 +266,7 @@ const MondaySync = (() => {
                                      'DATA DA FINALIZAÇÃO', 'DATA DE FINALIZAÇÃO', 'FINALIZAÇÃO');
     const idDataVenda= colId(colMap, 'DATA DA VENDA', 'DATA VENDA');
     const idDias     = colId(colMap, 'PERÍODO (DIAS)', 'PERIODO (DIAS)', 'DIAS', 'TEMPO');
+    const idEquipe   = colId(colMap, 'EQUIPE', 'TIME');
 
     try {
       console.log('[Distratos] colunas resolvidas:', {
@@ -299,12 +300,14 @@ const MondaySync = (() => {
       const dataDist    = cv(item, idDataDist) || cv(item, 'data') || '';
       const dataVenda   = cv(item, idDataVenda)|| cv(item, 'date_mm1zzqfm') || '';
       const tempoDias   = parseInt(cv(item, idDias) || cv(item, 'formula_mm1tmz3a')) || 0;
+      const equipe      = cv(item, idEquipe) || cv(item, 'color_mm1kctx7') || '';
       const emprId      = findOrMakeEmpr(emprNome);
 
       DB.insert('distratos', {
         comite_id:         comiteId,
         empreendimento_id: emprId,
         motivo,
+        equipe,
         data_solicitacao:  dataSol,
         data_venda:        dataVenda,
         data_distrato:     dataDist || dataSol,

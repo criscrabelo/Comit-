@@ -680,15 +680,17 @@ function renderDistratos() {
       <div class="charts-grid">
         <div class="chart-card"><div class="chart-title">Por Motivo</div><div class="chart-wrap"><canvas id="ch_dm"></canvas></div></div>
         <div class="chart-card"><div class="chart-title">Por Empreendimento</div><div class="chart-wrap"><canvas id="ch_de"></canvas></div></div>
+        <div class="chart-card"><div class="chart-title">Por Equipe</div><div class="chart-wrap"><canvas id="ch_deq"></canvas></div></div>
       </div>
       <div class="table-wrap">
         <table><thead><tr>
-          <th>Unidade</th><th>Empreendimento</th><th>Motivo</th><th>Solicitação</th><th>Data Venda</th><th>Data Distrato</th><th>Dias</th><th>Ações</th>
+          <th>Unidade</th><th>Empreendimento</th><th>Motivo</th><th>Equipe</th><th>Solicitação</th><th>Data Venda</th><th>Data Distrato</th><th>Dias</th><th>Ações</th>
         </tr></thead><tbody>
         ${list.map(d => `<tr>
           <td>${d.unidade ? `<code style="font-size:11px">${esc(d.unidade)}</code>` : '—'}</td>
           <td><span class="empr-chip">${esc(emprName(d.empreendimento_id))}</span></td>
           <td>${badge(d.motivo,'red')}</td>
+          <td>${d.equipe ? badge(d.equipe,'blue') : '—'}</td>
           <td>${fmtDate(d.data_solicitacao)}</td>
           <td>${fmtDate(d.data_venda)}</td>
           <td>${fmtDate(d.data_distrato)}</td>
@@ -697,7 +699,7 @@ function renderDistratos() {
             <button class="btn btn-ghost btn-sm" onclick="openDistModal('${d.id}')">✏️</button>
             <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteDist('${d.id}')">🗑️</button>
           </td>
-        </tr>`).join('') || '<tr class="empty-row"><td colspan="8">Nenhum distrato cadastrado</td></tr>'}
+        </tr>`).join('') || '<tr class="empty-row"><td colspan="9">Nenhum distrato cadastrado</td></tr>'}
         </tbody></table>
       </div>
     </div>
@@ -707,6 +709,8 @@ function renderDistratos() {
     ChartManager.donut('ch_dm', dm.labels, dm.data, {pie:true});
     const de = mapToLabelData(countBy(list.map(d=>({...d,_en:emprName(d.empreendimento_id)})),'_en'));
     ChartManager.donut('ch_de', de.labels, de.data);
+    const deq = mapToLabelData(countBy(list,'equipe'));
+    ChartManager.donut('ch_deq', deq.labels, deq.data, {pie:true});
   }, 50);
 }
 
