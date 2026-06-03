@@ -68,6 +68,7 @@ const MondaySync = (() => {
                 id
                 text
                 ... on MirrorValue { display_value }
+                ... on FormulaValue { display_value }
               }
             }
           }
