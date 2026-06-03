@@ -681,7 +681,7 @@ function renderDistratos() {
         <div class="chart-card"><div class="chart-title">Por Motivo</div><div class="chart-wrap"><canvas id="ch_dm"></canvas></div></div>
         <div class="chart-card"><div class="chart-title">Por Empreendimento</div><div class="chart-wrap"><canvas id="ch_de"></canvas></div></div>
         <div class="chart-card"><div class="chart-title">Por Equipe</div><div class="chart-wrap"><canvas id="ch_deq"></canvas></div></div>
-        <div class="chart-card"><div class="chart-title">Distratos por Mês</div><div class="chart-wrap"><canvas id="ch_dmes"></canvas></div></div>
+        <div class="chart-card"><div class="chart-title">Evolução de Distratos por Mês</div><div class="chart-wrap"><canvas id="ch_dmes"></canvas></div></div>
       </div>
       <div class="table-wrap">
         <table><thead><tr>
@@ -712,16 +712,16 @@ function renderDistratos() {
     ChartManager.donut('ch_de', de.labels, de.data);
     const deq = mapToLabelData(countBy(list,'equipe'));
     ChartManager.donut('ch_deq', deq.labels, deq.data, {pie:true});
-    // Evolução: nº de distratos por mês (DATA DA SOLICITAÇÃO)
+    // Evolução: nº de distratos por mês, de Janeiro até o mês do comitê ativo.
+    // Usa o histograma de TODO o board gravado no comitê durante o sync
+    // (comite.distratos_evolucao), pois os outros meses vivem em outros comitês.
     const MESES_ABBR = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
-    const byMes = {};
-    list.forEach(d => {
-      const m = (d.data_solicitacao || d.data_distrato || '').slice(0,7); // YYYY-MM
-      if (/^\d{4}-\d{2}$/.test(m)) byMes[m] = (byMes[m] || 0) + 1;
-    });
-    const meses = Object.keys(byMes).sort();
+    const evol = comite.distratos_evolucao || {};
+    const [refY, refM] = (comite.ref || '').split('-').map(Number);
+    const meses = [];
+    if (refY && refM) for (let m = 1; m <= refM; m++) meses.push(`${refY}-${String(m).padStart(2,'0')}`);
     const mesLabels = meses.map(ym => { const [y,mm] = ym.split('-'); return `${MESES_ABBR[(+mm)-1]}/${y}`; });
-    ChartManager.bar('ch_dmes', mesLabels, [{label:'Distratos', data: meses.map(m=>byMes[m])}], {dataLabels:true});
+    ChartManager.bar('ch_dmes', mesLabels, [{label:'Distratos', data: meses.map(m=>evol[m]||0)}], {dataLabels:true});
   }, 50);
 }
 

@@ -317,6 +317,20 @@ const MondaySync = (() => {
       ndist++;
     });
 
+    // Evolução mensal: histograma de TODOS os distratos do board por mês
+    // (DATA DA SOLICITAÇÃO, fallback created_at). Persistido no comitê para
+    // alimentar o gráfico de tendência, independente do mês ativo.
+    const evolucao = {};
+    items.forEach(item => {
+      const grupoTit = (item.group?.title || '').toUpperCase();
+      if (grupoTit.includes('RETOMADA')) return;
+      const ds  = cv(item, idDataSol);
+      const ca  = (item.created_at || '').substring(0, 10);
+      const ref = (ds || ca).slice(0, 7); // YYYY-MM
+      if (/^\d{4}-\d{2}$/.test(ref)) evolucao[ref] = (evolucao[ref] || 0) + 1;
+    });
+    DB.update('comites', comiteId, { distratos_evolucao: evolucao });
+
     log(`${ndist} distratos (filtrado por DATA DA SOLICITAÇÃO no mês ${mesRef}; ${nretSkip} itens "Retomada" ignorados)`,
         ndist > 0 ? 'ok' : 'warn');
     return { ndist };
