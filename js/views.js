@@ -877,14 +877,14 @@ function renderProcessos() {
   // Aba "Resumo do mês": KPIs e gráficos somando externos + internos
   const renderResumo = (ext, int) => {
     const all = ext.concat(int);
-    const cnt = s => all.filter(p => p.status === s).length;
-    // TOTAL = processos com CIÊNCIA no mês do comitê ativo (comite.ref = YYYY-MM)
-    const totalMes = all.filter(p => (p.ciencia || '').slice(0,7) === comite.ref).length;
+    // Resumo do mês: considera apenas processos com CIÊNCIA no mês do comitê ativo
+    const mes = all.filter(p => (p.ciencia || '').slice(0,7) === comite.ref);
+    const cnt = s => mes.filter(p => p.status === s).length;
     return `
       <div class="kpi-grid">
-        <div class="kpi-card"><div class="kpi-label">Total</div><div class="kpi-value">${totalMes}</div></div>
-        <div class="kpi-card blue"><div class="kpi-label">Externos</div><div class="kpi-value">${ext.length}</div></div>
-        <div class="kpi-card purple"><div class="kpi-label">Internos</div><div class="kpi-value">${int.length}</div></div>
+        <div class="kpi-card"><div class="kpi-label">Total</div><div class="kpi-value">${mes.length}</div></div>
+        <div class="kpi-card blue"><div class="kpi-label">Externos</div><div class="kpi-value">${mes.filter(p=>!p.interno).length}</div></div>
+        <div class="kpi-card purple"><div class="kpi-label">Internos</div><div class="kpi-value">${mes.filter(p=>p.interno).length}</div></div>
         <div class="kpi-card blue"><div class="kpi-label">Acompanhando</div><div class="kpi-value">${cnt('Acompanhando')}</div></div>
         <div class="kpi-card green"><div class="kpi-label">Finalizados</div><div class="kpi-value">${cnt('Finalizado')}</div></div>
         <div class="kpi-card purple"><div class="kpi-label">Em Acordo</div><div class="kpi-value">${cnt('Em Acordo')}</div></div>
@@ -958,12 +958,14 @@ function renderProcessos() {
   setTimeout(() => {
     if (tabAtiva === 'resumo') {
       const all = ext.concat(int);
-      ChartManager.donut('ch_res_ei', ['Externos','Internos'], [ext.length, int.length], {pie:true});
-      const emp = mapToLabelData(countBy(all.map(p=>({...p,_en:emprName(p.empreendimento_id)})),'_en'));
+      const mes = all.filter(p => (p.ciencia || '').slice(0,7) === comite.ref);
+      ChartManager.donut('ch_res_ei', ['Externos','Internos'],
+        [mes.filter(p=>!p.interno).length, mes.filter(p=>p.interno).length], {pie:true});
+      const emp = mapToLabelData(countBy(mes.map(p=>({...p,_en:emprName(p.empreendimento_id)})),'_en'));
       ChartManager.donut('ch_res_emp', emp.labels, emp.data);
-      const mot = mapToLabelData(countBy(all,'motivo'));
+      const mot = mapToLabelData(countBy(mes,'motivo'));
       ChartManager.donut('ch_res_mot', mot.labels, mot.data, {pie:true});
-      const st = mapToLabelData(countBy(all,'status'));
+      const st = mapToLabelData(countBy(mes,'status'));
       ChartManager.donut('ch_res_st', st.labels, st.data, {pie:true});
       return;
     }
