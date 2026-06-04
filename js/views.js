@@ -889,7 +889,7 @@ function renderProcessos() {
         <div class="chart-card"><div class="chart-title">Externos × Internos</div><div class="chart-wrap"><canvas id="ch_res_ei"></canvas></div></div>
         <div class="chart-card"><div class="chart-title">Por Empreendimento</div><div class="chart-wrap"><canvas id="ch_res_emp"></canvas></div></div>
         <div class="chart-card"><div class="chart-title">Por Motivo</div><div class="chart-wrap"><canvas id="ch_res_mot"></canvas></div></div>
-        <div class="chart-card"><div class="chart-title">Por Status</div><div class="chart-wrap"><canvas id="ch_res_st"></canvas></div></div>
+        <div class="chart-card"><div class="chart-title">Por Posição</div><div class="chart-wrap"><canvas id="ch_res_pos"></canvas></div></div>
       </div>
     `;
   };
@@ -961,8 +961,8 @@ function renderProcessos() {
       ChartManager.donut('ch_res_emp', emp.labels, emp.data);
       const mot = mapToLabelData(countBy(mes,'motivo'));
       ChartManager.donut('ch_res_mot', mot.labels, mot.data, {pie:true});
-      const st = mapToLabelData(countBy(mes,'status'));
-      ChartManager.donut('ch_res_st', st.labels, st.data, {pie:true});
+      const pos = mapToLabelData(countBy(mes,'posicao'));
+      ChartManager.donut('ch_res_pos', pos.labels, pos.data, {pie:true});
       return;
     }
     const list = tabAtiva === 'externos' ? ext : int;

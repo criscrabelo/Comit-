@@ -224,7 +224,7 @@ const MondaySync = (() => {
         comite_id:        comiteId,
         empreendimento_id: emprId,
         motivo:   tipo || 'Cível',
-        posicao:  'Réu',
+        posicao:  cv(item, 'status') || 'Não definido',
         status,
         local,
         ano,
