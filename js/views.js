@@ -910,6 +910,7 @@ function renderProcessos() {
         <div class="chart-card"><div class="chart-title">Por Empreendimento</div><div class="chart-wrap"><canvas id="ch_pe_${tipo}"></canvas></div></div>
         <div class="chart-card"><div class="chart-title">Por Motivo</div><div class="chart-wrap"><canvas id="ch_pm_${tipo}"></canvas></div></div>
         ${tipo==='externos'?`<div class="chart-card"><div class="chart-title">Por Posição</div><div class="chart-wrap"><canvas id="ch_pp_ext"></canvas></div></div>`:''}
+        ${tipo==='externos'?`<div class="chart-card" style="grid-column:1/-1"><div class="chart-title">Evolução por Mês (Citação/Protocolo)</div><div class="chart-wrap"><canvas id="ch_pevo_ext"></canvas></div></div>`:''}
       </div>
       <div class="table-wrap">
         <table><thead><tr>
@@ -974,6 +975,24 @@ function renderProcessos() {
     if (tipo==='externos') {
       const pp = mapToLabelData(countBy(list,'posicao'));
       ChartManager.donut('ch_pp_ext', pp.labels, pp.data, {pie:true});
+
+      // Evolução por mês (CITAÇÃO/PROTOCOLO): linha do tempo contínua, todos os anos
+      const ms = list.map(p => (p.data_citacao||'').slice(0,7))
+                     .filter(m => /^\d{4}-\d{2}$/.test(m)).sort();
+      const evoLabels = [], evoData = [];
+      if (ms.length) {
+        const c = {};
+        ms.forEach(m => c[m] = (c[m]||0) + 1);
+        let [y, mo] = ms[0].split('-').map(Number);
+        const [yEnd, moEnd] = ms[ms.length-1].split('-').map(Number);
+        while (y < yEnd || (y === yEnd && mo <= moEnd)) {
+          const key = `${y}-${String(mo).padStart(2,'0')}`;
+          evoLabels.push(`${String(mo).padStart(2,'0')}/${String(y).slice(2)}`);
+          evoData.push(c[key] || 0);
+          mo++; if (mo > 12) { mo = 1; y++; }
+        }
+      }
+      ChartManager.bar('ch_pevo_ext', evoLabels, [{label:'Externos', data: evoData}], {dataLabels:false});
     }
   }, 50);
 }
