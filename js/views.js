@@ -910,7 +910,7 @@ function renderProcessos() {
         <div class="chart-card"><div class="chart-title">Por Empreendimento</div><div class="chart-wrap"><canvas id="ch_pe_${tipo}"></canvas></div></div>
         <div class="chart-card"><div class="chart-title">Por Motivo</div><div class="chart-wrap"><canvas id="ch_pm_${tipo}"></canvas></div></div>
         ${tipo==='externos'?`<div class="chart-card"><div class="chart-title">Por Posição</div><div class="chart-wrap"><canvas id="ch_pp_ext"></canvas></div></div>`:''}
-        ${tipo==='externos'?`<div class="chart-card" style="grid-column:1/-1"><div class="chart-title">Evolução por Mês (Citação/Protocolo)</div><div class="chart-wrap"><canvas id="ch_pevo_ext"></canvas></div></div>`:''}
+        ${tipo==='externos'?`<div class="chart-card" style="grid-column:1/-1"><div class="chart-title">Evolução por Mês</div><div class="chart-wrap"><canvas id="ch_pevo_ext"></canvas></div></div>`:''}
       </div>
       <div class="table-wrap">
         <table><thead><tr>
