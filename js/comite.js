@@ -32,6 +32,27 @@ function renderComite() {
   const retMed   = rets.length ? Math.round(rets.reduce((s,r)=>s+(r.tempo_dias||0),0)/rets.length) : null;
   const distMed  = dists.length ? Math.round(dists.reduce((s,d)=>s+(d.tempo_dias||0),0)/dists.length) : null;
 
+  // Processos — resumo do mês (POSIÇÃO/CIÊNCIA): mesmo critério da tela
+  const procAll  = procsExt.concat(procsInt);
+  const mesProc  = procAll.filter(p => (p.ciencia || '').slice(0,7) === comite.ref);
+  const MESES_FULL = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  const [cy, cmth] = (comite.ref || '').split('-').map(Number);
+  const resumoLabel = (cy && cmth) ? `${MESES_FULL[cmth-1]} ${cy}` : (comite.label || 'Resumo');
+
+  // Notificações — painel de estágios (mesma lógica da tela)
+  const estagioCount = {};
+  notifs.forEach(n => {
+    if (comite.ref && n.data_notificacao && !n.data_notificacao.startsWith(comite.ref)) return;
+    const e = n.estagio_detalhe; if (!e) return;
+    estagioCount[e] = (estagioCount[e] || 0) + 1;
+  });
+  const estagioTotal = Object.values(estagioCount).reduce((a,b)=>a+b,0);
+  const estagioRows = Object.entries(estagioCount).sort((a,b)=>b[1]-a[1])
+    .map(([label,count]) => `<div class="estagio-item ${estagioColorClass(label)}"><span class="estagio-name">${esc(label)}</span><span class="estagio-count">${count}</span></div>`).join('');
+  const notifEstagioHtml = `<div class="estagio-panel" style="margin-bottom:16px;">
+    <div class="estagio-panel-title">Status das Notificações · ${esc(comite.label)} · ${estagioTotal}</div>
+    ${estagioTotal ? `<div class="estagio-breakdown">${estagioRows}</div>` : '<div class="estagio-empty">Sem dados de estágio.</div>'}</div>`;
+
   setView(`
     <div class="page-header" style="border-bottom:1px solid var(--gray-200);">
       <div>
@@ -63,38 +84,64 @@ function renderComite() {
 
       <!-- SLIDE 5: NOTIFICAÇÕES -->
       ${buildKpiSlide('Notificações', comite.label, [
-        {label:'Total de Notificações', value: notifs.length, color:''},
-        {label:'Em Andamento',          value: notifAnd,      color:'orange'},
-        {label:'Resolvidas',            value: notifRes,      color:'green'},
-        {label:'Tempo Médio Resolução', value: tMedNot!==null?tMedNot+' dias':'—', color:''},
-      ], 'ch_c_notif_grupo', 'Distribuição por Grupo', 'ch_c_notif_modelo', 'Modelo de Notificação')}
+        {label:'Total de Notificações', value: notifs.length},
+        {label:'Tempo Médio de Resolução', value: tMedNot!==null?tMedNot+' dias':'—'},
+      ], [
+        {id:'ch_c_notif_grupo', label:'Motivo'},
+        {id:'ch_c_notif_empr',  label:'Empreendimento'},
+        {id:'ch_c_notif_mes',   label:'Notificações por Mês — 2026 (jan–mai)', full:true},
+      ], notifEstagioHtml)}
 
       <!-- SLIDE 6: CONTRATOS -->
       ${buildKpiSlide('Contratos', comite.label, [
-        {label:'Total de Contratos',    value: conts.length, color:''},
-        {label:'Empreendimentos',       value: new Set(conts.map(c=>c.empreendimento_id)).size, color:'blue'},
-        {label:'Assinados',             value: conts.filter(c=>c.status==='Assinado').length, color:'green'},
-        {label:'Em Análise',            value: conts.filter(c=>c.status==='Em análise').length, color:'yellow'},
-      ], 'ch_c_cont_tipo', 'Por Tipo de Contrato', 'ch_c_cont_empr', 'Por Empreendimento')}
+        {label:'Total',                  value: conts.length, color:'green'},
+        {label:'Contratos Clientes',     value: conts.filter(c=>catOfCont(c)==='clientes').length},
+        {label:'Prestadores de Serviços',value: conts.filter(c=>catOfCont(c)==='prestadores').length, color:'purple'},
+        {label:'Obra',                   value: conts.filter(c=>catOfCont(c)==='obra').length, color:'orange'},
+      ], [
+        {id:'ch_c_cont_tipo', label:'Por Tipo', full:true},
+        {id:'ch_c_cont_empr', label:'Por Empreendimento', full:true},
+        {id:'ch_c_cont_mes',  label:'Evolução do Total de Contratos — 2026 (jan–mai)', full:true},
+      ])}
 
       <!-- SLIDE 7: RETOMADAS -->
       ${buildKpiSlide('Retomadas', comite.label, [
-        {label:'Total de Retomadas',    value: rets.length, color:''},
+        {label:'Total Retomadas',       value: rets.length, color:'green'},
         {label:'Tempo Médio',           value: retMed!==null?retMed+' dias':'—', color:'orange'},
-        {label:'Empreendimentos',       value: new Set(rets.map(r=>r.empreendimento_id)).size, color:'blue'},
-      ], 'ch_c_ret_motivo', 'Motivo da Retomada', 'ch_c_ret_equipe', 'Por Equipe Responsável')}
+        {label:'Empreendimentos',       value: new Set(rets.map(r=>r.empreendimento_id)).size},
+      ], [
+        {id:'ch_c_ret_motivo', label:'Por Motivo'},
+        {id:'ch_c_ret_equipe', label:'Por Equipe'},
+      ])}
 
       <!-- SLIDE 8: DISTRATOS -->
       ${buildKpiSlide('Distratos', comite.label, [
-        {label:'Total de Distratos',    value: dists.length, color:'red'},
+        {label:'Total Distratos',       value: dists.length, color:'red'},
         {label:'Tempo Médio',           value: distMed!==null?distMed+' dias':'—', color:'orange'},
-        {label:'Empreendimentos',       value: new Set(dists.map(d=>d.empreendimento_id)).size, color:'blue'},
-      ], 'ch_c_dist_motivo', 'Motivo do Distrato', 'ch_c_dist_empr', 'Por Empreendimento')}
+        {label:'Empreendimentos',       value: new Set(dists.map(d=>d.empreendimento_id)).size},
+      ], [
+        {id:'ch_c_dist_motivo', label:'Por Motivo'},
+        {id:'ch_c_dist_empr',   label:'Por Empreendimento'},
+        {id:'ch_c_dist_equipe', label:'Por Equipe'},
+        {id:'ch_c_dist_mes',    label:'Evolução de Distratos por Mês', full:true},
+      ])}
 
       <!-- REGULATÓRIO (se houver) -->
       ${regs.map(r => buildRegSlide(r)).join('')}
 
-      <!-- SLIDE 10: PROCESSOS JUDICIAIS -->
+      <!-- PROCESSOS: RESUMO DO MÊS -->
+      ${buildKpiSlide('Processos Judiciais — ' + resumoLabel, comite.label, [
+        {label:'Total',     value: mesProc.length},
+        {label:'Externos',  value: mesProc.filter(p=>!p.interno).length, color:'blue'},
+        {label:'Internos',  value: mesProc.filter(p=>p.interno).length, color:'purple'},
+      ], [
+        {id:'ch_c_pres_ei',  label:'Externos × Internos'},
+        {id:'ch_c_pres_emp', label:'Por Empreendimento'},
+        {id:'ch_c_pres_mot', label:'Por Motivo'},
+        {id:'ch_c_pres_pos', label:'Por Posição'},
+      ])}
+
+      <!-- SLIDE 10: PROCESSOS JUDICIAIS (EXTERNOS) -->
       ${buildProcessosSlide('Processos Judiciais', comite.label, procsExt, false)}
 
       <!-- SLIDE 11: PROCESSOS INTERNOS -->
@@ -122,35 +169,68 @@ function renderComite() {
 
   // render charts
   setTimeout(() => {
-    // Notificações
+    const ABBR = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+
+    // ── Notificações ──
     const ng = mapToLabelData(countBy(notifs,'grupo'));
-    ChartManager.bar('ch_c_notif_grupo', ng.labels, [{data:ng.data}], {horizontal:true});
-    const nm = mapToLabelData(countBy(notifs,'modelo'));
-    ChartManager.donut('ch_c_notif_modelo', nm.labels, nm.data);
-    // Contratos
-    const ct = mapToLabelData(countBy(conts,'tipo'));
-    ChartManager.bar('ch_c_cont_tipo', ct.labels, [{data:ct.data}]);
-    const ce = mapToLabelData(countBy(conts.map(c=>({...c,_en:emprName(c.empreendimento_id)})),'_en'));
-    ChartManager.donut('ch_c_cont_empr', ce.labels, ce.data);
-    // Retomadas
+    ChartManager.donut('ch_c_notif_grupo', ng.labels, ng.data, {pie:true});
+    const nemp = mapToLabelData(countBy(notifs.map(n=>({_en:emprName(n.empreendimento_id)})),'_en'));
+    ChartManager.donut('ch_c_notif_empr', nemp.labels, nemp.data);
+    ChartManager.bar('ch_c_notif_mes', ['Jan','Fev','Mar','Abr','Mai'], [{data:[51,65,23,52,45]}]);
+
+    // ── Contratos ──
+    const ctS = Object.entries(countBy(conts,'tipo')).sort((a,b)=>a[1]-b[1]);
+    ChartManager.bar('ch_c_cont_tipo', ctS.map(e=>e[0]), [{data:ctS.map(e=>e[1])}], {horizontal:true, dataLabels:true});
+    const ceS = Object.entries(countBy(conts.map(c=>({_en:emprName(c.empreendimento_id)})),'_en')).sort((a,b)=>a[1]-b[1]);
+    ChartManager.bar('ch_c_cont_empr', ceS.map(e=>e[0]), [{data:ceS.map(e=>e[1]), color:'#16A34A'}], {horizontal:true, dataLabels:true});
+    ChartManager.line('ch_c_cont_mes', ['Jan','Fev','Mar','Abr','Mai'], [{label:'Contratos', data:[62,82,74,95,52]}], {dataLabels:true});
+
+    // ── Retomadas ──
     const rm = mapToLabelData(countBy(rets,'motivo'));
     ChartManager.donut('ch_c_ret_motivo', rm.labels, rm.data, {pie:true});
     const re = mapToLabelData(countBy(rets,'equipe'));
     ChartManager.bar('ch_c_ret_equipe', re.labels, [{data:re.data}]);
-    // Distratos
+
+    // ── Distratos ──
     const dm = mapToLabelData(countBy(dists,'motivo'));
     ChartManager.donut('ch_c_dist_motivo', dm.labels, dm.data, {pie:true});
-    const de = mapToLabelData(countBy(dists.map(d=>({...d,_en:emprName(d.empreendimento_id)})),'_en'));
+    const de = mapToLabelData(countBy(dists.map(d=>({_en:emprName(d.empreendimento_id)})),'_en'));
     ChartManager.donut('ch_c_dist_empr', de.labels, de.data);
-    // Processos
-    const pe = mapToLabelData(countBy(procsExt.map(p=>({...p,_en:emprName(p.empreendimento_id)})),'_en'));
-    ChartManager.donut('ch_c_proc_empr', pe.labels, pe.data);
-    const pp = mapToLabelData(countBy(procsExt,'posicao'));
-    ChartManager.donut('ch_c_proc_pos', pp.labels, pp.data, {pie:true});
-    const pm = mapToLabelData(countBy(procsInt.map(p=>({...p,_en:emprName(p.empreendimento_id)})),'_en'));
-    ChartManager.donut('ch_c_proci_empr', pm.labels, pm.data);
-    const pmot = mapToLabelData(countBy(procsInt,'motivo'));
-    ChartManager.donut('ch_c_proci_motivo', pmot.labels, pmot.data, {pie:true});
+    const deq = mapToLabelData(countBy(dists,'equipe'));
+    ChartManager.donut('ch_c_dist_equipe', deq.labels, deq.data, {pie:true});
+    const evol = comite.distratos_evolucao || {};
+    const mesesD = [];
+    if (cy && cmth) for (let m=1; m<=cmth; m++) mesesD.push(`${cy}-${String(m).padStart(2,'0')}`);
+    ChartManager.bar('ch_c_dist_mes', mesesD.map(ym=>{const[y,m]=ym.split('-');return `${ABBR[(+m)-1]}/${y}`;}),
+      [{label:'Distratos', data: mesesD.map(m=>evol[m]||0)}], {dataLabels:true});
+
+    // ── Processos: resumo do mês ──
+    ChartManager.donut('ch_c_pres_ei', ['Externos','Internos'],
+      [mesProc.filter(p=>!p.interno).length, mesProc.filter(p=>p.interno).length], {pie:true});
+    const presEmp = mapToLabelData(countBy(mesProc.map(p=>({_en:emprName(p.empreendimento_id)})),'_en'));
+    ChartManager.donut('ch_c_pres_emp', presEmp.labels, presEmp.data);
+    const presMot = mapToLabelData(countBy(mesProc,'motivo'));
+    ChartManager.donut('ch_c_pres_mot', presMot.labels, presMot.data, {pie:true});
+    const presPos = mapToLabelData(countBy(mesProc,'posicao'));
+    ChartManager.donut('ch_c_pres_pos', presPos.labels, presPos.data, {pie:true});
+
+    // ── Processos externos ──
+    const peEmp = mapToLabelData(countBy(procsExt.map(p=>({_en:emprName(p.empreendimento_id)})),'_en'));
+    ChartManager.donut('ch_c_proc_empr', peEmp.labels, peEmp.data);
+    const peMot = mapToLabelData(countBy(procsExt,'motivo'));
+    ChartManager.donut('ch_c_proc_mot', peMot.labels, peMot.data, {pie:true});
+    const pePos = mapToLabelData(countBy(procsExt,'posicao'));
+    ChartManager.donut('ch_c_proc_pos', pePos.labels, pePos.data, {pie:true});
+    const evoExt = evolucaoMensalCitacao(procsExt);
+    ChartManager.bar('ch_c_proc_mes', evoExt.labels, [{label:'Externos', data:evoExt.data}], {dataLabels:false});
+
+    // ── Processos internos ──
+    const piEmp = mapToLabelData(countBy(procsInt.map(p=>({_en:emprName(p.empreendimento_id)})),'_en'));
+    ChartManager.donut('ch_c_proci_empr', piEmp.labels, piEmp.data);
+    const piMot = mapToLabelData(countBy(procsInt,'motivo'));
+    ChartManager.donut('ch_c_proci_mot', piMot.labels, piMot.data, {pie:true});
+    const evoInt = evolucaoMensalCitacao(procsInt);
+    ChartManager.bar('ch_c_proci_mes', evoInt.labels, [{label:'Internos', data:evoInt.data}], {dataLabels:false});
   }, 80);
 }
 
@@ -189,7 +269,7 @@ function buildFatosSlides(fatosByEmpr) {
   `).join('');
 }
 
-function buildKpiSlide(titulo, mes, kpis, chartId1, chartLabel1, chartId2, chartLabel2) {
+function buildKpiSlide(titulo, mes, kpis, charts, extraHtml) {
   return `
     <div class="slide-preview-card">
       <div class="slide-tag">Slide · ${titulo}</div>
@@ -203,9 +283,9 @@ function buildKpiSlide(titulo, mes, kpis, chartId1, chartLabel1, chartId2, chart
             </div>
           `).join('')}
         </div>
+        ${extraHtml || ''}
         <div class="charts-grid">
-          <div class="chart-card"><div class="chart-title">${esc(chartLabel1)}</div><div class="chart-wrap"><canvas id="${chartId1}"></canvas></div></div>
-          <div class="chart-card"><div class="chart-title">${esc(chartLabel2)}</div><div class="chart-wrap"><canvas id="${chartId2}"></canvas></div></div>
+          ${charts.map(c => `<div class="chart-card"${c.full?' style="grid-column:1/-1"':''}><div class="chart-title">${esc(c.label)}</div><div class="chart-wrap"><canvas id="${c.id}"></canvas></div></div>`).join('')}
         </div>
       </div>
     </div>
@@ -214,25 +294,45 @@ function buildKpiSlide(titulo, mes, kpis, chartId1, chartLabel1, chartId2, chart
 
 function buildProcessosSlide(titulo, mes, list, interno) {
   const sfx = interno ? '_proci' : '_proc';
+  const STATUS_ORDER = ['Acompanhando','Finalizado','Em Acordo','Arq. Provisório','Baixa Definitiva'];
+  const STATUS_COLOR = {'Acompanhando':'blue','Finalizado':'green','Em Acordo':'purple','Arq. Provisório':'yellow','Baixa Definitiva':'gray'};
+  const STATUS_LABEL = {'Finalizado':'Finalizados'};
+
+  let kpiCards;
+  if (interno) {
+    // Cards dinâmicos: Total + um por status presente (igual à aba Internos)
+    const presentes = STATUS_ORDER.filter(s => list.some(p => p.status === s));
+    list.forEach(p => { if (p.status && !presentes.includes(p.status)) presentes.push(p.status); });
+    kpiCards = `<div class="kpi-card"><div class="kpi-label">Total</div><div class="kpi-value">${list.length}</div></div>` +
+      presentes.map(s => `<div class="kpi-card ${STATUS_COLOR[s]||'gray'}"><div class="kpi-label">${STATUS_LABEL[s]||s}</div><div class="kpi-value">${list.filter(p=>p.status===s).length}</div></div>`).join('');
+  } else {
+    kpiCards = `
+      <div class="kpi-card"><div class="kpi-label">Total</div><div class="kpi-value">${list.length}</div></div>
+      <div class="kpi-card blue"><div class="kpi-label">Acompanhando</div><div class="kpi-value">${list.filter(p=>p.status==='Acompanhando').length}</div></div>
+      <div class="kpi-card green"><div class="kpi-label">Finalizados</div><div class="kpi-value">${list.filter(p=>p.status==='Finalizado').length}</div></div>
+      <div class="kpi-card purple"><div class="kpi-label">Em Acordo</div><div class="kpi-value">${list.filter(p=>p.status==='Em Acordo').length}</div></div>
+      <div class="kpi-card gray"><div class="kpi-label">Baixa Definitiva</div><div class="kpi-value">${list.filter(p=>p.status==='Baixa Definitiva').length}</div></div>
+      <div class="kpi-card yellow"><div class="kpi-label">Arq. Provisório</div><div class="kpi-value">${list.filter(p=>p.status==='Arq. Provisório').length}</div></div>`;
+  }
+
+  const charts = interno ? `
+          <div class="chart-card"><div class="chart-title">Por Empreendimento</div><div class="chart-wrap"><canvas id="ch_c${sfx}_empr"></canvas></div></div>
+          <div class="chart-card"><div class="chart-title">Por Motivo</div><div class="chart-wrap"><canvas id="ch_c${sfx}_mot"></canvas></div></div>
+          <div class="chart-card" style="grid-column:1/-1"><div class="chart-title">Evolução por Mês</div><div class="chart-wrap"><canvas id="ch_c${sfx}_mes"></canvas></div></div>
+  ` : `
+          <div class="chart-card"><div class="chart-title">Por Empreendimento</div><div class="chart-wrap"><canvas id="ch_c${sfx}_empr"></canvas></div></div>
+          <div class="chart-card"><div class="chart-title">Por Motivo</div><div class="chart-wrap"><canvas id="ch_c${sfx}_mot"></canvas></div></div>
+          <div class="chart-card"><div class="chart-title">Por Posição</div><div class="chart-wrap"><canvas id="ch_c${sfx}_pos"></canvas></div></div>
+          <div class="chart-card" style="grid-column:1/-1"><div class="chart-title">Evolução por Mês</div><div class="chart-wrap"><canvas id="ch_c${sfx}_mes"></canvas></div></div>
+  `;
+
   return `
     <div class="slide-preview-card">
       <div class="slide-tag">Slide · ${titulo}</div>
       <div class="slide-preview-body">
         <div class="slide-preview-title">${esc(titulo).toUpperCase()} <span style="font-size:14px;font-weight:400;">${esc(mes)}</span></div>
-        <div class="kpi-grid" style="margin-bottom:16px;">
-          <div class="kpi-card"><div class="kpi-label">Total</div><div class="kpi-value">${list.length}</div></div>
-          <div class="kpi-card blue"><div class="kpi-label">Acompanhando</div><div class="kpi-value">${list.filter(p=>p.status==='Acompanhando').length}</div></div>
-          <div class="kpi-card green"><div class="kpi-label">Finalizados</div><div class="kpi-value">${list.filter(p=>p.status==='Finalizado').length}</div></div>
-          <div class="kpi-card purple"><div class="kpi-label">Em Acordo</div><div class="kpi-value">${list.filter(p=>p.status==='Em Acordo').length}</div></div>
-          ${!interno ? `
-          <div class="kpi-card gray"><div class="kpi-label">Baixa Definitiva</div><div class="kpi-value">${list.filter(p=>p.status==='Baixa Definitiva').length}</div></div>
-          <div class="kpi-card yellow"><div class="kpi-label">Arq. Provisório</div><div class="kpi-value">${list.filter(p=>p.status==='Arq. Provisório').length}</div></div>
-          ` : ''}
-        </div>
-        <div class="charts-grid">
-          <div class="chart-card"><div class="chart-title">Por Empreendimento</div><div class="chart-wrap"><canvas id="ch_c${sfx}_empr"></canvas></div></div>
-          <div class="chart-card"><div class="chart-title">${interno?'Por Motivo':'Por Posição'}</div><div class="chart-wrap"><canvas id="ch_c${sfx}_${interno?'motivo':'pos'}"></canvas></div></div>
-        </div>
+        <div class="kpi-grid" style="margin-bottom:16px;">${kpiCards}</div>
+        <div class="charts-grid">${charts}</div>
       </div>
     </div>
   `;
