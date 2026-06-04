@@ -894,17 +894,32 @@ function renderProcessos() {
     `;
   };
 
+  // Cores/rótulos por status (usado nos cards dinâmicos da aba Internos)
+  const STATUS_ORDER = ['Acompanhando','Finalizado','Em Acordo','Arq. Provisório','Baixa Definitiva'];
+  const STATUS_COLOR = {'Acompanhando':'blue','Finalizado':'green','Em Acordo':'purple','Arq. Provisório':'yellow','Baixa Definitiva':'gray'};
+  const STATUS_LABEL = {'Finalizado':'Finalizados'};
+
   const renderTab = (list, tipo) => {
+    // Internos: cards de status dinâmicos (só os status que existem na lista).
+    const statusCards = (() => {
+      const presentes = STATUS_ORDER.filter(s => list.some(p => p.status === s));
+      // inclui status fora da lista conhecida, se houver
+      list.forEach(p => { if (p.status && !presentes.includes(p.status)) presentes.push(p.status); });
+      return presentes.map(s => {
+        const n = list.filter(p => p.status === s).length;
+        return `<div class="kpi-card ${STATUS_COLOR[s]||'gray'}"><div class="kpi-label">${STATUS_LABEL[s]||s}</div><div class="kpi-value">${n}</div></div>`;
+      }).join('');
+    })();
     return `
       <div class="kpi-grid">
         <div class="kpi-card"><div class="kpi-label">Total</div><div class="kpi-value">${list.length}</div></div>
+        ${tipo==='externos' ? `
         <div class="kpi-card blue"><div class="kpi-label">Acompanhando</div><div class="kpi-value">${list.filter(p=>p.status==='Acompanhando').length}</div></div>
         <div class="kpi-card green"><div class="kpi-label">Finalizados</div><div class="kpi-value">${list.filter(p=>p.status==='Finalizado').length}</div></div>
         <div class="kpi-card purple"><div class="kpi-label">Em Acordo</div><div class="kpi-value">${list.filter(p=>p.status==='Em Acordo').length}</div></div>
-        ${tipo==='externos'?`
         <div class="kpi-card gray"><div class="kpi-label">Baixa Definitiva</div><div class="kpi-value">${list.filter(p=>p.status==='Baixa Definitiva').length}</div></div>
         <div class="kpi-card yellow"><div class="kpi-label">Arq. Provisório</div><div class="kpi-value">${list.filter(p=>p.status==='Arq. Provisório').length}</div></div>
-        ` : ''}
+        ` : statusCards}
       </div>
       <div class="charts-grid">
         <div class="chart-card"><div class="chart-title">Por Empreendimento</div><div class="chart-wrap"><canvas id="ch_pe_${tipo}"></canvas></div></div>
