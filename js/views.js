@@ -440,9 +440,11 @@ function renderNotificacoes() {
   setTimeout(() => {
     // Notificações por mês — dados do quadro (JUR) NOTIFICAÇÕES CLIENTES do Monday
     // (contagem por grupo mensal do Monday; snapshot de 19/05/2026)
+    const nevo = comite.notif_evolucao || {};
+    const mesesN = ['2026-01','2026-02','2026-03','2026-04','2026-05'];
     ChartManager.bar('ch_notifMes2',
       ['Jan','Fev','Mar','Abr','Mai'],
-      [{ data: [51, 65, 23, 52, 45] }]);
+      [{ data: mesesN.map(m=>nevo[m]||0) }]);
 
     const ng = mapToLabelData(countBy(list,'grupo'));
     ChartManager.donut('ch_ng2', ng.labels, ng.data, {pie: true});

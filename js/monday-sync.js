@@ -489,6 +489,15 @@ const MondaySync = (() => {
       });
     });
 
+    // Evolução mensal: histograma de TODAS as notificações do board por mês
+    // (DATA DA NOTIFICAÇÃO). Persistido no comitê para o gráfico de tendência.
+    const evolucao = {};
+    items.forEach(item => {
+      const ref = (cv(item, 'date0') || '').slice(0, 7);
+      if (/^\d{4}-\d{2}$/.test(ref)) evolucao[ref] = (evolucao[ref] || 0) + 1;
+    });
+    DB.update('comites', comiteId, { notif_evolucao: evolucao });
+
     const n = filtered.length;
     log(`${n} notificação${n !== 1 ? 'ões' : ''} importada${n !== 1 ? 's' : ''}`,
         n > 0 ? 'ok' : 'warn');
