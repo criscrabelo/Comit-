@@ -16,9 +16,15 @@ function renderComite() {
   const riscos     = DB.forComite('riscos', cid);
   const regs       = DB.forComite('regulatorios', cid);
 
-  // Group fatos by empreendimento
+  // GERAL = notícias/jurisprudência → vai para um slide separado (fora do
+  // agrupamento por empreendimento, para não duplicar nos Fatos Relevantes).
+  const GERAL_ID = (DB.getEmpreendimentos().find(e => (e.nome||'').toUpperCase() === 'GERAL') || {}).id;
+  const geralFatos = GERAL_ID ? fatos.filter(f => f.empreendimento_id === GERAL_ID) : [];
+
+  // Group fatos by empreendimento (exceto GERAL)
   const fatosByEmpr = {};
   fatos.forEach(f => {
+    if (GERAL_ID && f.empreendimento_id === GERAL_ID) return;
     if (!fatosByEmpr[f.empreendimento_id]) fatosByEmpr[f.empreendimento_id] = [];
     fatosByEmpr[f.empreendimento_id].push(f);
   });
@@ -81,6 +87,9 @@ function renderComite() {
 
       <!-- SLIDES 2-4: FATOS RELEVANTES -->
       ${buildFatosSlides(fatosByEmpr)}
+
+      <!-- SLIDE: NOTÍCIAS & JURISPRUDÊNCIA (GERAL) -->
+      ${buildNoticiaSlide(geralFatos, comite.label)}
 
       <!-- SLIDE 5: NOTIFICAÇÕES -->
       ${buildKpiSlide('Notificações', comite.label, [
@@ -163,7 +172,7 @@ function renderComite() {
 
     <!-- VERSÃO PRINT -->
     <div id="printSlides" style="display:none;">
-      ${buildPrintSlides(comite, fatosByEmpr, notifs, conts, rets, dists, procsExt, procsInt, riscos, regs)}
+      ${buildPrintSlides(comite, fatosByEmpr, notifs, conts, rets, dists, procsExt, procsInt, riscos, regs, geralFatos)}
     </div>
   `);
 
@@ -271,6 +280,26 @@ function buildFatosSlides(fatosByEmpr) {
       </div>
     </div>
   `).join('');
+}
+
+function buildNoticiaSlide(fatos, mes) {
+  if (!fatos || !fatos.length) return '';
+  return `
+    <div class="slide-preview-card">
+      <div class="slide-tag">Slide · Notícias & Jurisprudência</div>
+      <div class="slide-preview-body">
+        <div class="slide-preview-title">NOTÍCIAS &amp; JURISPRUDÊNCIA <span style="font-size:14px;font-weight:400;">${esc(mes)}</span></div>
+        ${fatos.map(f => `
+          <div style="margin-bottom:18px;padding-left:12px;border-left:3px solid var(--blue);">
+            <div style="font-size:13px;font-weight:800;color:var(--blue);">
+              ${f.titulo ? esc(f.titulo) : 'Notícia'} <span style="font-weight:600;color:var(--gray-500);">· ${fmtDate(f.data)}</span>
+            </div>
+            <p style="font-size:13px;color:var(--gray-700);line-height:1.6;margin-top:6px;">${esc(f.descricao)}</p>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
 }
 
 function buildKpiSlide(titulo, mes, kpis, charts, extraHtml) {
@@ -447,7 +476,7 @@ function buildRiscoSlides(r) {
 }
 
 // ---- Print slides (hidden, for @media print) ----
-function buildPrintSlides(comite, fatosByEmpr, notifs, conts, rets, dists, procsExt, procsInt, riscos, regs) {
+function buildPrintSlides(comite, fatosByEmpr, notifs, conts, rets, dists, procsExt, procsInt, riscos, regs, geralFatos) {
   const eids = Object.keys(fatosByEmpr);
   const fatoGroups = [];
   for (let i = 0; i < eids.length; i+=3) fatoGroups.push(eids.slice(i,i+3));
@@ -487,6 +516,20 @@ function buildPrintSlides(comite, fatosByEmpr, notifs, conts, rets, dists, procs
       `).join('')}
     </div>`;
   });
+
+  // NOTÍCIAS & JURISPRUDÊNCIA (GERAL) — slide separado
+  if (geralFatos && geralFatos.length) {
+    out += `<div class="slide-page slide-body">
+      <div class="slide-title">NOTÍCIAS &amp; JURISPRUDÊNCIA</div>
+      <div class="slide-subtitle">${esc(comite.label)}</div>
+      ${geralFatos.map(f=>`
+        <div class="slide-empr-block">
+          <div class="slide-empr-name">${f.titulo ? esc(f.titulo) : 'Notícia'} · ${fmtDate(f.data)}</div>
+          <div class="slide-fato-row"><span class="slide-fato-text">${esc(f.descricao)}</span></div>
+        </div>
+      `).join('')}
+    </div>`;
+  }
 
   // NOTIFICAÇÕES
   out += printKpiSlide('NOTIFICAÇÕES', comite.label, [
