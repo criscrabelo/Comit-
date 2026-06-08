@@ -108,10 +108,10 @@ function renderComite() {
       ${buildKpiSlide('Retomadas', comite.label, [
         {label:'Total Retomadas',       value: rets.length, color:'green'},
         {label:'Tempo Médio',           value: retMed!==null?retMed+' dias':'—', color:'orange'},
-        {label:'Empreendimentos',       value: new Set(rets.map(r=>r.empreendimento_id)).size},
       ], [
         {id:'ch_c_ret_motivo', label:'Por Motivo'},
         {id:'ch_c_ret_equipe', label:'Por Equipe'},
+        {id:'ch_c_ret_empr',   label:'Por Empreendimento'},
       ])}
 
       <!-- SLIDE 8: DISTRATOS -->
@@ -192,6 +192,8 @@ function renderComite() {
     ChartManager.donut('ch_c_ret_motivo', rm.labels, rm.data, {pie:true});
     const re = mapToLabelData(countBy(rets,'equipe'));
     ChartManager.bar('ch_c_ret_equipe', re.labels, [{data:re.data}]);
+    const rEmp = mapToLabelData(countBy(rets.map(r=>({_en:emprName(r.empreendimento_id)})),'_en'));
+    ChartManager.donut('ch_c_ret_empr', rEmp.labels, rEmp.data, {pie:true});
 
     // ── Distratos ──
     const dm = mapToLabelData(countBy(dists,'motivo'));
