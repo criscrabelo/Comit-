@@ -26,8 +26,8 @@ function renderComite() {
   // KPI helpers
   const notifRes = notifs.filter(n=>n.estagio==='Resolvida').length;
   const notifAnd = notifs.filter(n=>n.estagio==='Em Andamento').length;
-  const tempos   = notifs.filter(n=>n.data_solucao).map(n=>daysBetween(n.data_notificacao,n.data_solucao));
-  const tMedNot  = tempos.length ? Math.round(tempos.reduce((a,b)=>a+b,0)/tempos.length) : null;
+  const tdNot    = notifs.map(n=>parseFloat(n.total_dias)).filter(v=>Number.isFinite(v));
+  const tMedNot  = tdNot.length ? Math.round(tdNot.reduce((a,b)=>a+b,0)/tdNot.length) : null;
 
   const retMed   = rets.length ? Math.round(rets.reduce((s,r)=>s+(r.tempo_dias||0),0)/rets.length) : null;
   const distMed  = dists.length ? Math.round(dists.reduce((s,d)=>s+(d.tempo_dias||0),0)/dists.length) : null;
@@ -450,8 +450,8 @@ function buildPrintSlides(comite, fatosByEmpr, notifs, conts, rets, dists, procs
 
   const notifRes = notifs.filter(n=>n.estagio==='Resolvida').length;
   const notifAnd = notifs.filter(n=>n.estagio==='Em Andamento').length;
-  const tempos   = notifs.filter(n=>n.data_solucao).map(n=>daysBetween(n.data_notificacao,n.data_solucao));
-  const tMedNot  = tempos.length ? Math.round(tempos.reduce((a,b)=>a+b,0)/tempos.length) : null;
+  const tdNot    = notifs.map(n=>parseFloat(n.total_dias)).filter(v=>Number.isFinite(v));
+  const tMedNot  = tdNot.length ? Math.round(tdNot.reduce((a,b)=>a+b,0)/tdNot.length) : null;
   const retMed   = rets.length ? Math.round(rets.reduce((s,r)=>s+(r.tempo_dias||0),0)/rets.length) : null;
   const distMed  = dists.length ? Math.round(dists.reduce((s,d)=>s+(d.tempo_dias||0),0)/dists.length) : null;
 

@@ -351,8 +351,9 @@ function renderNotificacoes() {
   const comite = DB.getActiveComite();
   if (!cid) { noComiteAlert(); return; }
   const list = DB.forComite('notificacoes', cid);
-  const tempos = list.filter(n=>n.data_solucao).map(n=>daysBetween(n.data_notificacao,n.data_solucao));
-  const tMedia = tempos.length ? Math.round(tempos.reduce((a,b)=>a+b,0)/tempos.length) : null;
+  // Tempo médio = média da coluna TOTAL DIAS do Monday (ignora itens sem valor)
+  const tdVals = list.map(n => parseFloat(n.total_dias)).filter(v => Number.isFinite(v));
+  const tMedia = tdVals.length ? Math.round(tdVals.reduce((a,b)=>a+b,0)/tdVals.length) : null;
 
   // Detalhamento por estágio — coluna ESTÁGIOS do quadro (JUR) NOTIFICAÇÕES CLIENTES.
   // Considera apenas as notificações do mês do comitê ativo.

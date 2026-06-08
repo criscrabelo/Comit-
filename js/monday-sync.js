@@ -482,6 +482,7 @@ const MondaySync = (() => {
         estagio_detalhe:  estagioRaw                 || estagio,
         data_notificacao: cv(item, 'date0')          || (item.created_at||'').substring(0,10),
         data_solucao:     dataSol,
+        total_dias:       cv(item, 'formula_mm31vn5h'),   // TOTAL DIAS (coluna fórmula)
         cliente:          item.name,
         torre,
         unidade,
