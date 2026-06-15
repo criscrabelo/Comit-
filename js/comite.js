@@ -184,7 +184,7 @@ function renderComite() {
     const ng = mapToLabelData(countBy(notifs,'grupo'));
     ChartManager.donut('ch_c_notif_grupo', ng.labels, ng.data, {pie:true});
     const nemp = mapToLabelData(countBy(notifs.map(n=>({_en:emprName(n.empreendimento_id)})),'_en'));
-    ChartManager.donut('ch_c_notif_empr', nemp.labels, nemp.data);
+    ChartManager.donut('ch_c_notif_empr', nemp.labels.map(l=>(l||'').toUpperCase()), nemp.data);
     const nevo = comite.notif_evolucao || {};
     const mesesN = ['2026-01','2026-02','2026-03','2026-04','2026-05'];
     ChartManager.bar('ch_c_notif_mes', ['Jan','Fev','Mar','Abr','Mai'], [{data: mesesN.map(m=>nevo[m]||0)}]);
