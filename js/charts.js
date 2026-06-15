@@ -33,6 +33,9 @@ const barValueLabels = {
 const ChartManager = (() => {
   const instances = {};
 
+  // Normaliza todos os rótulos de categoria para MAIÚSCULO
+  const UP = arr => (arr || []).map(l => (l == null ? l : String(l).toUpperCase()));
+
   function destroy(id) {
     if (instances[id]) { instances[id].destroy(); delete instances[id]; }
   }
@@ -45,7 +48,7 @@ const ChartManager = (() => {
     instances[canvasId] = new Chart(ctx, {
       type: 'bar',
       data: {
-        labels,
+        labels: UP(labels),
         datasets: datasets.map((d, i) => ({
           label: d.label || '',
           data: d.data,
@@ -78,7 +81,7 @@ const ChartManager = (() => {
     instances[canvasId] = new Chart(ctx, {
       type: opts.pie ? 'pie' : 'doughnut',
       data: {
-        labels,
+        labels: UP(labels),
         datasets: [{ data, backgroundColor: PALETTE.slice(0, data.length), borderWidth: 1 }]
       },
       options: {
@@ -100,7 +103,7 @@ const ChartManager = (() => {
     instances[canvasId] = new Chart(ctx, {
       type: 'line',
       data: {
-        labels,
+        labels: UP(labels),
         datasets: datasets.map((d, i) => ({
           label: d.label,
           data: d.data,
