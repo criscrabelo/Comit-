@@ -605,15 +605,18 @@ const MondaySync = (() => {
     itensPrest.forEach(item => {
       const dataSol = cv(item, 'data8');
       if (!inRange(dataSol, start, end)) return;
+      const tipo = cv(item, 'status6') || 'Prestação de Serviços';
+      // "TERMO DE CONFISSÃO DE DÍVIDA" é contrato de cliente, não de prestador
+      const isConfissao = /CONFISS[ÃA]O DE D[ÍI]VIDA/i.test(tipo);
       DB.insert('contratos', {
         comite_id:         comiteId,
         empreendimento_id: findOrMakeEmpr(cv(item, 'status7')),
-        categoria:         'prestadores',
-        tipo:              cv(item, 'status6') || 'Prestação de Serviços',
+        categoria:         isConfissao ? 'clientes' : 'prestadores',
+        tipo,
         data_solicitacao:  dataSol,
         status:            mapStatusContCliente(cv(item, 'status01')),
       });
-      nPrest++;
+      if (isConfissao) nCli++; else nPrest++;
     });
 
     const total = nCli + nObra + nPrest;

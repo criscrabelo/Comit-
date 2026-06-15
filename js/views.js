@@ -531,6 +531,8 @@ function catCont(tipo) {
 }
 // Cat de um objeto contrato — respeita campo explícito "categoria" (sincronizado do Monday)
 function catOfCont(c) {
+  // "TERMO DE CONFISSÃO DE DÍVIDA" é contrato de cliente, mesmo vindo do board de prestadores
+  if (/CONFISS[ÃA]O DE D[ÍI]VIDA/i.test(c.tipo || '')) return 'clientes';
   if (c.categoria && ['clientes','prestadores','obra'].includes(c.categoria)) return c.categoria;
   return catCont(c.tipo || '');
 }
