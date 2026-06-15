@@ -553,7 +553,7 @@ function renderContratos() {
     obra:        all.filter(c=>catOfCont(c)==='obra').length,
   };
 
-  const tabLabel = { todos:'Todos', clientes:'Contratos Clientes', prestadores:'Prestadores de Serviços', obra:'Obra' };
+  const tabLabel = { todos:'Todos', clientes:'Contratos Clientes', prestadores:'Corretores e ADM', obra:'Obra' };
 
   const renderTabBtn = (key) =>
     `<button class="tab-btn ${tabAtiva===key?'active':''}" onclick="window._contTab='${key}';renderContratos()">
@@ -576,7 +576,7 @@ function renderContratos() {
       <div class="kpi-grid">
         <div class="kpi-card green"><div class="kpi-label">Total</div><div class="kpi-value">${all.length}</div></div>
         <div class="kpi-card"><div class="kpi-label">Contratos Clientes</div><div class="kpi-value">${tabCounts.clientes}</div></div>
-        <div class="kpi-card purple"><div class="kpi-label">Prestadores de Serviços</div><div class="kpi-value">${tabCounts.prestadores}</div></div>
+        <div class="kpi-card purple"><div class="kpi-label">Corretores e ADM</div><div class="kpi-value">${tabCounts.prestadores}</div></div>
         <div class="kpi-card orange"><div class="kpi-label">Obra</div><div class="kpi-value">${tabCounts.obra}</div></div>
       </div>
       <div class="charts-grid">

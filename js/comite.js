@@ -105,7 +105,7 @@ function renderComite() {
       ${buildKpiSlide('Contratos', comite.label, [
         {label:'Total',                  value: conts.length, color:'green'},
         {label:'Contratos Clientes',     value: conts.filter(c=>catOfCont(c)==='clientes').length},
-        {label:'Prestadores de Serviços',value: conts.filter(c=>catOfCont(c)==='prestadores').length, color:'purple'},
+        {label:'Corretores e ADM',value: conts.filter(c=>catOfCont(c)==='prestadores').length, color:'purple'},
         {label:'Obra',                   value: conts.filter(c=>catOfCont(c)==='obra').length, color:'orange'},
       ], [
         {id:'ch_c_cont_tipo', label:'Por Tipo', full:true},
