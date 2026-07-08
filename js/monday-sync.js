@@ -197,6 +197,39 @@ const MondaySync = (() => {
     return d.toISOString().split('T')[0];
   }
 
+  /* ── Grupo do Monday por mês: "2026-06" → nome do grupo "JUNHO/2026" ──
+     Usado para filtrar itens pelo GRUPO do board (em vez de por data),
+     tolerando variações de separador/acentuação: "JUNHO/2026", "JUNHO 2026",
+     "JUNHO-2026", "JUN/2026" etc.                                        */
+  const MONTH_PT_BY_NUM = {
+    '01':'JANEIRO', '02':'FEVEREIRO', '03':'MARCO', '04':'ABRIL',
+    '05':'MAIO', '06':'JUNHO', '07':'JULHO', '08':'AGOSTO',
+    '09':'SETEMBRO', '10':'OUTUBRO', '11':'NOVEMBRO', '12':'DEZEMBRO',
+  };
+  const MONTH_ABBR_BY_NUM = {
+    '01':'JAN', '02':'FEV', '03':'MAR', '04':'ABR',
+    '05':'MAI', '06':'JUN', '07':'JUL', '08':'AGO',
+    '09':'SET', '10':'OUT', '11':'NOV', '12':'DEZ',
+  };
+
+  function _stripAccents(s) {
+    return (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  }
+
+  function groupMatchesMes(groupTitle, mesRef) {
+    if (!groupTitle || !mesRef) return false;
+    const [, mm] = mesRef.split('-');
+    const yyyy = mesRef.slice(0, 4);
+    const norm = _stripAccents(groupTitle).toUpperCase().replace(/[\s/\-_.]+/g, '');
+    const nomeCompleto = MONTH_PT_BY_NUM[mm];
+    const nomeAbrev    = MONTH_ABBR_BY_NUM[mm];
+    if (!nomeCompleto) return false;
+    return norm === (nomeCompleto + yyyy) ||
+           norm === (nomeAbrev + yyyy)    ||
+           norm === (yyyy + nomeCompleto) ||
+           norm === (yyyy + nomeAbrev);
+  }
+
   /* ═══════════════════════════════════════════════════════════
      SYNC FUNCTIONS
   ═══════════════════════════════════════════════════════════ */
@@ -438,15 +471,15 @@ const MondaySync = (() => {
   async function syncNotificacoes(comiteId, mesRef) {
     log('Buscando Notificações…', 'wait');
     const items = await fetchAllItems(BOARDS.notificacoes);
-    const { start, end } = mesRange(mesRef);
 
-    // Try to match by date0 (DATA DA NOTIFICAÇÃO) or by nome_m_s, or created_at
-    const filtered = items.filter(item => {
-      const d0 = cv(item, 'date0');
-      const nm = cv(item, 'nome_m_s');
-      const ca = (item.created_at || '').substring(0, 10);
-      return inRange(d0, start, end) || inRange(nm, start, end) || inRange(ca, start, end);
-    });
+    // Filtra usando o GRUPO do Monday correspondente ao mês (ex: "JUNHO/2026"),
+    // em vez de datas nas colunas — evita erro por data mal preenchida no item.
+    const filtered = items.filter(item => groupMatchesMes(item.group?.title, mesRef));
+
+    if (filtered.length === 0) {
+      log(`⚠️ Nenhum item encontrado no grupo do Monday referente a ${mesRef}. ` +
+          `Verifique se o nome do grupo no board bate com o mês (ex: "JUNHO/2026").`, 'warn');
+    }
 
     DB.forComite('notificacoes', comiteId).forEach(n => DB.remove('notificacoes', n.id));
 
