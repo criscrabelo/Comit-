@@ -677,23 +677,24 @@ const MondaySync = (() => {
       nObra++;
     });
 
-    // 5c. Prestadores de Serviços — filtro: SOLICITAÇÃO (data8) no mês
+    // 5c. Prestadores de Serviços (Corretores e ADM) — filtro: SOLICITAÇÃO (data8) no mês.
+    // Mantém a categoria "prestadores" para todos os tipos, incluindo "TERMO DE
+    // CONFISSÃO DE DÍVIDA" — segue o mesmo agrupamento do quadro de Prestadores
+    // de Serviço no Monday, de onde esses itens vêm.
     const itensPrest = await fetchAllItems(BOARDS.contratosPrestadores);
     itensPrest.forEach(item => {
       const dataSol = cv(item, 'data8');
       if (!inRange(dataSol, start, end)) return;
       const tipo = cv(item, 'status6') || 'Prestação de Serviços';
-      // "TERMO DE CONFISSÃO DE DÍVIDA" é contrato de cliente, não de prestador
-      const isConfissao = /CONFISS[ÃA]O DE D[ÍI]VIDA/i.test(tipo);
       DB.insert('contratos', {
         comite_id:         comiteId,
         empreendimento_id: findOrMakeEmpr(cv(item, 'status7')),
-        categoria:         isConfissao ? 'clientes' : 'prestadores',
+        categoria:         'prestadores',
         tipo,
         data_solicitacao:  dataSol,
         status:            mapStatusContCliente(cv(item, 'status01')),
       });
-      if (isConfissao) nCli++; else nPrest++;
+      nPrest++;
     });
 
     const total = nCli + nObra + nPrest;
