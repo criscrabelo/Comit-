@@ -230,6 +230,27 @@ const MondaySync = (() => {
            norm === (yyyy + nomeAbrev);
   }
 
+  // Inverso de groupMatchesMes: dado o título do grupo (ex: "JUNHO/2026"),
+  // devolve "2026-06" — usado para montar o histograma de evolução mensal
+  // pelo mesmo critério (GRUPO) usado para contar as notificações do mês,
+  // em vez de por DATA DA NOTIFICAÇÃO (que pode divergir do grupo do item).
+  function groupToYYYYMM(groupTitle) {
+    if (!groupTitle) return null;
+    const norm = _stripAccents(groupTitle).toUpperCase().replace(/[\s/\-_.]+/g, '');
+    const yyyyMatch = norm.match(/(\d{4})/);
+    if (!yyyyMatch) return null;
+    const yyyy = yyyyMatch[1];
+    for (const mm of Object.keys(MONTH_PT_BY_NUM)) {
+      const nomeCompleto = MONTH_PT_BY_NUM[mm];
+      const nomeAbrev    = MONTH_ABBR_BY_NUM[mm];
+      if (norm === (nomeCompleto + yyyy) || norm === (nomeAbrev + yyyy) ||
+          norm === (yyyy + nomeCompleto) || norm === (yyyy + nomeAbrev)) {
+        return `${yyyy}-${mm}`;
+      }
+    }
+    return null;
+  }
+
   /* ═══════════════════════════════════════════════════════════
      SYNC FUNCTIONS
   ═══════════════════════════════════════════════════════════ */
@@ -543,12 +564,14 @@ const MondaySync = (() => {
       });
     });
 
-    // Evolução mensal: histograma de TODAS as notificações do board por mês
-    // (DATA DA NOTIFICAÇÃO). Persistido no comitê para o gráfico de tendência.
+    // Evolução mensal: histograma de TODAS as notificações do board por mês,
+    // pelo GRUPO do Monday (mesmo critério usado para contar as notificações
+    // do mês) — não pela DATA DA NOTIFICAÇÃO, que pode divergir do grupo do
+    // item e gerar contagem diferente da que aparece nos painéis/KPIs.
     const evolucao = {};
     items.forEach(item => {
-      const ref = (cv(item, idDataNot) || cv(item, 'date0') || '').slice(0, 7);
-      if (/^\d{4}-\d{2}$/.test(ref)) evolucao[ref] = (evolucao[ref] || 0) + 1;
+      const ref = groupToYYYYMM(item.group?.title);
+      if (ref) evolucao[ref] = (evolucao[ref] || 0) + 1;
     });
     DB.update('comites', comiteId, { notif_evolucao: evolucao });
 
