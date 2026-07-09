@@ -256,9 +256,20 @@ const MondaySync = (() => {
   ═══════════════════════════════════════════════════════════ */
 
   /* ── 1. Processos Judiciais ───────────────────────────────── */
+  // Grupos do quadro (JUR) PROCESSOS JUDICIAIS que não devem entrar no comitê
+  // (decisão do jurídico — não são processos operacionais do dia a dia).
+  const PROCESSOS_GRUPOS_EXCLUIDOS = [
+    'CJ (REGRESSO)', 'TETUS LOCAÇÃO', 'CREDENTE', 'LEONICE',
+    'GILMAR', 'DANILO', 'FGLASS/GRADFIBRA',
+  ].map(g => g.toUpperCase());
+
   async function syncProcessos(comiteId) {
     log('Buscando Processos Judiciais…', 'wait');
-    const items = await fetchAllItems(BOARDS.processos);
+    const allItems = await fetchAllItems(BOARDS.processos);
+    const items = allItems.filter(item =>
+      !PROCESSOS_GRUPOS_EXCLUIDOS.includes((item.group?.title || '').toUpperCase().trim())
+    );
+    const nExcluidos = allItems.length - items.length;
 
     // Wipe existing for this comitê
     DB.forComite('processos', comiteId).forEach(p => DB.remove('processos', p.id));
@@ -298,7 +309,7 @@ const MondaySync = (() => {
     log(`${count} processos importados (${items.filter(i=>{
       const l = (i.column_values||[]).find(c=>c.id==='status3');
       return (l?.text||'').toUpperCase() === 'INTERNO';
-    }).length} internos)`, 'ok');
+    }).length} internos${nExcluidos ? `; ${nExcluidos} ignorados dos grupos excluídos` : ''})`, 'ok');
     return count;
   }
 
