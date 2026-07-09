@@ -100,7 +100,7 @@ function renderComite() {
       ], [
         {id:'ch_c_notif_grupo', label:'Motivo'},
         {id:'ch_c_notif_empr',  label:'Empreendimento'},
-        {id:'ch_c_notif_mes',   label:'Notificações por Mês — 2026 (jan–mai)', full:true},
+        {id:'ch_c_notif_mes',   label:`Notificações por Mês — ${(comite.ref||'').slice(0,4)} (${mesesDoAno(comite.ref).rangeLabel})`, full:true},
       ], notifEstagioHtml)}
 
       <!-- SLIDE 6: CONTRATOS -->
@@ -188,8 +188,8 @@ function renderComite() {
     const nemp = mapToLabelData(countBy(notifs.map(n=>({_en:emprName(n.empreendimento_id)})),'_en'));
     ChartManager.donut('ch_c_notif_empr', nemp.labels.map(l=>(l||'').toUpperCase()), nemp.data);
     const nevo = comite.notif_evolucao || {};
-    const mesesN = ['2026-01','2026-02','2026-03','2026-04','2026-05'];
-    ChartManager.bar('ch_c_notif_mes', ['Jan','Fev','Mar','Abr','Mai'], [{data: mesesN.map(m=>nevo[m]||0)}]);
+    const { meses: mesesN, labels: mesLabelsN } = mesesDoAno(comite.ref);
+    ChartManager.bar('ch_c_notif_mes', mesLabelsN, [{data: mesesN.map(m=>nevo[m]||0)}]);
 
     // ── Contratos ──
     const ctS = Object.entries(countBy(conts,'tipo')).sort((a,b)=>a[1]-b[1]);

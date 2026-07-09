@@ -10,6 +10,18 @@ function estagioColorClass(label) {
   return '';
 }
 
+// Meses de Janeiro até o mês do comitê ativo (ex: comiteRef="2026-06" → jan..jun).
+// Usado para montar gráficos de evolução mensal sem hard-code de intervalo.
+const MESES_ABBR_PT = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+function mesesDoAno(comiteRef) {
+  const [refY, refM] = (comiteRef || '').split('-').map(Number);
+  const meses = [];
+  if (refY && refM) for (let m = 1; m <= refM; m++) meses.push(`${refY}-${String(m).padStart(2,'0')}`);
+  const labels = meses.map(ym => { const [y, mm] = ym.split('-'); return `${MESES_ABBR_PT[(+mm)-1]}/${y.slice(2)}`; });
+  const rangeLabel = meses.length ? `${MESES_ABBR_PT[0]}–${MESES_ABBR_PT[refM-1]}` : '';
+  return { meses, labels, rangeLabel };
+}
+
 // ============================================================
 // DASHBOARD
 // ============================================================
@@ -119,7 +131,7 @@ function renderDashboard() {
       </div>
 
       <div class="chart-card" style="margin-bottom:20px;">
-        <div class="chart-title">Notificações por Mês — 2026 (jan–mai)</div>
+        <div class="chart-title">Notificações por Mês — ${(comite.ref||'').slice(0,4)} (${mesesDoAno(comite.ref).rangeLabel})</div>
         <div class="chart-wrap"><canvas id="ch_notifMes"></canvas></div>
       </div>
 
@@ -174,11 +186,13 @@ function renderDashboard() {
 
   // render charts after DOM
   setTimeout(() => {
-    // Notificações por mês — dados do quadro (JUR) NOTIFICAÇÕES CLIENTES do Monday
-    // (contagem por grupo mensal do Monday; snapshot de 19/05/2026)
-    ChartManager.bar('ch_notifMes',
-      ['Jan','Fev','Mar','Abr','Mai'],
-      [{ data: [51, 65, 23, 52, 45] }]);
+    // Notificações por mês — histograma de TODO o board (comite.notif_evolucao,
+    // gravado no sync), de Janeiro até o mês do comitê ativo.
+    {
+      const nevoD = comite.notif_evolucao || {};
+      const { meses: mesesD, labels: mesLabelsD } = mesesDoAno(comite.ref);
+      ChartManager.bar('ch_notifMes', mesLabelsD, [{ data: mesesD.map(m => nevoD[m] || 0) }]);
+    }
 
     const ng = mapToLabelData(countBy(notifs,'grupo'));
     ChartManager.bar('ch_notifGrupo', ng.labels, [{data: ng.data}], {horizontal: true});
@@ -415,7 +429,7 @@ function renderNotificacoes() {
       </div>
 
       <div class="chart-card" style="margin-bottom:20px;">
-        <div class="chart-title">Notificações por Mês — 2026 (jan–mai)</div>
+        <div class="chart-title">Notificações por Mês — ${(comite.ref||'').slice(0,4)} (${mesesDoAno(comite.ref).rangeLabel})</div>
         <div class="chart-wrap"><canvas id="ch_notifMes2"></canvas></div>
       </div>
 
@@ -444,13 +458,11 @@ function renderNotificacoes() {
     </div>
   `);
   setTimeout(() => {
-    // Notificações por mês — dados do quadro (JUR) NOTIFICAÇÕES CLIENTES do Monday
-    // (contagem por grupo mensal do Monday; snapshot de 19/05/2026)
+    // Notificações por mês — histograma de TODO o board (comite.notif_evolucao,
+    // gravado no sync), de Janeiro até o mês do comitê ativo.
     const nevo = comite.notif_evolucao || {};
-    const mesesN = ['2026-01','2026-02','2026-03','2026-04','2026-05'];
-    ChartManager.bar('ch_notifMes2',
-      ['Jan','Fev','Mar','Abr','Mai'],
-      [{ data: mesesN.map(m=>nevo[m]||0) }]);
+    const { meses: mesesN, labels: mesLabelsN } = mesesDoAno(comite.ref);
+    ChartManager.bar('ch_notifMes2', mesLabelsN, [{ data: mesesN.map(m=>nevo[m]||0) }]);
 
     const ng = mapToLabelData(countBy(list,'grupo'));
     ChartManager.donut('ch_ng2', ng.labels, ng.data, {pie: true});
