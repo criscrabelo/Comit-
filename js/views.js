@@ -547,10 +547,10 @@ function catCont(tipo) {
   if (TIPOS_CONT_OBRA.includes(tipo))        return 'obra';
   return 'outros';
 }
-// Cat de um objeto contrato — respeita campo explícito "categoria" (sincronizado do Monday)
+// Cat de um objeto contrato — respeita campo explícito "categoria" (sincronizado do Monday,
+// já reflete de qual quadro o item vem — inclusive "TERMO DE CONFISSÃO DE DÍVIDA" do quadro
+// de Prestadores, que deve contar como Corretores e ADM, não Clientes)
 function catOfCont(c) {
-  // "TERMO DE CONFISSÃO DE DÍVIDA" é contrato de cliente, mesmo vindo do board de prestadores
-  if (/CONFISS[ÃA]O DE D[ÍI]VIDA/i.test(c.tipo || '')) return 'clientes';
   if (c.categoria && ['clientes','prestadores','obra'].includes(c.categoria)) return c.categoria;
   return catCont(c.tipo || '');
 }
