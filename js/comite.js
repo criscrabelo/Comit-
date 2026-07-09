@@ -127,10 +127,13 @@ function renderComite() {
 
       <!-- SLIDE 8: DISTRATOS -->
       ${buildKpiSlide('Distratos', comite.label, [
-        {label:'Total Distratos',       value: dists.length, color:'red'},
+        {label:'Total',                 value: dists.length, color:'red'},
+        {label:'Distratos',             value: dists.filter(d=>(d.tipo||'Distrato')==='Distrato').length, color:'red'},
+        {label:'Desistências',          value: dists.filter(d=>d.tipo==='Desistência').length, color:'orange'},
         {label:'Tempo Médio',           value: distMed!==null?distMed+' dias':'—', color:'orange'},
         {label:'Empreendimentos',       value: new Set(dists.map(d=>d.empreendimento_id)).size},
       ], [
+        {id:'ch_c_dist_tipo',   label:'Por Tipo'},
         {id:'ch_c_dist_motivo', label:'Por Motivo'},
         {id:'ch_c_dist_empr',   label:'Por Empreendimento'},
         {id:'ch_c_dist_equipe', label:'Por Equipe'},
@@ -209,6 +212,8 @@ function renderComite() {
     ChartManager.donut('ch_c_ret_empr', rEmp.labels, rEmp.data, {pie:true});
 
     // ── Distratos ──
+    const dt = mapToLabelData(countBy(dists.map(d=>({_t:d.tipo||'Distrato'})),'_t'));
+    ChartManager.donut('ch_c_dist_tipo', dt.labels, dt.data, {pie:true});
     const dm = mapToLabelData(countBy(dists,'motivo'));
     ChartManager.donut('ch_c_dist_motivo', dm.labels, dm.data, {pie:true});
     const de = mapToLabelData(countBy(dists.map(d=>({_en:emprName(d.empreendimento_id)})),'_en'));
@@ -560,7 +565,9 @@ function buildPrintSlides(comite, fatosByEmpr, notifs, conts, rets, dists, procs
 
   // DISTRATOS
   out += printKpiSlide('DISTRATOS', comite.label, [
-    {l:'Total de Distratos',    v:dists.length, c:'red'},
+    {l:'Total',                 v:dists.length, c:'red'},
+    {l:'Distratos',             v:dists.filter(d=>(d.tipo||'Distrato')==='Distrato').length, c:'red'},
+    {l:'Desistências',          v:dists.filter(d=>d.tipo==='Desistência').length, c:'orange'},
     {l:'Tempo Médio',           v:distMed!==null?distMed+' dias':'—', c:'orange'},
     {l:'Empreendimentos',       v:new Set(dists.map(d=>d.empreendimento_id)).size},
   ], countBy(dists,'motivo'), countBy(dists.map(d=>({...d,_en:emprName(d.empreendimento_id)})),'_en'));

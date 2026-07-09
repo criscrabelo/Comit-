@@ -349,6 +349,10 @@ const MondaySync = (() => {
       const isRetomada  = grupoTit.includes('RETOMADA');
       if (isRetomada) { nretSkip++; return; } // retomadas vêm de syncRetomadas()
 
+      // Tipo do item: grupo "DISTRATOS" ou "DESISTÊNCIAS" no quadro
+      // (JUR) DISTRATOS E DESISTÊNCIAS.
+      const tipo = grupoTit.includes('DESIST') ? 'Desistência' : 'Distrato';
+
       // Fallback: lookup por título primeiro, depois IDs antigos hardcoded
       const emprNome    = cv(item, idEmpr)     || cv(item, 'color_mm28cam9');
       const motivo      = cv(item, idMotivo)   || cv(item, 'color_mm1km2gz') || 'Outros';
@@ -362,6 +366,7 @@ const MondaySync = (() => {
       DB.insert('distratos', {
         comite_id:         comiteId,
         empreendimento_id: emprId,
+        tipo,
         motivo,
         equipe,
         data_solicitacao:  dataSol,

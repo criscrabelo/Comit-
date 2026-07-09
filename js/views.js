@@ -691,6 +691,8 @@ function renderDistratos() {
   if (!cid) { noComiteAlert(); return; }
   const list = DB.forComite('distratos', cid);
   const tMed = list.length ? Math.round(list.reduce((s,d)=>s+(d.tempo_dias||0),0)/list.length) : null;
+  const nDistrato   = list.filter(d => (d.tipo||'Distrato') === 'Distrato').length;
+  const nDesistencia= list.filter(d => d.tipo === 'Desistência').length;
 
   setView(`
     <div class="page-header">
@@ -699,22 +701,26 @@ function renderDistratos() {
     </div>
     <div class="content">
       <div class="kpi-grid">
-        <div class="kpi-card red"><div class="kpi-label">Total Distratos</div><div class="kpi-value">${list.length}</div></div>
-        <div class="kpi-card orange"><div class="kpi-label">Tempo Médio</div><div class="kpi-value" style="font-size:20px">${tMed!==null?tMed+' dias':'—'}</div></div>
+        <div class="kpi-card red"><div class="kpi-label">Total</div><div class="kpi-value">${list.length}</div></div>
+        <div class="kpi-card red"><div class="kpi-label">Distratos</div><div class="kpi-value">${nDistrato}</div></div>
+        <div class="kpi-card orange"><div class="kpi-label">Desistências</div><div class="kpi-value">${nDesistencia}</div></div>
+        <div class="kpi-card"><div class="kpi-label">Tempo Médio</div><div class="kpi-value" style="font-size:20px">${tMed!==null?tMed+' dias':'—'}</div></div>
         <div class="kpi-card"><div class="kpi-label">Empreendimentos</div><div class="kpi-value">${new Set(list.map(d=>d.empreendimento_id)).size}</div></div>
       </div>
       <div class="charts-grid">
+        <div class="chart-card"><div class="chart-title">Por Tipo</div><div class="chart-wrap"><canvas id="ch_dt"></canvas></div></div>
         <div class="chart-card"><div class="chart-title">Por Motivo</div><div class="chart-wrap"><canvas id="ch_dm"></canvas></div></div>
         <div class="chart-card"><div class="chart-title">Por Empreendimento</div><div class="chart-wrap"><canvas id="ch_de"></canvas></div></div>
         <div class="chart-card"><div class="chart-title">Por Equipe</div><div class="chart-wrap"><canvas id="ch_deq"></canvas></div></div>
-        <div class="chart-card"><div class="chart-title">Evolução de Distratos por Mês</div><div class="chart-wrap"><canvas id="ch_dmes"></canvas></div></div>
+        <div class="chart-card" style="grid-column:1/-1"><div class="chart-title">Evolução de Distratos por Mês</div><div class="chart-wrap"><canvas id="ch_dmes"></canvas></div></div>
       </div>
       <div class="table-wrap">
         <table><thead><tr>
-          <th>Unidade</th><th>Empreendimento</th><th>Motivo</th><th>Equipe</th><th>Solicitação</th><th>Data Venda</th><th>Data Distrato</th><th>Dias</th><th>Ações</th>
+          <th>Unidade</th><th>Tipo</th><th>Empreendimento</th><th>Motivo</th><th>Equipe</th><th>Solicitação</th><th>Data Venda</th><th>Data Distrato</th><th>Dias</th><th>Ações</th>
         </tr></thead><tbody>
         ${list.map(d => `<tr>
           <td>${d.unidade ? `<code style="font-size:11px">${esc(d.unidade)}</code>` : '—'}</td>
+          <td>${badge(d.tipo||'Distrato', (d.tipo==='Desistência')?'orange':'red')}</td>
           <td><span class="empr-chip">${esc(emprName(d.empreendimento_id))}</span></td>
           <td>${badge(d.motivo,'red')}</td>
           <td>${d.equipe ? badge(d.equipe,'blue') : '—'}</td>
@@ -726,12 +732,14 @@ function renderDistratos() {
             <button class="btn btn-ghost btn-sm" onclick="openDistModal('${d.id}')">✏️</button>
             <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteDist('${d.id}')">🗑️</button>
           </td>
-        </tr>`).join('') || '<tr class="empty-row"><td colspan="9">Nenhum distrato cadastrado</td></tr>'}
+        </tr>`).join('') || '<tr class="empty-row"><td colspan="10">Nenhum distrato cadastrado</td></tr>'}
         </tbody></table>
       </div>
     </div>
   `);
   setTimeout(() => {
+    const dt = mapToLabelData(countBy(list.map(d=>({_t:d.tipo||'Distrato'})),'_t'));
+    ChartManager.donut('ch_dt', dt.labels, dt.data, {pie:true});
     const dm = mapToLabelData(countBy(list,'motivo'));
     ChartManager.donut('ch_dm', dm.labels, dm.data, {pie:true});
     const de = mapToLabelData(countBy(list.map(d=>({...d,_en:emprName(d.empreendimento_id)})),'_en'));
@@ -757,6 +765,7 @@ function openDistModal(id) {
   openModal(d?'Editar Distrato':'Novo Distrato',
     `<div class="form-grid">
       <div class="form-group"><label class="field-label">Empreendimento *</label><select id="di_empr">${emprOptions(d?.empreendimento_id)}</select></div>
+      <div class="form-group"><label class="field-label">Tipo</label><select id="di_tipo">${opts(['Distrato','Desistência'],d?.tipo||'Distrato')}</select></div>
       <div class="form-group"><label class="field-label">Motivo</label><select id="di_motivo">${opts(MOTIVOS_DIST,d?.motivo)}</select></div>
       <div class="form-group"><label class="field-label">Data da Solicitação</label><input type="date" id="di_sol" value="${d?.data_solicitacao||''}" /></div>
       <div class="form-group"><label class="field-label">Data da Venda</label><input type="date" id="di_venda" value="${d?.data_venda||''}" /></div>
@@ -771,6 +780,7 @@ function openDistModal(id) {
 function saveDist(id, cid) {
   const d = {
     empreendimento_id: document.getElementById('di_empr').value,
+    tipo: document.getElementById('di_tipo').value,
     motivo: document.getElementById('di_motivo').value,
     data_solicitacao: document.getElementById('di_sol').value,
     data_venda: document.getElementById('di_venda').value,
