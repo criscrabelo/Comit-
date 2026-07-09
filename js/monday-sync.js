@@ -697,6 +697,18 @@ const MondaySync = (() => {
       nPrest++;
     });
 
+    // Evolução mensal: histograma de TODOS os contratos dos 3 quadros por mês
+    // (DATA DA SOLICITAÇÃO). Persistido no comitê para o gráfico de tendência.
+    const evolucao = {};
+    const addEvol = (dataSol) => {
+      const ref = (dataSol || '').slice(0, 7);
+      if (/^\d{4}-\d{2}$/.test(ref)) evolucao[ref] = (evolucao[ref] || 0) + 1;
+    };
+    itensCli.forEach(item => addEvol(cv(item, 'data8')));
+    itensObra.forEach(item => addEvol(cv(item, 'data')));
+    itensPrest.forEach(item => addEvol(cv(item, 'data8')));
+    DB.update('comites', comiteId, { contratos_evolucao: evolucao });
+
     const total = nCli + nObra + nPrest;
     log(`${total} contrato${total !== 1 ? 's' : ''} importado${total !== 1 ? 's' : ''}` +
         ` (${nCli} clientes, ${nObra} obra, ${nPrest} prestadores) — mês ${mesRef}`,

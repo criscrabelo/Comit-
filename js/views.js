@@ -600,7 +600,7 @@ function renderContratos() {
       <div class="charts-grid">
         <div class="chart-card" style="grid-column:1/-1"><div class="chart-title">Por Tipo</div><div class="chart-wrap" style="height:360px"><canvas id="ch_ct2"></canvas></div></div>
         <div class="chart-card" style="grid-column:1/-1"><div class="chart-title">Por Empreendimento</div><div class="chart-wrap" style="height:320px"><canvas id="ch_ce2"></canvas></div></div>
-        <div class="chart-card" style="grid-column:1/-1"><div class="chart-title">Evolução do Total de Contratos — 2026 (jan–mai)</div><div class="chart-wrap" style="height:280px"><canvas id="ch_cmes"></canvas></div></div>
+        <div class="chart-card" style="grid-column:1/-1"><div class="chart-title">Evolução do Total de Contratos — ${(comite.ref||'').slice(0,4)} (${mesesDoAno(comite.ref).rangeLabel})</div><div class="chart-wrap" style="height:280px"><canvas id="ch_cmes"></canvas></div></div>
       </div>
       <div class="table-wrap">
         <table><thead><tr>
@@ -636,9 +636,12 @@ function renderContratos() {
       [{data: ceSorted.map(e=>e[1]), color: '#16A34A'}],
       { horizontal: true, dataLabels: true });
 
-    // Evolução mensal — snapshot fixo do Monday em 19/05/2026 (não atualiza sozinho)
-    ChartManager.line('ch_cmes', ['Jan','Fev','Mar','Abr','Mai'],
-      [{label:'Contratos', data:[62,82,74,95,52]}], { dataLabels: true });
+    // Evolução mensal — histograma de TODOS os contratos (comite.contratos_evolucao,
+    // gravado no sync), de Janeiro até o mês do comitê ativo.
+    const cevo = comite.contratos_evolucao || {};
+    const { meses: mesesC, labels: mesLabelsC } = mesesDoAno(comite.ref);
+    ChartManager.line('ch_cmes', mesLabelsC,
+      [{label:'Contratos', data: mesesC.map(m => cevo[m] || 0)}], { dataLabels: true });
   }, 50);
 }
 

@@ -112,7 +112,7 @@ function renderComite() {
       ], [
         {id:'ch_c_cont_tipo', label:'Por Tipo', full:true},
         {id:'ch_c_cont_empr', label:'Por Empreendimento', full:true},
-        {id:'ch_c_cont_mes',  label:'Evolução do Total de Contratos — 2026 (jan–mai)', full:true},
+        {id:'ch_c_cont_mes',  label:`Evolução do Total de Contratos — ${(comite.ref||'').slice(0,4)} (${mesesDoAno(comite.ref).rangeLabel})`, full:true},
       ])}
 
       <!-- SLIDE 7: RETOMADAS -->
@@ -196,7 +196,9 @@ function renderComite() {
     ChartManager.bar('ch_c_cont_tipo', ctS.map(e=>e[0]), [{data:ctS.map(e=>e[1])}], {horizontal:true, dataLabels:true});
     const ceS = Object.entries(countBy(conts.map(c=>({_en:emprName(c.empreendimento_id)})),'_en')).sort((a,b)=>a[1]-b[1]);
     ChartManager.bar('ch_c_cont_empr', ceS.map(e=>e[0]), [{data:ceS.map(e=>e[1]), color:'#16A34A'}], {horizontal:true, dataLabels:true});
-    ChartManager.line('ch_c_cont_mes', ['Jan','Fev','Mar','Abr','Mai'], [{label:'Contratos', data:[62,82,74,95,52]}], {dataLabels:true});
+    const cevo = comite.contratos_evolucao || {};
+    const { meses: mesesC, labels: mesLabelsC } = mesesDoAno(comite.ref);
+    ChartManager.line('ch_c_cont_mes', mesLabelsC, [{label:'Contratos', data: mesesC.map(m=>cevo[m]||0)}], {dataLabels:true});
 
     // ── Retomadas ──
     const rm = mapToLabelData(countBy(rets,'motivo'));
