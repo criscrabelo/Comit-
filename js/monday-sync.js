@@ -471,17 +471,15 @@ const MondaySync = (() => {
   async function syncNotificacoes(comiteId, mesRef) {
     log('Buscando Notificações…', 'wait');
     const items = await fetchAllItems(BOARDS.notificacoes);
-    const { start, end } = mesRange(mesRef);
 
-    // Filtra ESTRITAMENTE por DATA DA NOTIFICAÇÃO (date0) no mês de referência.
-    // NÃO usar o GRUPO do Monday nem created_at/nome_m_s: itens notificados no
-    // mês podem estar em grupos de outro mês (ex.: MORATTA 001B/1002B ficaram no
-    // grupo "MAIO/2026" mas foram notificados em 17/06 → pertencem a junho).
-    // A data da notificação é o campo semanticamente correto para o comitê.
-    const filtered = items.filter(item => inRange(cv(item, 'date0'), start, end));
+    // Filtra pelo GRUPO do Monday (ex.: "JUNHO/2026"), não pela DATA DA
+    // NOTIFICAÇÃO. Decisão do comitê: o mês a que uma notificação pertence é
+    // definido pelo grupo em que ela está organizada no board, para que o total
+    // e o tempo médio batam exatamente com o que aparece no Monday.
+    const filtered = items.filter(item => groupMatchesMes(item.group?.title, mesRef));
 
     if (filtered.length === 0) {
-      log(`⚠️ Nenhuma notificação com DATA DA NOTIFICAÇÃO em ${mesRef}.`, 'warn');
+      log(`⚠️ Nenhuma notificação no grupo do mês ${mesRef}.`, 'warn');
     }
 
     DB.forComite('notificacoes', comiteId).forEach(n => DB.remove('notificacoes', n.id));

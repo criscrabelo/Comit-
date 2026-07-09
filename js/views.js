@@ -36,10 +36,9 @@ function renderDashboard() {
   })();
 
   // Detalhamento por estágio — coluna ESTÁGIOS do quadro (JUR) NOTIFICAÇÕES CLIENTES.
-  const mesRef = comite.ref || '';
+  // A lista já vem filtrada pelo GRUPO do mês; não re-filtrar por data.
   const estagioCount = {};
   notifs.forEach(n => {
-    if (mesRef && n.data_notificacao && !n.data_notificacao.startsWith(mesRef)) return;
     const e = n.estagio_detalhe;
     if (!e) return;
     estagioCount[e] = (estagioCount[e] || 0) + 1;
@@ -356,11 +355,11 @@ function renderNotificacoes() {
   const tMedia = tdVals.length ? Math.round(tdVals.reduce((a,b)=>a+b,0)/tdVals.length) : null;
 
   // Detalhamento por estágio — coluna ESTÁGIOS do quadro (JUR) NOTIFICAÇÕES CLIENTES.
-  // Considera apenas as notificações do mês do comitê ativo.
-  const mesRef = comite.ref || '';
+  // A lista já vem filtrada pelo GRUPO do mês (sync via grupo do Monday); não
+  // re-filtrar por DATA DA NOTIFICAÇÃO, senão itens do grupo com data de outro
+  // mês seriam descartados e o total divergiria do Monday.
   const estagioCount = {};
   list.forEach(n => {
-    if (mesRef && n.data_notificacao && !n.data_notificacao.startsWith(mesRef)) return;
     const e = n.estagio_detalhe;
     if (!e) return;
     estagioCount[e] = (estagioCount[e] || 0) + 1;
