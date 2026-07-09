@@ -28,15 +28,19 @@ function renderDashboard() {
 
   const notifRes = notifs.filter(n => n.estagio === 'Resolvida').length;
   const notifAnd = notifs.filter(n => n.estagio === 'Em Andamento').length;
+  // Média da coluna TOTAL DIAS do Monday sobre todos os itens (mesma lógica
+  // da tela de Notificações — confirmado contra o resumo nativo do Monday).
   const tempoMedio = (() => {
-    const resolved = notifs.filter(n => n.data_solucao && n.data_notificacao);
-    if (!resolved.length) return '—';
-    const avg = resolved.reduce((s, n) => s + daysBetween(n.data_notificacao, n.data_solucao), 0) / resolved.length;
-    return Math.round(avg) + ' dias';
+    const tdVals = notifs.map(n => parseFloat(n.total_dias)).filter(v => Number.isFinite(v));
+    if (!tdVals.length) return '—';
+    return Math.round(tdVals.reduce((a,b) => a+b, 0) / tdVals.length) + ' dias';
   })();
 
   // Detalhamento por estágio — coluna ESTÁGIOS do quadro (JUR) NOTIFICAÇÕES CLIENTES.
-  // A lista já vem filtrada pelo GRUPO do mês; não re-filtrar por data.
+  // `notifs` já está no escopo certo (sync filtra pelo GRUPO do Monday equivalente
+  // ao mês do comitê) — não refiltrar por data_notificacao aqui: itens como
+  // "A Retomar"/"Distratado" continuam no grupo do mês mesmo com data de
+  // notificação de um mês anterior, e o filtro extra os descartava indevidamente.
   const estagioCount = {};
   notifs.forEach(n => {
     const e = n.estagio_detalhe;
@@ -350,14 +354,17 @@ function renderNotificacoes() {
   const comite = DB.getActiveComite();
   if (!cid) { noComiteAlert(); return; }
   const list = DB.forComite('notificacoes', cid);
-  // Tempo médio = média da coluna TOTAL DIAS do Monday (ignora itens sem valor)
+  // Tempo médio = média da coluna TOTAL DIAS do Monday sobre TODOS os itens
+  // (confirmado contra o resumo nativo do Monday: a soma bate exatamente
+  // quando não se filtra por estágio — o próprio Monday não restringe a
+  // itens Resolvidos nesse cálculo)
   const tdVals = list.map(n => parseFloat(n.total_dias)).filter(v => Number.isFinite(v));
   const tMedia = tdVals.length ? Math.round(tdVals.reduce((a,b)=>a+b,0)/tdVals.length) : null;
 
   // Detalhamento por estágio — coluna ESTÁGIOS do quadro (JUR) NOTIFICAÇÕES CLIENTES.
-  // A lista já vem filtrada pelo GRUPO do mês (sync via grupo do Monday); não
-  // re-filtrar por DATA DA NOTIFICAÇÃO, senão itens do grupo com data de outro
-  // mês seriam descartados e o total divergiria do Monday.
+  // `list` já está no escopo certo (sync filtra pelo GRUPO do Monday equivalente
+  // ao mês do comitê) — não refiltrar por data_notificacao aqui, senão itens como
+  // "A Retomar"/"Distratado" (com data de notificação de mês anterior) somem do painel.
   const estagioCount = {};
   list.forEach(n => {
     const e = n.estagio_detalhe;

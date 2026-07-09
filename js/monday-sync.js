@@ -470,6 +470,26 @@ const MondaySync = (() => {
   /* ── 3. Notificações ─────────────────────────────────────── */
   async function syncNotificacoes(comiteId, mesRef) {
     log('Buscando Notificações…', 'wait');
+
+    // Resolve colunas pelo título — robusto a mudanças de ID no board (o board
+    // pode ter sido duplicado/editado e os IDs antigos hardcoded pararem de bater
+    // com a coluna real, gerando ESTÁGIO vazio/errado silenciosamente).
+    const colMap = await fetchColumnMap(BOARDS.notificacoes);
+    const idEmpr     = colId(colMap, 'EMPREENDIMENTO');
+    const idEstagio  = colId(colMap, 'ESTÁGIOS', 'ESTÁGIO', 'ESTAGIO', 'ESTAGIOS');
+    const idGrupo    = colId(colMap, 'GRUPO');
+    const idModelo   = colId(colMap, 'MODELO');
+    const idDataNot  = colId(colMap, 'DATA DA NOTIFICAÇÃO', 'DATA NOTIFICAÇÃO', 'NOTIFICAÇÃO');
+    const idDataSol  = colId(colMap, 'DATA DA SOLUÇÃO', 'DATA SOLUÇÃO', 'DATA DA RESOLUÇÃO', 'RESOLUÇÃO');
+    const idTotalDias= colId(colMap, 'TOTAL DIAS', 'TOTAL DE DIAS', 'DIAS');
+
+    try {
+      console.log('[Notificações] colunas resolvidas:', {
+        empr: idEmpr, estagio: idEstagio, grupo: idGrupo, modelo: idModelo,
+        dataNot: idDataNot, dataSol: idDataSol, totalDias: idTotalDias,
+      });
+    } catch(_) {}
+
     const items = await fetchAllItems(BOARDS.notificacoes);
 
     // Filtra pelo GRUPO do Monday (ex.: "JUNHO/2026"), não pela DATA DA
@@ -485,7 +505,7 @@ const MondaySync = (() => {
     DB.forComite('notificacoes', comiteId).forEach(n => DB.remove('notificacoes', n.id));
 
     filtered.forEach(item => {
-      const emprNome = cv(item, 'color_mky02302') || cv(item, 'empreendimento') || '';
+      const emprNome = cv(item, idEmpr) || cv(item, 'color_mky02302') || cv(item, 'empreendimento') || '';
       // Normaliza torre: "AURORA TORRE B" → "AURORA", "MORATTA TORRE C" → "MORATTA"
       const emprBase = emprNome.replace(/\s+TORRE\s+[A-Z]$/i, '').trim();
       const emprId = findOrMakeEmpr(emprBase || emprNome);
@@ -500,23 +520,23 @@ const MondaySync = (() => {
       const unidade = item.name.replace(new RegExp('^' + escapedBase + '\\s*', 'i'), '').trim() || item.name;
 
       // Normaliza estágio para os valores do platform (Resolvida / Em Andamento)
-      const estagioRaw = cv(item, 'color_mky1txdp') || cv(item, 'status1') || '';
+      const estagioRaw = cv(item, idEstagio) || cv(item, 'color_mky1txdp') || cv(item, 'status1') || '';
       const resolvidoRE = /resolvid|unidade retomada/i;
       const estagio = resolvidoRE.test(estagioRaw) ? 'Resolvida' : 'Em Andamento';
 
       // data_solucao só para itens resolvidos (evita calcular tempo p/ itens em aberto)
-      const dataSol = estagio === 'Resolvida' ? (cv(item, 'data9') || '') : '';
+      const dataSol = estagio === 'Resolvida' ? (cv(item, idDataSol) || cv(item, 'data9') || '') : '';
 
       DB.insert('notificacoes', {
         comite_id:        comiteId,
         empreendimento_id: emprId,
-        grupo:            cv(item, 'status6')        || 'Outros',
-        modelo:           cv(item, 'status5')        || 'E-MAIL E WHATSAPP',
+        grupo:            cv(item, idGrupo)  || cv(item, 'status6') || 'Outros',
+        modelo:           cv(item, idModelo) || cv(item, 'status5') || 'E-MAIL E WHATSAPP',
         estagio,
         estagio_detalhe:  estagioRaw                 || estagio,
-        data_notificacao: cv(item, 'date0')          || (item.created_at||'').substring(0,10),
+        data_notificacao: cv(item, idDataNot) || cv(item, 'date0') || (item.created_at||'').substring(0,10),
         data_solucao:     dataSol,
-        total_dias:       cv(item, 'formula_mm31vn5h'),   // TOTAL DIAS (coluna fórmula)
+        total_dias:       cv(item, idTotalDias) || cv(item, 'formula_mm31vn5h'),   // TOTAL DIAS (coluna fórmula)
         cliente:          item.name,
         torre,
         unidade,
@@ -527,7 +547,7 @@ const MondaySync = (() => {
     // (DATA DA NOTIFICAÇÃO). Persistido no comitê para o gráfico de tendência.
     const evolucao = {};
     items.forEach(item => {
-      const ref = (cv(item, 'date0') || '').slice(0, 7);
+      const ref = (cv(item, idDataNot) || cv(item, 'date0') || '').slice(0, 7);
       if (/^\d{4}-\d{2}$/.test(ref)) evolucao[ref] = (evolucao[ref] || 0) + 1;
     });
     DB.update('comites', comiteId, { notif_evolucao: evolucao });

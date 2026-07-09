@@ -34,7 +34,7 @@ const DB = (() => {
       active_comite: localStorage.getItem(PREFIX + 'active_comite') || '',
       saved: new Date().toISOString(),
     };
-    fetch(_SERVER, {
+    return fetch(_SERVER, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(dump),
@@ -81,7 +81,10 @@ const DB = (() => {
 
   const ready = _loadFromServer();
 
-  // Recarrega ao voltar para a aba (sincroniza alterações de outros usuários)
+  // Recarrega ao voltar para a aba (sincroniza alterações de outros usuários).
+  // Não recarrega se uma sincronização do Monday estiver em andamento — senão os
+  // dados recém-importados são sobrescritos pela cópia antiga ainda no servidor
+  // (o push do sync é debounced e pode não ter sido enviado ainda).
   document.addEventListener('visibilitychange', () => {
     // Não recarregar do servidor durante/logo após uma sincronização em andamento:
     // isso sobrescreveria o localStorage recém-sincronizado com dados ainda antigos

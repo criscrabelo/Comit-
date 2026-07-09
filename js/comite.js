@@ -46,9 +46,11 @@ function renderComite() {
   const resumoLabel = (cy && cmth) ? `${MESES_FULL[cmth-1]} ${cy}` : (comite.label || 'Resumo');
 
   // Notificações — painel de estágios (mesma lógica da tela)
+  // `notifs` já está no escopo certo (sync filtra pelo GRUPO do Monday equivalente
+  // ao mês do comitê) — não refiltrar por data_notificacao, senão itens como
+  // "A Retomar"/"Distratado" (com data de notificação de mês anterior) somem do painel.
   const estagioCount = {};
   notifs.forEach(n => {
-    if (comite.ref && n.data_notificacao && !n.data_notificacao.startsWith(comite.ref)) return;
     const e = n.estagio_detalhe; if (!e) return;
     estagioCount[e] = (estagioCount[e] || 0) + 1;
   });
