@@ -83,7 +83,10 @@ const DB = (() => {
 
   // Recarrega ao voltar para a aba (sincroniza alterações de outros usuários)
   document.addEventListener('visibilitychange', () => {
-    if (!document.hidden && _serverAvailable) {
+    // Não recarregar do servidor durante/logo após uma sincronização em andamento:
+    // isso sobrescreveria o localStorage recém-sincronizado com dados ainda antigos
+    // do servidor (a gravação é debounced e pode não ter concluído).
+    if (!document.hidden && _serverAvailable && !window.__SYNC_ACTIVE) {
       _loadFromServer().then(() => {
         if (typeof Router !== 'undefined') Router.navigate(Router.current || 'dashboard');
       });

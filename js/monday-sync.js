@@ -471,14 +471,17 @@ const MondaySync = (() => {
   async function syncNotificacoes(comiteId, mesRef) {
     log('Buscando Notificações…', 'wait');
     const items = await fetchAllItems(BOARDS.notificacoes);
+    const { start, end } = mesRange(mesRef);
 
-    // Filtra usando o GRUPO do Monday correspondente ao mês (ex: "JUNHO/2026"),
-    // em vez de datas nas colunas — evita erro por data mal preenchida no item.
-    const filtered = items.filter(item => groupMatchesMes(item.group?.title, mesRef));
+    // Filtra ESTRITAMENTE por DATA DA NOTIFICAÇÃO (date0) no mês de referência.
+    // NÃO usar o GRUPO do Monday nem created_at/nome_m_s: itens notificados no
+    // mês podem estar em grupos de outro mês (ex.: MORATTA 001B/1002B ficaram no
+    // grupo "MAIO/2026" mas foram notificados em 17/06 → pertencem a junho).
+    // A data da notificação é o campo semanticamente correto para o comitê.
+    const filtered = items.filter(item => inRange(cv(item, 'date0'), start, end));
 
     if (filtered.length === 0) {
-      log(`⚠️ Nenhum item encontrado no grupo do Monday referente a ${mesRef}. ` +
-          `Verifique se o nome do grupo no board bate com o mês (ex: "JUNHO/2026").`, 'warn');
+      log(`⚠️ Nenhuma notificação com DATA DA NOTIFICAÇÃO em ${mesRef}.`, 'warn');
     }
 
     DB.forComite('notificacoes', comiteId).forEach(n => DB.remove('notificacoes', n.id));
@@ -685,6 +688,10 @@ const MondaySync = (() => {
     clearLog();
     log(`Iniciando sincronização — Comitê ${mesRef}`, 'info');
 
+    // Bloqueia o reload automático (visibilitychange) enquanto a sincronização
+    // roda, evitando que dados antigos do servidor sobrescrevam o resultado.
+    window.__SYNC_ACTIVE = true;
+
     let ok = 0, fail = 0;
 
     const run = async (label, fn) => {
@@ -713,6 +720,10 @@ const MondaySync = (() => {
 
     // Refresh current view
     updateStorageInfo();
+
+    // Libera o reload automático só depois que a gravação debounced (400ms) tiver
+    // tempo de concluir, evitando a corrida que revertia os dados sincronizados.
+    setTimeout(() => { window.__SYNC_ACTIVE = false; }, 3000);
   }
 
   /* ═══════════════════════════════════════════════════════════
