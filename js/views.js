@@ -298,7 +298,7 @@ function renderFatos() {
         const fatosDe = fatos.filter(f => f.empreendimento_id === eid);
         return `<div class="section-card">
           <div class="section-card-head">
-            <div class="section-card-title"><span class="empr-chip">${esc(emprName(eid))}</span></div>
+            <div class="section-card-title"><span class="empr-chip">${esc(emprName(eid).toUpperCase())}</span></div>
             <button class="btn btn-ghost btn-sm" onclick="openFatoModal(null,'${eid}')">+ Fato</button>
           </div>
           <div class="section-card-body">
