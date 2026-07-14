@@ -31,9 +31,9 @@ function mesesDoAno(comiteRef) {
 
 // Monta datasets empilhados (1 por empreendimento) a partir de um histograma
 // {mes: {empreendimento: count}} — usado no gráfico "por mês e empreendimento".
-// Limita aos N empreendimentos com mais notificações no período, agrupando o
-// resto em "Outros" para o gráfico não ficar ilegível.
-function buildEmprMonthlyDatasets(evolucaoEmpr, meses, maxSeries = 8) {
+// Um dataset por empreendimento (todos aparecem — sem agrupar em "Outros"),
+// ordenados do maior para o menor total no período.
+function buildEmprMonthlyDatasets(evolucaoEmpr, meses) {
   const totals = {};
   meses.forEach(m => {
     Object.entries(evolucaoEmpr[m] || {}).forEach(([empr, n]) => {
@@ -41,22 +41,11 @@ function buildEmprMonthlyDatasets(evolucaoEmpr, meses, maxSeries = 8) {
     });
   });
   const ordenados = Object.entries(totals).sort((a,b) => b[1]-a[1]).map(([empr]) => empr);
-  const principais = ordenados.slice(0, maxSeries);
-  const temOutros  = ordenados.length > maxSeries;
 
-  const datasets = principais.map(empr => ({
+  return ordenados.map(empr => ({
     label: empr,
     data: meses.map(m => (evolucaoEmpr[m] || {})[empr] || 0),
   }));
-  if (temOutros) {
-    const outros = ordenados.slice(maxSeries);
-    datasets.push({
-      label: 'Outros',
-      data: meses.map(m => outros.reduce((s,empr) => s + ((evolucaoEmpr[m]||{})[empr]||0), 0)),
-      color: '#9CA3AF',
-    });
-  }
-  return datasets;
 }
 
 // ============================================================
