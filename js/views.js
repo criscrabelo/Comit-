@@ -451,7 +451,6 @@ function renderNotificacoes() {
 
       <div class="charts-grid">
         <div class="chart-card"><div class="chart-title">Motivo</div><div class="chart-wrap"><canvas id="ch_ng2"></canvas></div></div>
-        <div class="chart-card"><div class="chart-title">Empreendimento</div><div class="chart-wrap"><canvas id="ch_nm2"></canvas></div></div>
       </div>
 
       <div class="chart-card" style="margin-bottom:20px;">
@@ -540,8 +539,6 @@ function renderNotificacoes() {
 
     const ng = mapToLabelData(countBy(list,'grupo'));
     ChartManager.donut('ch_ng2', ng.labels, ng.data, {pie: true});
-    const nm = mapToLabelData(countBy(list.map(n => ({ _empr: emprName(n.empreendimento_id) })), '_empr'));
-    ChartManager.donut('ch_nm2', nm.labels, nm.data);
   }, 50);
 }
 
