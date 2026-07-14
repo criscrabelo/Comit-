@@ -10,6 +10,13 @@ function estagioColorClass(label) {
   return '';
 }
 
+// Rótulo de exibição do estágio — remove hífen de "RE-COMPRA" (texto bruto do
+// Monday), mantendo a chave original intacta para contagem/agrupamento.
+function formatEstagioLabel(label) {
+  if (/^RE-?COMPRA$/i.test((label || '').trim())) return 'Recompra';
+  return label;
+}
+
 // Meses de Janeiro até o mês do comitê ativo (ex: comiteRef="2026-06" → jan..jun).
 // Usado para montar gráficos de evolução mensal sem hard-code de intervalo.
 const MESES_ABBR_PT = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
@@ -93,7 +100,7 @@ function renderDashboard() {
     .sort((a,b) => b[1] - a[1])
     .map(([label,count]) => `
       <div class="estagio-item ${estagioColorClass(label)}">
-        <span class="estagio-name">${esc(label)}</span>
+        <span class="estagio-name">${esc(formatEstagioLabel(label))}</span>
         <span class="estagio-count">${count}</span>
       </div>`).join('');
 
@@ -420,7 +427,7 @@ function renderNotificacoes() {
     .sort((a,b) => b[1] - a[1])
     .map(([label,count]) => `
       <div class="estagio-item ${estagioColorClass(label)}">
-        <span class="estagio-name">${esc(label)}</span>
+        <span class="estagio-name">${esc(formatEstagioLabel(label))}</span>
         <span class="estagio-count">${count}</span>
       </div>`).join('');
 

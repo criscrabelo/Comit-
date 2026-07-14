@@ -55,7 +55,7 @@ function renderComite() {
   });
   const estagioTotal = Object.values(estagioCount).reduce((a,b)=>a+b,0);
   const estagioRows = Object.entries(estagioCount).sort((a,b)=>b[1]-a[1])
-    .map(([label,count]) => `<div class="estagio-item ${estagioColorClass(label)}"><span class="estagio-name">${esc(label)}</span><span class="estagio-count">${count}</span></div>`).join('');
+    .map(([label,count]) => `<div class="estagio-item ${estagioColorClass(label)}"><span class="estagio-name">${esc(formatEstagioLabel(label))}</span><span class="estagio-count">${count}</span></div>`).join('');
   const notifEstagioHtml = `<div class="estagio-panel" style="margin-bottom:16px;">
     <div class="estagio-panel-title">Status das Notificações · ${esc(comite.label)} · ${estagioTotal}</div>
     ${estagioTotal ? `<div class="estagio-breakdown">${estagioRows}</div>` : '<div class="estagio-empty">Sem dados de estágio.</div>'}</div>`;
