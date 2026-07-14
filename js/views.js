@@ -384,7 +384,20 @@ function renderNotificacoes() {
   const cid    = DB.getActiveComite()?.id;
   const comite = DB.getActiveComite();
   if (!cid) { noComiteAlert(); return; }
-  const list = DB.forComite('notificacoes', cid);
+  const all = DB.forComite('notificacoes', cid);
+
+  // Filtros da lista (persistem entre re-renders via window._notifFiltro)
+  const filtro = window._notifFiltro || (window._notifFiltro = { empr:'', grupo:'', modelo:'', estagio:'' });
+  const opcoesEmpr    = [...new Set(all.map(n => n.empreendimento_id))].sort((a,b) => emprName(a).localeCompare(emprName(b), 'pt-BR'));
+  const opcoesGrupo   = [...new Set(all.map(n => n.grupo).filter(Boolean))].sort();
+  const opcoesModelo  = [...new Set(all.map(n => n.modelo).filter(Boolean))].sort();
+  const list = all.filter(n =>
+    (!filtro.empr    || n.empreendimento_id === filtro.empr) &&
+    (!filtro.grupo   || n.grupo   === filtro.grupo) &&
+    (!filtro.modelo  || n.modelo  === filtro.modelo) &&
+    (!filtro.estagio || n.estagio === filtro.estagio)
+  );
+
   // Tempo médio = média da coluna TOTAL DIAS do Monday sobre TODOS os itens
   // (confirmado contra o resumo nativo do Monday: a soma bate exatamente
   // quando não se filtra por estágio — o próprio Monday não restringe a
@@ -451,6 +464,26 @@ function renderNotificacoes() {
       </div>
 
       <div class="block-title">Lista de Notificações</div>
+      <div class="filter-bar">
+        <select onchange="window._notifFiltro.empr=this.value;renderNotificacoes()">
+          <option value="">Todos os empreendimentos</option>
+          ${opcoesEmpr.map(id => `<option value="${esc(id)}" ${id===filtro.empr?'selected':''}>${esc(emprName(id))}</option>`).join('')}
+        </select>
+        <select onchange="window._notifFiltro.grupo=this.value;renderNotificacoes()">
+          <option value="">Todos os grupos</option>
+          ${opcoesGrupo.map(g => `<option value="${esc(g)}" ${g===filtro.grupo?'selected':''}>${esc(g)}</option>`).join('')}
+        </select>
+        <select onchange="window._notifFiltro.modelo=this.value;renderNotificacoes()">
+          <option value="">Todos os modelos</option>
+          ${opcoesModelo.map(m => `<option value="${esc(m)}" ${m===filtro.modelo?'selected':''}>${esc(m)}</option>`).join('')}
+        </select>
+        <select onchange="window._notifFiltro.estagio=this.value;renderNotificacoes()">
+          <option value="">Todos os estágios</option>
+          <option value="Em Andamento" ${filtro.estagio==='Em Andamento'?'selected':''}>Em Andamento</option>
+          <option value="Resolvida" ${filtro.estagio==='Resolvida'?'selected':''}>Resolvida</option>
+        </select>
+        <button class="btn btn-outline" onclick="window._notifFiltro={empr:'',grupo:'',modelo:'',estagio:''};renderNotificacoes()">✖ Limpar filtros</button>
+      </div>
       <div class="table-wrap">
         <table><thead><tr>
           <th>Empreendimento</th><th>Torre</th><th>Unidade</th><th>Grupo</th><th>Modelo</th><th>Estágio</th>
