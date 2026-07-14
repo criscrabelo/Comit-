@@ -581,12 +581,20 @@ const MondaySync = (() => {
     // pelo GRUPO do Monday (mesmo critério usado para contar as notificações
     // do mês) — não pela DATA DA NOTIFICAÇÃO, que pode divergir do grupo do
     // item e gerar contagem diferente da que aparece nos painéis/KPIs.
+    // Também quebra por empreendimento, para o gráfico "por mês x empreendimento".
     const evolucao = {};
+    const evolucaoEmpr = {};
     items.forEach(item => {
       const ref = groupToYYYYMM(item.group?.title);
-      if (ref) evolucao[ref] = (evolucao[ref] || 0) + 1;
+      if (!ref) return;
+      evolucao[ref] = (evolucao[ref] || 0) + 1;
+
+      const emprNomeEv = cv(item, idEmpr) || cv(item, 'color_mky02302') || cv(item, 'empreendimento') || 'Outros';
+      const emprBaseEv = emprNomeEv.replace(/\s+TORRE\s+[A-Z]$/i, '').trim() || 'Outros';
+      if (!evolucaoEmpr[ref]) evolucaoEmpr[ref] = {};
+      evolucaoEmpr[ref][emprBaseEv] = (evolucaoEmpr[ref][emprBaseEv] || 0) + 1;
     });
-    DB.update('comites', comiteId, { notif_evolucao: evolucao });
+    DB.update('comites', comiteId, { notif_evolucao: evolucao, notif_evolucao_empr: evolucaoEmpr });
 
     const n = filtered.length;
     log(`${n} notificação${n !== 1 ? 'ões' : ''} importada${n !== 1 ? 's' : ''}`,

@@ -22,6 +22,36 @@ function mesesDoAno(comiteRef) {
   return { meses, labels, rangeLabel };
 }
 
+// Monta datasets empilhados (1 por empreendimento) a partir de um histograma
+// {mes: {empreendimento: count}} — usado no gráfico "por mês e empreendimento".
+// Limita aos N empreendimentos com mais notificações no período, agrupando o
+// resto em "Outros" para o gráfico não ficar ilegível.
+function buildEmprMonthlyDatasets(evolucaoEmpr, meses, maxSeries = 8) {
+  const totals = {};
+  meses.forEach(m => {
+    Object.entries(evolucaoEmpr[m] || {}).forEach(([empr, n]) => {
+      totals[empr] = (totals[empr] || 0) + n;
+    });
+  });
+  const ordenados = Object.entries(totals).sort((a,b) => b[1]-a[1]).map(([empr]) => empr);
+  const principais = ordenados.slice(0, maxSeries);
+  const temOutros  = ordenados.length > maxSeries;
+
+  const datasets = principais.map(empr => ({
+    label: empr,
+    data: meses.map(m => (evolucaoEmpr[m] || {})[empr] || 0),
+  }));
+  if (temOutros) {
+    const outros = ordenados.slice(maxSeries);
+    datasets.push({
+      label: 'Outros',
+      data: meses.map(m => outros.reduce((s,empr) => s + ((evolucaoEmpr[m]||{})[empr]||0), 0)),
+      color: '#9CA3AF',
+    });
+  }
+  return datasets;
+}
+
 // ============================================================
 // DASHBOARD
 // ============================================================
@@ -129,6 +159,11 @@ function renderDashboard() {
         <div class="chart-wrap"><canvas id="ch_notifMes"></canvas></div>
       </div>
 
+      <div class="chart-card" style="margin-bottom:20px;">
+        <div class="chart-title">Notificações por Mês e Empreendimento — ${(comite.ref||'').slice(0,4)} (${mesesDoAno(comite.ref).rangeLabel})</div>
+        <div class="chart-wrap" style="height:340px"><canvas id="ch_notifMesEmpr"></canvas></div>
+      </div>
+
       <div class="charts-grid">
         <div class="chart-card">
           <div class="chart-title">Notificações por Grupo</div>
@@ -182,6 +217,18 @@ function renderDashboard() {
       const nevoD = comite.notif_evolucao || {};
       const { meses: mesesD, labels: mesLabelsD } = mesesDoAno(comite.ref);
       ChartManager.bar('ch_notifMes', mesLabelsD, [{ data: mesesD.map(m => nevoD[m] || 0) }]);
+
+      // Mesma evolução, agora quebrada por empreendimento (barras empilhadas).
+      const nevoEmprD = comite.notif_evolucao_empr || {};
+      const datasetsEmpr = buildEmprMonthlyDatasets(nevoEmprD, mesesD);
+      ChartManager.bar('ch_notifMesEmpr', mesLabelsD, datasetsEmpr, {
+        chartOpts: {
+          scales: {
+            x: { stacked: true, grid: { display: false }, ticks: { font: { size: 11 } } },
+            y: { stacked: true, beginAtZero: true, ticks: { font: { size: 11 }, precision: 0 } },
+          },
+        },
+      });
     }
 
     const ng = mapToLabelData(countBy(notifs,'grupo'));
