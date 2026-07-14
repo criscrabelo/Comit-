@@ -386,13 +386,14 @@ const MondaySync = (() => {
       ndist++;
     });
 
-    // Evolução mensal: histograma de TODOS os distratos do board por mês
-    // (DATA DA SOLICITAÇÃO, fallback created_at). Persistido no comitê para
-    // alimentar o gráfico de tendência, independente do mês ativo.
+    // Evolução mensal: histograma só dos DISTRATOS do board por mês (exclui
+    // Retomadas e Desistências) — DATA DA SOLICITAÇÃO, fallback created_at.
+    // Persistido no comitê para alimentar o gráfico de tendência, independente
+    // do mês ativo.
     const evolucao = {};
     items.forEach(item => {
       const grupoTit = (item.group?.title || '').toUpperCase();
-      if (grupoTit.includes('RETOMADA')) return;
+      if (grupoTit.includes('RETOMADA') || grupoTit.includes('DESIST')) return;
       const ds  = cv(item, idDataSol);
       const ca  = (item.created_at || '').substring(0, 10);
       const ref = (ds || ca).slice(0, 7); // YYYY-MM
