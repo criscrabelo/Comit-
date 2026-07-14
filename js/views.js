@@ -522,11 +522,29 @@ function renderNotificacoes() {
     const nevoEmprN = comite.notif_evolucao_empr || {};
     const datasetsEmprN = buildEmprMonthlyDatasets(nevoEmprN, mesesN);
     ChartManager.bar('ch_notifMesEmpr2', mesLabelsN, datasetsEmprN, {
-      stackedLabels: true,
       chartOpts: {
+        interaction: { mode: 'index', intersect: false },
         scales: {
           x: { stacked: true, grid: { display: false }, ticks: { font: { size: 11 } } },
           y: { stacked: true, beginAtZero: true, ticks: { font: { size: 11 }, precision: 0 } },
+        },
+        plugins: {
+          legend: { display: true, position: 'top' },
+          tooltip: {
+            callbacks: {
+              label(ctx) {
+                const val = ctx.parsed.y;
+                if (!val) return null;
+                const total = ctx.chart.data.datasets.reduce((s,ds) => s + (ds.data[ctx.dataIndex]||0), 0);
+                const pct = total ? Math.round((val/total)*100) : 0;
+                return `${ctx.dataset.label}: ${val} (${pct}%)`;
+              },
+              footer(items) {
+                const total = items.reduce((s,i) => s + (i.parsed.y||0), 0);
+                return `Total: ${total}`;
+              },
+            },
+          },
         },
       },
     });
