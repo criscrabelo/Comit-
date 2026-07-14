@@ -449,8 +449,9 @@ function renderNotificacoes() {
           : '<div class="estagio-empty">Sincronize com o Monday para carregar os estágios da coluna ESTÁGIOS.</div>'}
       </div>
 
-      <div class="charts-grid">
-        <div class="chart-card"><div class="chart-title">Motivo</div><div class="chart-wrap"><canvas id="ch_ng2"></canvas></div></div>
+      <div class="chart-card" style="max-width:480px;margin:0 auto 20px;">
+        <div class="chart-title">Motivo</div>
+        <div class="chart-wrap"><canvas id="ch_ng2"></canvas></div>
       </div>
 
       <div class="chart-card" style="margin-bottom:20px;">
@@ -538,7 +539,7 @@ function renderNotificacoes() {
     });
 
     const ng = mapToLabelData(countBy(list,'grupo'));
-    ChartManager.donut('ch_ng2', ng.labels, ng.data, {pie: true});
+    ChartManager.bar('ch_ng2', ng.labels, [{data: ng.data}], {dataLabels: true});
   }, 50);
 }
 
