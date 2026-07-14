@@ -30,6 +30,55 @@ const barValueLabels = {
   }
 };
 
+// Plugin: em barras empilhadas, desenha "valor (percentual%)" centralizado em
+// cada segmento (se couber) e o total da coluna no topo da pilha.
+const stackedBarLabels = {
+  id: 'stackedBarLabels',
+  afterDatasetsDraw(chart) {
+    const { ctx } = chart;
+    const meta0 = chart.getDatasetMeta(0);
+    if (!meta0 || !meta0.data.length) return;
+
+    const totals = meta0.data.map((_, i) =>
+      chart.data.datasets.reduce((s, ds) => s + (ds.data[i] || 0), 0)
+    );
+
+    chart.data.datasets.forEach((ds, di) => {
+      const meta = chart.getDatasetMeta(di);
+      meta.data.forEach((el, i) => {
+        const val = ds.data[i];
+        if (!val) return;
+        const total = totals[i] || 0;
+        const pct = total ? Math.round((val / total) * 100) : 0;
+        const h = Math.abs(el.base - el.y);
+        if (h < 14) return; // segmento pequeno demais pro texto
+        ctx.save();
+        ctx.font = '600 10px sans-serif';
+        ctx.fillStyle = '#fff';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(`${val} (${pct}%)`, el.x, (el.y + el.base) / 2);
+        ctx.restore();
+      });
+    });
+
+    ctx.save();
+    ctx.font = '700 12px sans-serif';
+    ctx.fillStyle = '#111827';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    meta0.data.forEach((el, i) => {
+      let topY = el.y;
+      chart.data.datasets.forEach((ds, di) => {
+        const e = chart.getDatasetMeta(di).data[i];
+        if (e && ds.data[i] && e.y < topY) topY = e.y;
+      });
+      ctx.fillText(totals[i], el.x, topY - 4);
+    });
+    ctx.restore();
+  }
+};
+
 const ChartManager = (() => {
   const instances = {};
 
@@ -60,7 +109,7 @@ const ChartManager = (() => {
       options: {
         responsive: true, maintainAspectRatio: false,
         indexAxis: horizontal ? 'y' : 'x',
-        layout: opts.dataLabels
+        layout: (opts.dataLabels || opts.stackedLabels)
           ? { padding: horizontal ? { right: 30 } : { top: 18 } }
           : {},
         plugins: { legend: { display: datasets.length > 1 } },
@@ -70,7 +119,10 @@ const ChartManager = (() => {
         },
         ...opts.chartOpts
       },
-      plugins: opts.dataLabels ? [barValueLabels] : []
+      plugins: [
+        ...(opts.dataLabels ? [barValueLabels] : []),
+        ...(opts.stackedLabels ? [stackedBarLabels] : []),
+      ]
     });
   }
 

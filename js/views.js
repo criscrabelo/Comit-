@@ -482,6 +482,7 @@ function renderNotificacoes() {
     const nevoEmprN = comite.notif_evolucao_empr || {};
     const datasetsEmprN = buildEmprMonthlyDatasets(nevoEmprN, mesesN);
     ChartManager.bar('ch_notifMesEmpr2', mesLabelsN, datasetsEmprN, {
+      stackedLabels: true,
       chartOpts: {
         scales: {
           x: { stacked: true, grid: { display: false }, ticks: { font: { size: 11 } } },
