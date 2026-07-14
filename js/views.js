@@ -502,21 +502,19 @@ function deleteNotif(id) {
 // ============================================================
 const MOTIVOS_DIST = ['Dificuldade Financeira','Insatisfação','Falha de Serviço','Outros'];
 
-function renderDistratos() {
+function renderDistratosRetomadas() {
   const cid    = DB.getActiveComite()?.id;
   const comite = DB.getActiveComite();
   if (!cid) { noComiteAlert(); return; }
-  const list = DB.forComite('distratos', cid);
-  const tMed = list.length ? Math.round(list.reduce((s,d)=>s+(d.tempo_dias||0),0)/list.length) : null;
-  const nDistrato   = list.filter(d => (d.tipo||'Distrato') === 'Distrato').length;
-  const nDesistencia= list.filter(d => d.tipo === 'Desistência').length;
+  const dists = DB.forComite('distratos', cid);
+  const rets  = DB.forComite('retomadas', cid);
+  const tabAtiva = window._drTab || 'distratos';
 
-  setView(`
-    <div class="page-header">
-      <div><div class="page-title">❌ Distratos</div><div class="page-sub">${esc(comite.label)}</div></div>
-      <div class="page-actions"><button class="btn btn-primary" onclick="openDistModal()">+ Novo Distrato</button></div>
-    </div>
-    <div class="content">
+  const renderDistratosTab = (list) => {
+    const tMed = list.length ? Math.round(list.reduce((s,d)=>s+(d.tempo_dias||0),0)/list.length) : null;
+    const nDistrato    = list.filter(d => (d.tipo||'Distrato') === 'Distrato').length;
+    const nDesistencia = list.filter(d => d.tipo === 'Desistência').length;
+    return `
       <div class="kpi-grid">
         <div class="kpi-card red"><div class="kpi-label">Total</div><div class="kpi-value">${list.length}</div></div>
         <div class="kpi-card red"><div class="kpi-label">Distratos</div><div class="kpi-value">${nDistrato}</div></div>
@@ -552,27 +550,85 @@ function renderDistratos() {
         </tr>`).join('') || '<tr class="empty-row"><td colspan="10">Nenhum distrato cadastrado</td></tr>'}
         </tbody></table>
       </div>
+    `;
+  };
+
+  const renderRetomadasTab = (list) => {
+    const tMed = list.length ? Math.round(list.reduce((s,r)=>s+(r.tempo_dias||0),0)/list.length) : null;
+    return `
+      <div class="kpi-grid">
+        <div class="kpi-card green"><div class="kpi-label">Total Retomadas</div><div class="kpi-value">${list.length}</div></div>
+        <div class="kpi-card orange"><div class="kpi-label">Tempo Médio</div><div class="kpi-value" style="font-size:20px">${tMed!==null?tMed+' dias':'—'}</div></div>
+        <div class="kpi-card"><div class="kpi-label">Empreendimentos</div><div class="kpi-value">${new Set(list.map(r=>r.empreendimento_id)).size}</div></div>
+      </div>
+      <div class="charts-grid">
+        <div class="chart-card"><div class="chart-title">Por Motivo</div><div class="chart-wrap"><canvas id="ch_rm"></canvas></div></div>
+        <div class="chart-card"><div class="chart-title">Por Equipe</div><div class="chart-wrap"><canvas id="ch_re"></canvas></div></div>
+      </div>
+      <div class="table-wrap">
+        <table><thead><tr>
+          <th>Unidade</th><th>Empreendimento</th><th>Motivo</th><th>Equipe</th><th>Data Início</th><th>Data Retomada</th><th>Dias</th><th>Ações</th>
+        </tr></thead><tbody>
+        ${list.map(r => `<tr>
+          <td>${r.unidade ? `<code style="font-size:11px">${esc(r.unidade)}</code>` : '—'}</td>
+          <td><span class="empr-chip">${esc(emprName(r.empreendimento_id))}</span></td>
+          <td>${badge(r.motivo,'orange')}</td>
+          <td>${esc(r.equipe||'—')}</td>
+          <td>${fmtDate(r.data_inicio)}</td>
+          <td>${fmtDate(r.data_retomada)}</td>
+          <td>${r.tempo_dias||'—'}</td>
+          <td>
+            <button class="btn btn-ghost btn-sm" onclick="openRetModal('${r.id}')">✏️</button>
+            <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteRet('${r.id}')">🗑️</button>
+          </td>
+        </tr>`).join('') || '<tr class="empty-row"><td colspan="8">Nenhuma retomada cadastrada</td></tr>'}
+        </tbody></table>
+      </div>
+    `;
+  };
+
+  setView(`
+    <div class="page-header">
+      <div><div class="page-title">❌ Distratos e Retomadas</div><div class="page-sub">${esc(comite.label)}</div></div>
+      <div class="page-actions">
+        ${tabAtiva==='distratos'
+          ? `<button class="btn btn-primary" onclick="openDistModal()">+ Novo Distrato</button>`
+          : `<button class="btn btn-primary" onclick="openRetModal()">+ Nova Retomada</button>`}
+      </div>
+    </div>
+    <div class="content">
+      <div class="tabs">
+        <button class="tab-btn ${tabAtiva==='distratos'?'active':''}" onclick="window._drTab='distratos';renderDistratosRetomadas()">Distratos (${dists.length})</button>
+        <button class="tab-btn ${tabAtiva==='retomadas'?'active':''}" onclick="window._drTab='retomadas';renderDistratosRetomadas()">Retomadas (${rets.length})</button>
+      </div>
+      <div id="dr_content">
+        ${tabAtiva==='distratos' ? renderDistratosTab(dists) : renderRetomadasTab(rets)}
+      </div>
     </div>
   `);
+
   setTimeout(() => {
-    const dt = mapToLabelData(countBy(list.map(d=>({_t:d.tipo||'Distrato'})),'_t'));
-    ChartManager.donut('ch_dt', dt.labels, dt.data, {pie:true});
-    const dm = mapToLabelData(countBy(list,'motivo'));
-    ChartManager.donut('ch_dm', dm.labels, dm.data, {pie:true});
-    const de = mapToLabelData(countBy(list.map(d=>({...d,_en:emprName(d.empreendimento_id)})),'_en'));
-    ChartManager.donut('ch_de', de.labels, de.data);
-    const deq = mapToLabelData(countBy(list,'equipe'));
-    ChartManager.donut('ch_deq', deq.labels, deq.data, {pie:true});
-    // Evolução: nº de distratos por mês, de Janeiro até o mês do comitê ativo.
-    // Usa o histograma de TODO o board gravado no comitê durante o sync
-    // (comite.distratos_evolucao), pois os outros meses vivem em outros comitês.
-    const MESES_ABBR = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
-    const evol = comite.distratos_evolucao || {};
-    const [refY, refM] = (comite.ref || '').split('-').map(Number);
-    const meses = [];
-    if (refY && refM) for (let m = 1; m <= refM; m++) meses.push(`${refY}-${String(m).padStart(2,'0')}`);
-    const mesLabels = meses.map(ym => { const [y,mm] = ym.split('-'); return `${MESES_ABBR[(+mm)-1]}/${y}`; });
-    ChartManager.bar('ch_dmes', mesLabels, [{label:'Distratos', data: meses.map(m=>evol[m]||0)}], {dataLabels:true});
+    if (tabAtiva === 'distratos') {
+      const dt = mapToLabelData(countBy(dists.map(d=>({_t:d.tipo||'Distrato'})),'_t'));
+      ChartManager.donut('ch_dt', dt.labels, dt.data, {pie:true});
+      const dm = mapToLabelData(countBy(dists,'motivo'));
+      ChartManager.donut('ch_dm', dm.labels, dm.data, {pie:true});
+      const de = mapToLabelData(countBy(dists.map(d=>({...d,_en:emprName(d.empreendimento_id)})),'_en'));
+      ChartManager.donut('ch_de', de.labels, de.data);
+      const deq = mapToLabelData(countBy(dists,'equipe'));
+      ChartManager.donut('ch_deq', deq.labels, deq.data, {pie:true});
+      // Evolução: nº de distratos por mês, de Janeiro até o mês do comitê ativo.
+      // Usa o histograma de TODO o board gravado no comitê durante o sync
+      // (comite.distratos_evolucao), pois os outros meses vivem em outros comitês.
+      const { meses, labels: mesLabels } = mesesDoAno(comite.ref);
+      const evol = comite.distratos_evolucao || {};
+      ChartManager.bar('ch_dmes', mesLabels, [{label:'Distratos', data: meses.map(m=>evol[m]||0)}], {dataLabels:true});
+    } else {
+      const rm = mapToLabelData(countBy(rets,'motivo'));
+      ChartManager.donut('ch_rm', rm.labels, rm.data, {pie:true});
+      const re = mapToLabelData(countBy(rets,'equipe'));
+      ChartManager.bar('ch_re', re.labels, [{data: re.data}]);
+    }
   }, 50);
 }
 
@@ -607,68 +663,14 @@ function saveDist(id, cid) {
   if (!d.empreendimento_id) { toast('Empreendimento obrigatório','error'); return; }
   if (id) { DB.update('distratos',id,d); toast('Distrato atualizado!','success'); }
   else { DB.insert('distratos',{comite_id:cid,...d}); toast('Distrato adicionado!','success'); }
-  closeModal(); renderDistratos();
+  closeModal(); renderDistratosRetomadas();
 }
 function deleteDist(id) {
-  confirmDelete('Excluir este distrato?', `()=>{ DB.remove('distratos','${id}'); toast('Excluído!'); renderDistratos(); }`);
+  confirmDelete('Excluir este distrato?', `()=>{ DB.remove('distratos','${id}'); toast('Excluído!'); renderDistratosRetomadas(); }`);
 }
 
-// ============================================================
-// RETOMADAS
-// ============================================================
 const MOTIVOS_RET = ['Inadimplência','Distrato','Desistência','Outros'];
 const EQUIPES_RET = ['Equipe A','Equipe B','Jurídico','Outros'];
-
-function renderRetomadas() {
-  const cid    = DB.getActiveComite()?.id;
-  const comite = DB.getActiveComite();
-  if (!cid) { noComiteAlert(); return; }
-  const list = DB.forComite('retomadas', cid);
-  const tMed = list.length ? Math.round(list.reduce((s,r)=>s+(r.tempo_dias||0),0)/list.length) : null;
-
-  setView(`
-    <div class="page-header">
-      <div><div class="page-title">🔁 Retomadas</div><div class="page-sub">${esc(comite.label)}</div></div>
-      <div class="page-actions"><button class="btn btn-primary" onclick="openRetModal()">+ Nova Retomada</button></div>
-    </div>
-    <div class="content">
-      <div class="kpi-grid">
-        <div class="kpi-card green"><div class="kpi-label">Total Retomadas</div><div class="kpi-value">${list.length}</div></div>
-        <div class="kpi-card orange"><div class="kpi-label">Tempo Médio</div><div class="kpi-value" style="font-size:20px">${tMed!==null?tMed+' dias':'—'}</div></div>
-        <div class="kpi-card"><div class="kpi-label">Empreendimentos</div><div class="kpi-value">${new Set(list.map(r=>r.empreendimento_id)).size}</div></div>
-      </div>
-      <div class="charts-grid">
-        <div class="chart-card"><div class="chart-title">Por Motivo</div><div class="chart-wrap"><canvas id="ch_rm"></canvas></div></div>
-        <div class="chart-card"><div class="chart-title">Por Equipe</div><div class="chart-wrap"><canvas id="ch_re"></canvas></div></div>
-      </div>
-      <div class="table-wrap">
-        <table><thead><tr>
-          <th>Unidade</th><th>Empreendimento</th><th>Motivo</th><th>Equipe</th><th>Data Início</th><th>Data Retomada</th><th>Dias</th><th>Ações</th>
-        </tr></thead><tbody>
-        ${list.map(r => `<tr>
-          <td>${r.unidade ? `<code style="font-size:11px">${esc(r.unidade)}</code>` : '—'}</td>
-          <td><span class="empr-chip">${esc(emprName(r.empreendimento_id))}</span></td>
-          <td>${badge(r.motivo,'orange')}</td>
-          <td>${esc(r.equipe||'—')}</td>
-          <td>${fmtDate(r.data_inicio)}</td>
-          <td>${fmtDate(r.data_retomada)}</td>
-          <td>${r.tempo_dias||'—'}</td>
-          <td>
-            <button class="btn btn-ghost btn-sm" onclick="openRetModal('${r.id}')">✏️</button>
-            <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteRet('${r.id}')">🗑️</button>
-          </td>
-        </tr>`).join('') || '<tr class="empty-row"><td colspan="8">Nenhuma retomada cadastrada</td></tr>'}
-        </tbody></table>
-      </div>
-    </div>
-  `);
-  setTimeout(() => {
-    const rm = mapToLabelData(countBy(list,'motivo'));
-    ChartManager.donut('ch_rm', rm.labels, rm.data, {pie:true});
-    const re = mapToLabelData(countBy(list,'equipe'));
-    ChartManager.bar('ch_re', re.labels, [{data: re.data}]);
-  }, 50);
-}
 
 function openRetModal(id) {
   const r = id ? DB.getById('retomadas', id) : null;
@@ -701,11 +703,11 @@ function saveRet(id, cid) {
   if (!d.empreendimento_id) { toast('Empreendimento obrigatório','error'); return; }
   if (id) { DB.update('retomadas',id,d); toast('Retomada atualizada!','success'); }
   else { DB.insert('retomadas',{comite_id:cid,...d}); toast('Retomada adicionada!','success'); }
-  closeModal(); renderRetomadas();
+  closeModal(); renderDistratosRetomadas();
 }
 
 function deleteRet(id) {
-  confirmDelete('Excluir esta retomada?', `()=>{ DB.remove('retomadas','${id}'); toast('Excluído!'); renderRetomadas(); }`);
+  confirmDelete('Excluir esta retomada?', `()=>{ DB.remove('retomadas','${id}'); toast('Excluído!'); renderDistratosRetomadas(); }`);
 }
 
 // ============================================================
