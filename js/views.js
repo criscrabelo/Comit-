@@ -159,11 +159,6 @@ function renderDashboard() {
         <div class="chart-wrap"><canvas id="ch_notifMes"></canvas></div>
       </div>
 
-      <div class="chart-card" style="margin-bottom:20px;">
-        <div class="chart-title">Notificações por Mês e Empreendimento — ${(comite.ref||'').slice(0,4)} (${mesesDoAno(comite.ref).rangeLabel})</div>
-        <div class="chart-wrap" style="height:340px"><canvas id="ch_notifMesEmpr"></canvas></div>
-      </div>
-
       <div class="charts-grid">
         <div class="chart-card">
           <div class="chart-title">Notificações por Grupo</div>
@@ -217,18 +212,6 @@ function renderDashboard() {
       const nevoD = comite.notif_evolucao || {};
       const { meses: mesesD, labels: mesLabelsD } = mesesDoAno(comite.ref);
       ChartManager.bar('ch_notifMes', mesLabelsD, [{ data: mesesD.map(m => nevoD[m] || 0) }]);
-
-      // Mesma evolução, agora quebrada por empreendimento (barras empilhadas).
-      const nevoEmprD = comite.notif_evolucao_empr || {};
-      const datasetsEmpr = buildEmprMonthlyDatasets(nevoEmprD, mesesD);
-      ChartManager.bar('ch_notifMesEmpr', mesLabelsD, datasetsEmpr, {
-        chartOpts: {
-          scales: {
-            x: { stacked: true, grid: { display: false }, ticks: { font: { size: 11 } } },
-            y: { stacked: true, beginAtZero: true, ticks: { font: { size: 11 }, precision: 0 } },
-          },
-        },
-      });
     }
 
     const ng = mapToLabelData(countBy(notifs,'grupo'));
@@ -467,6 +450,11 @@ function renderNotificacoes() {
         <div class="chart-wrap"><canvas id="ch_notifMes2"></canvas></div>
       </div>
 
+      <div class="chart-card" style="margin-bottom:20px;">
+        <div class="chart-title">Notificações por Mês e Empreendimento — ${(comite.ref||'').slice(0,4)} (${mesesDoAno(comite.ref).rangeLabel})</div>
+        <div class="chart-wrap" style="height:340px"><canvas id="ch_notifMesEmpr2"></canvas></div>
+      </div>
+
       <div class="block-title">Lista de Notificações</div>
       <div class="table-wrap">
         <table><thead><tr>
@@ -497,6 +485,18 @@ function renderNotificacoes() {
     const nevo = comite.notif_evolucao || {};
     const { meses: mesesN, labels: mesLabelsN } = mesesDoAno(comite.ref);
     ChartManager.bar('ch_notifMes2', mesLabelsN, [{ data: mesesN.map(m=>nevo[m]||0) }]);
+
+    // Mesma evolução, agora quebrada por empreendimento (barras empilhadas).
+    const nevoEmprN = comite.notif_evolucao_empr || {};
+    const datasetsEmprN = buildEmprMonthlyDatasets(nevoEmprN, mesesN);
+    ChartManager.bar('ch_notifMesEmpr2', mesLabelsN, datasetsEmprN, {
+      chartOpts: {
+        scales: {
+          x: { stacked: true, grid: { display: false }, ticks: { font: { size: 11 } } },
+          y: { stacked: true, beginAtZero: true, ticks: { font: { size: 11 }, precision: 0 } },
+        },
+      },
+    });
 
     const ng = mapToLabelData(countBy(list,'grupo'));
     ChartManager.donut('ch_ng2', ng.labels, ng.data, {pie: true});
