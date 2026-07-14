@@ -449,8 +449,9 @@ function renderNotificacoes() {
           : '<div class="estagio-empty">Sincronize com o Monday para carregar os estágios da coluna ESTÁGIOS.</div>'}
       </div>
 
-      <div class="charts-grid">
-        <div class="chart-card"><div class="chart-title">Motivo</div><div class="chart-wrap"><canvas id="ch_ng2"></canvas></div></div>
+      <div class="chart-card" style="margin-bottom:20px;">
+        <div class="chart-title">Motivo</div>
+        <div class="chart-wrap"><canvas id="ch_ng2"></canvas></div>
       </div>
 
       <div class="chart-card" style="margin-bottom:20px;">
