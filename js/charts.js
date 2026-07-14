@@ -1,5 +1,8 @@
 /* ===== CHART HELPERS (Chart.js) ===== */
-const PALETTE = ['#2563EB','#E66C37','#16A34A','#DC2626','#7C3AED','#D97706','#0891B2','#BE185D','#65A30D','#9333EA'];
+const PALETTE = [
+  '#2563EB','#E66C37','#16A34A','#DC2626','#7C3AED','#D97706','#0891B2','#BE185D','#65A30D','#9333EA',
+  '#0EA5E9','#F59E0B','#DB2777','#059669','#4F46E5','#EA580C','#0D9488','#B91C1C','#7C2D12','#475569',
+];
 
 // Plugin: desenha o valor de cada barra
 const barValueLabels = {
