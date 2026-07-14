@@ -446,11 +446,6 @@ function renderNotificacoes() {
       </div>
 
       <div class="chart-card" style="margin-bottom:20px;">
-        <div class="chart-title">Notificações por Mês — ${(comite.ref||'').slice(0,4)} (${mesesDoAno(comite.ref).rangeLabel})</div>
-        <div class="chart-wrap"><canvas id="ch_notifMes2"></canvas></div>
-      </div>
-
-      <div class="chart-card" style="margin-bottom:20px;">
         <div class="chart-title">Notificações por Mês e Empreendimento — ${(comite.ref||'').slice(0,4)} (${mesesDoAno(comite.ref).rangeLabel})</div>
         <div class="chart-wrap" style="height:340px"><canvas id="ch_notifMesEmpr2"></canvas></div>
       </div>
@@ -480,13 +475,10 @@ function renderNotificacoes() {
     </div>
   `);
   setTimeout(() => {
-    // Notificações por mês — histograma de TODO o board (comite.notif_evolucao,
-    // gravado no sync), de Janeiro até o mês do comitê ativo.
-    const nevo = comite.notif_evolucao || {};
+    // Notificações por mês e empreendimento (barras empilhadas) — histograma de
+    // TODO o board (comite.notif_evolucao_empr, gravado no sync), de Janeiro até
+    // o mês do comitê ativo.
     const { meses: mesesN, labels: mesLabelsN } = mesesDoAno(comite.ref);
-    ChartManager.bar('ch_notifMes2', mesLabelsN, [{ data: mesesN.map(m=>nevo[m]||0) }]);
-
-    // Mesma evolução, agora quebrada por empreendimento (barras empilhadas).
     const nevoEmprN = comite.notif_evolucao_empr || {};
     const datasetsEmprN = buildEmprMonthlyDatasets(nevoEmprN, mesesN);
     ChartManager.bar('ch_notifMesEmpr2', mesLabelsN, datasetsEmprN, {
