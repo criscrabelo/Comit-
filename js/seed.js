@@ -85,18 +85,6 @@ function seedIfEmpty() {
   ];
   notifs.forEach(n => DB.insert('notificacoes', n));
 
-  // ---- Contratos ----
-  const contratos = [
-    { comite_id: cid, empreendimento_id: 'e_jp',    tipo: 'Compra e Venda', data_solicitacao: '2026-04-05', status: 'Assinado' },
-    { comite_id: cid, empreendimento_id: 'e_jp',    tipo: 'Financiamento',  data_solicitacao: '2026-04-17', status: 'Em análise' },
-    { comite_id: cid, empreendimento_id: 'e_alencar',tipo: 'Compra e Venda',data_solicitacao: '2026-04-08', status: 'Assinado' },
-    { comite_id: cid, empreendimento_id: 'e_coevo', tipo: 'Permuta',        data_solicitacao: '2026-04-10', status: 'Assinado' },
-    { comite_id: cid, empreendimento_id: 'e_js',    tipo: 'Compra e Venda', data_solicitacao: '2026-04-12', status: 'Assinado' },
-    { comite_id: cid, empreendimento_id: 'e_tetus', tipo: 'Locação',        data_solicitacao: '2026-04-20', status: 'Em análise' },
-    { comite_id: cid, empreendimento_id: 'e_carpe', tipo: 'Compra e Venda', data_solicitacao: '2026-04-03', status: 'Assinado' },
-  ];
-  contratos.forEach(c => DB.insert('contratos', c));
-
   // ---- Retomadas ----
   const retomadas = [
     { comite_id: cid, empreendimento_id: 'e_jp',    motivo: 'Inadimplência', equipe: 'Equipe A', data_inicio: '2026-03-10', data_retomada: '2026-04-15', tempo_dias: 36 },

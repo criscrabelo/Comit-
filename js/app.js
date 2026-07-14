@@ -6,7 +6,6 @@ const Router = (() => {
     empreendimentos: renderEmpreendimentos,
     fatos:           renderFatos,
     notificacoes:    renderNotificacoes,
-    contratos:       renderContratos,
     retomadas:       renderRetomadas,
     distratos:       renderDistratos,
     processos:       renderProcessos,

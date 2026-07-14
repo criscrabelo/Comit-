@@ -16,9 +16,6 @@ const MondaySync = (() => {
     retomadas:    18413057491,   // (JUR) RETOMADAS
     notificacoes: 5630368737,    // (JUR) NOTIFICAÇÕES CLIENTES
     carpedie:     18410779605,   // CONTROLE DE ENTREGA CARPE DIEM
-    contratosClientes:    5821473011,  // (JUR) CONTRATOS PARA CLIENTES
-    contratosObra:        5800267760,  // (JUR) OBRA - CONTRATO DE PRESTAÇÃO DE SERVIÇO
-    contratosPrestadores: 8734722297,  // (JUR) CONTRATOS PRESTADORES DE SERVIÇOS
   };
 
   /* ── Token helpers ─────────────────────────────────────────── */
@@ -632,106 +629,6 @@ const MondaySync = (() => {
     return count;
   }
 
-  /* ── 5. Contratos ─────────────────────────────────────────── */
-
-  // CONFECÇÃO (board Clientes) → status da plataforma
-  function mapStatusContCliente(confeccao) {
-    const s = (confeccao || '').toUpperCase();
-    if (s === 'FINALIZADA')                         return 'Assinado';
-    if (s === 'EM ESPERA' || s === 'EM PROGRESSO')  return 'Em análise';
-    if (s === 'NÃO FOI NECESSÁRIO')                 return 'Cancelado';
-    return 'Pendente';
-  }
-
-  // CONFECÇÃO (board Obra) → status da plataforma
-  function mapStatusContObra(confeccao) {
-    const s = (confeccao || '').toUpperCase();
-    if (s === 'FINALIZADO')                         return 'Assinado';
-    if (s === 'EM ANDAMENTO' || s === 'VALIDAÇÃO')  return 'Em análise';
-    if (s === 'CANCELADO')                          return 'Cancelado';
-    return 'Pendente';
-  }
-
-  async function syncContratos(comiteId, mesRef) {
-    log('Buscando Contratos…', 'wait');
-    const { start, end } = mesRange(mesRef);
-
-    // Substitui os contratos deste comitê
-    DB.forComite('contratos', comiteId).forEach(c => DB.remove('contratos', c.id));
-
-    let nCli = 0, nObra = 0, nPrest = 0;
-
-    // 5a. Contratos para Clientes — filtro: SOLICITAÇÃO (data8) no mês
-    const itensCli = await fetchAllItems(BOARDS.contratosClientes);
-    itensCli.forEach(item => {
-      const dataSol = cv(item, 'data8');
-      if (!inRange(dataSol, start, end)) return;
-      DB.insert('contratos', {
-        comite_id:         comiteId,
-        empreendimento_id: findOrMakeEmpr(cv(item, 'status7')),
-        categoria:         'clientes',
-        tipo:              cv(item, 'status6') || 'Outros',
-        data_solicitacao:  dataSol,
-        status:            mapStatusContCliente(cv(item, 'status01')),
-      });
-      nCli++;
-    });
-
-    // 5b. Obra — Contrato de Prestação de Serviço — filtro: SOLICITAÇÃO (data) no mês
-    const itensObra = await fetchAllItems(BOARDS.contratosObra);
-    itensObra.forEach(item => {
-      const dataSol = cv(item, 'data');
-      if (!inRange(dataSol, start, end)) return;
-      DB.insert('contratos', {
-        comite_id:         comiteId,
-        empreendimento_id: findOrMakeEmpr(cv(item, 'color_mm1a2z53')),
-        categoria:         'obra',
-        tipo:              cv(item, 'status42') || 'Obra - Prest. de Serviços',
-        data_solicitacao:  dataSol,
-        status:            mapStatusContObra(cv(item, 'status82')),
-      });
-      nObra++;
-    });
-
-    // 5c. Prestadores de Serviços (Corretores e ADM) — filtro: SOLICITAÇÃO (data8) no mês.
-    // Mantém a categoria "prestadores" para todos os tipos, incluindo "TERMO DE
-    // CONFISSÃO DE DÍVIDA" — segue o mesmo agrupamento do quadro de Prestadores
-    // de Serviço no Monday, de onde esses itens vêm.
-    const itensPrest = await fetchAllItems(BOARDS.contratosPrestadores);
-    itensPrest.forEach(item => {
-      const dataSol = cv(item, 'data8');
-      if (!inRange(dataSol, start, end)) return;
-      const tipo = cv(item, 'status6') || 'Prestação de Serviços';
-      DB.insert('contratos', {
-        comite_id:         comiteId,
-        empreendimento_id: findOrMakeEmpr(cv(item, 'status7')),
-        categoria:         'prestadores',
-        tipo,
-        data_solicitacao:  dataSol,
-        status:            mapStatusContCliente(cv(item, 'status01')),
-      });
-      nPrest++;
-    });
-
-    // Evolução mensal: histograma de TODOS os contratos dos 3 quadros por mês
-    // (DATA DA SOLICITAÇÃO). Persistido no comitê para o gráfico de tendência.
-    const evolucao = {};
-    const addEvol = (dataSol) => {
-      const ref = (dataSol || '').slice(0, 7);
-      if (/^\d{4}-\d{2}$/.test(ref)) evolucao[ref] = (evolucao[ref] || 0) + 1;
-    };
-    itensCli.forEach(item => addEvol(cv(item, 'data8')));
-    itensObra.forEach(item => addEvol(cv(item, 'data')));
-    itensPrest.forEach(item => addEvol(cv(item, 'data8')));
-    DB.update('comites', comiteId, { contratos_evolucao: evolucao });
-
-    const total = nCli + nObra + nPrest;
-    log(`${total} contrato${total !== 1 ? 's' : ''} importado${total !== 1 ? 's' : ''}` +
-        ` (${nCli} clientes, ${nObra} obra, ${nPrest} prestadores) — mês ${mesRef}`,
-        total > 0 ? 'ok' : 'warn');
-    return total;
-  }
-
   /* ═══════════════════════════════════════════════════════════
      LOG / PROGRESS UI
   ═══════════════════════════════════════════════════════════ */
@@ -774,7 +671,6 @@ const MondaySync = (() => {
     await run('Retomadas',          () => syncRetomadas(comiteId, mesRef));
     await run('Notificações',       () => syncNotificacoes(comiteId, mesRef));
     await run('Carpe Diem',         () => syncCarpedie(comiteId));
-    await run('Contratos',          () => syncContratos(comiteId, mesRef));
 
     log(fail === 0
       ? '🎉 Sincronização concluída com sucesso!'

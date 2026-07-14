@@ -31,7 +31,6 @@ function renderDashboard() {
   if (!cid) { setView('<div class="content"><div class="alert alert-info">ℹ️ Crie um comitê mensal clicando em <strong>+ Mês</strong> na barra lateral.</div></div>'); return; }
 
   const notifs  = DB.forComite('notificacoes', cid);
-  const conts   = DB.forComite('contratos', cid);
   const ret     = DB.forComite('retomadas', cid);
   const dist    = DB.forComite('distratos', cid);
   const proc    = DB.forComite('processos', cid).filter(p => !p.interno);
@@ -91,11 +90,6 @@ function renderDashboard() {
           <div class="kpi-value">${notifs.length}</div>
           <div class="kpi-sub">${notifAnd} em andamento · ${notifRes} resolvidas</div>
         </div>
-        <div class="kpi-card green">
-          <div class="kpi-label">Contratos</div>
-          <div class="kpi-value">${conts.length}</div>
-          <div class="kpi-sub">${conts.filter(c=>c.status==='Assinado').length} assinados</div>
-        </div>
         <div class="kpi-card red">
           <div class="kpi-label">Distratos</div>
           <div class="kpi-value">${dist.length}</div>
@@ -143,10 +137,6 @@ function renderDashboard() {
         <div class="chart-card">
           <div class="chart-title">Notificações por Modelo</div>
           <div class="chart-wrap"><canvas id="ch_notifModelo"></canvas></div>
-        </div>
-        <div class="chart-card">
-          <div class="chart-title">Contratos por Tipo</div>
-          <div class="chart-wrap"><canvas id="ch_contTipo"></canvas></div>
         </div>
         <div class="chart-card">
           <div class="chart-title">Processos por Empreendimento</div>
@@ -199,9 +189,6 @@ function renderDashboard() {
 
     const nm = mapToLabelData(countBy(notifs,'modelo'));
     ChartManager.donut('ch_notifModelo', nm.labels, nm.data);
-
-    const ct = mapToLabelData(countBy(conts,'tipo'));
-    ChartManager.bar('ch_contTipo', ct.labels, [{data: ct.data}]);
 
     const pe = mapToLabelData(countBy(proc.map(p => ({...p, _en: emprName(p.empreendimento_id)})), '_en'));
     ChartManager.donut('ch_procEmpr', pe.labels, pe.data);
@@ -511,176 +498,6 @@ function deleteNotif(id) {
 }
 
 // ============================================================
-// CONTRATOS
-// ============================================================
-const TIPOS_CONT_CLIENTES    = ['Compra e Venda','Locação','Permuta','Financiamento'];
-const TIPOS_CONT_PRESTADORES = ['Prestadores de Serviços'];
-const TIPOS_CONT_OBRA        = ['Obra - Prest. de Serviços'];
-const TIPOS_CONT_OUTROS      = ['Outros'];
-const TIPOS_CONT = [
-  ...TIPOS_CONT_CLIENTES,
-  ...TIPOS_CONT_PRESTADORES,
-  ...TIPOS_CONT_OBRA,
-  ...TIPOS_CONT_OUTROS,
-];
-const STATUS_CONT = ['Em análise','Assinado','Cancelado','Pendente'];
-
-// Selects com optgroup por categoria
-function optsContTipo(sel) {
-  const grupos = [
-    { label: '── Contratos Clientes ──',    tipos: TIPOS_CONT_CLIENTES    },
-    { label: '── Prestadores de Serviços ──', tipos: TIPOS_CONT_PRESTADORES },
-    { label: '── Obra ──',                   tipos: TIPOS_CONT_OBRA        },
-    { label: '── Outros ──',                 tipos: TIPOS_CONT_OUTROS      },
-  ];
-  return grupos.map(g =>
-    `<optgroup label="${esc(g.label)}">` +
-    g.tipos.map(t => `<option value="${esc(t)}" ${t===sel?'selected':''}>${esc(t)}</option>`).join('') +
-    `</optgroup>`
-  ).join('');
-}
-
-// Cat de um tipo (por string)
-function catCont(tipo) {
-  if (TIPOS_CONT_CLIENTES.includes(tipo))    return 'clientes';
-  if (TIPOS_CONT_PRESTADORES.includes(tipo)) return 'prestadores';
-  if (TIPOS_CONT_OBRA.includes(tipo))        return 'obra';
-  return 'outros';
-}
-// Cat de um objeto contrato — respeita campo explícito "categoria" (sincronizado do Monday,
-// já reflete de qual quadro o item vem — inclusive "TERMO DE CONFISSÃO DE DÍVIDA" do quadro
-// de Prestadores, que deve contar como Corretores e ADM, não Clientes)
-function catOfCont(c) {
-  if (c.categoria && ['clientes','prestadores','obra'].includes(c.categoria)) return c.categoria;
-  return catCont(c.tipo || '');
-}
-
-function renderContratos() {
-  const cid    = DB.getActiveComite()?.id;
-  const comite = DB.getActiveComite();
-  if (!cid) { noComiteAlert(); return; }
-  const all = DB.forComite('contratos', cid);
-
-  const tabAtiva = window._contTab || 'todos';
-  const list = tabAtiva === 'todos' ? all : all.filter(c => catOfCont(c) === tabAtiva);
-
-  const tabCounts = {
-    todos:       all.length,
-    clientes:    all.filter(c=>catOfCont(c)==='clientes').length,
-    prestadores: all.filter(c=>catOfCont(c)==='prestadores').length,
-    obra:        all.filter(c=>catOfCont(c)==='obra').length,
-  };
-
-  const tabLabel = { todos:'Todos', clientes:'Contratos Clientes', prestadores:'Corretores e ADM', obra:'Obra' };
-
-  const renderTabBtn = (key) =>
-    `<button class="tab-btn ${tabAtiva===key?'active':''}" onclick="window._contTab='${key}';renderContratos()">
-      ${tabLabel[key]} (${tabCounts[key]})
-    </button>`;
-
-  setView(`
-    <div class="page-header">
-      <div><div class="page-title">📄 Contratos</div><div class="page-sub">${esc(comite.label)}</div></div>
-      <div class="page-actions"><button class="btn btn-primary" onclick="openContModal()">+ Novo Contrato</button></div>
-    </div>
-    <div class="content">
-      <div class="tabs">
-        ${renderTabBtn('todos')}
-        ${renderTabBtn('clientes')}
-        ${renderTabBtn('prestadores')}
-        ${renderTabBtn('obra')}
-      </div>
-
-      <div class="kpi-grid">
-        <div class="kpi-card green"><div class="kpi-label">Total</div><div class="kpi-value">${all.length}</div></div>
-        <div class="kpi-card"><div class="kpi-label">Contratos Clientes</div><div class="kpi-value">${tabCounts.clientes}</div></div>
-        <div class="kpi-card purple"><div class="kpi-label">Corretores e ADM</div><div class="kpi-value">${tabCounts.prestadores}</div></div>
-        <div class="kpi-card orange"><div class="kpi-label">Obra</div><div class="kpi-value">${tabCounts.obra}</div></div>
-      </div>
-      <div class="charts-grid">
-        <div class="chart-card" style="grid-column:1/-1"><div class="chart-title">Por Tipo</div><div class="chart-wrap" style="height:360px"><canvas id="ch_ct2"></canvas></div></div>
-        <div class="chart-card" style="grid-column:1/-1"><div class="chart-title">Por Empreendimento</div><div class="chart-wrap" style="height:320px"><canvas id="ch_ce2"></canvas></div></div>
-        <div class="chart-card" style="grid-column:1/-1"><div class="chart-title">Evolução do Total de Contratos — ${(comite.ref||'').slice(0,4)} (${mesesDoAno(comite.ref).rangeLabel})</div><div class="chart-wrap" style="height:280px"><canvas id="ch_cmes"></canvas></div></div>
-      </div>
-      <div class="table-wrap">
-        <table><thead><tr>
-          <th>Empreendimento</th><th>Categoria</th><th>Tipo</th><th>Data Solicitação</th><th>Status</th><th>Ações</th>
-        </tr></thead><tbody>
-        ${list.map(c => {
-          const cat = catOfCont(c);
-          const catColors = {clientes:'blue', prestadores:'purple', obra:'orange', outros:'gray'};
-          const catNomes  = {clientes:'Clientes', prestadores:'Prestadores', obra:'Obra', outros:'Outros'};
-          return `<tr>
-            <td><span class="empr-chip">${esc(emprName(c.empreendimento_id))}</span></td>
-            <td>${badge(catNomes[cat], catColors[cat])}</td>
-            <td><small>${esc(c.tipo)}</small></td>
-            <td>${fmtDate(c.data_solicitacao)}</td>
-            <td>${badge(c.status)}</td>
-            <td>
-              <button class="btn btn-ghost btn-sm" onclick="openContModal('${c.id}')">✏️</button>
-              <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteCont('${c.id}')">🗑️</button>
-            </td>
-          </tr>`;
-        }).join('') || '<tr class="empty-row"><td colspan="6">Nenhum contrato nesta categoria</td></tr>'}
-        </tbody></table>
-      </div>
-    </div>
-  `);
-  setTimeout(() => {
-    const ctSorted = Object.entries(countBy(list,'tipo')).sort((a,b) => a[1]-b[1]);
-    ChartManager.bar('ch_ct2', ctSorted.map(e=>e[0]), [{data: ctSorted.map(e=>e[1])}],
-      { horizontal: true, dataLabels: true });
-    const ceSorted = Object.entries(countBy(list.map(c=>({...c,_en:emprName(c.empreendimento_id)})),'_en'))
-      .sort((a,b) => a[1]-b[1]);
-    ChartManager.bar('ch_ce2', ceSorted.map(e=>e[0]),
-      [{data: ceSorted.map(e=>e[1]), color: '#16A34A'}],
-      { horizontal: true, dataLabels: true });
-
-    // Evolução mensal — histograma de TODOS os contratos (comite.contratos_evolucao,
-    // gravado no sync), de Janeiro até o mês do comitê ativo.
-    const cevo = comite.contratos_evolucao || {};
-    const { meses: mesesC, labels: mesLabelsC } = mesesDoAno(comite.ref);
-    ChartManager.line('ch_cmes', mesLabelsC,
-      [{label:'Contratos', data: mesesC.map(m => cevo[m] || 0)}], { dataLabels: true });
-  }, 50);
-}
-
-function openContModal(id) {
-  const c = id ? DB.getById('contratos', id) : null;
-  const cid = DB.getActiveComite()?.id;
-  openModal(c ? 'Editar Contrato' : 'Novo Contrato',
-    `<div class="form-grid">
-      <div class="form-group"><label class="field-label">Empreendimento *</label><select id="co_empr">${emprOptions(c?.empreendimento_id)}</select></div>
-      <div class="form-group"><label class="field-label">Tipo *</label>
-        <select id="co_tipo">${optsContTipo(c?.tipo)}</select>
-      </div>
-      <div class="form-group"><label class="field-label">Data Solicitação</label><input type="date" id="co_data" value="${c?.data_solicitacao||isoToday()}" /></div>
-      <div class="form-group"><label class="field-label">Status</label><select id="co_status">${opts(STATUS_CONT,c?.status||'Em análise')}</select></div>
-    </div>`,
-    `<button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
-     <button class="btn btn-primary" onclick="saveCont('${id||''}','${cid}')">Salvar</button>`
-  );
-}
-
-function saveCont(id, cid) {
-  const d = {
-    empreendimento_id: document.getElementById('co_empr').value,
-    tipo: document.getElementById('co_tipo').value,
-    data_solicitacao: document.getElementById('co_data').value,
-    status: document.getElementById('co_status').value,
-  };
-  if (!d.empreendimento_id||!d.tipo) { toast('Campos obrigatórios ausentes','error'); return; }
-  if (id) { DB.update('contratos',id,d); toast('Contrato atualizado!','success'); }
-  else { DB.insert('contratos',{comite_id:cid,...d}); toast('Contrato adicionado!','success'); }
-  closeModal(); renderContratos();
-}
-function deleteCont(id) {
-  confirmDelete('Excluir este contrato?', `()=>{ DB.remove('contratos','${id}'); toast('Excluído!'); renderContratos(); }`);
-}
-
-// ============================================================
-
-
 // DISTRATOS
 // ============================================================
 const MOTIVOS_DIST = ['Dificuldade Financeira','Insatisfação','Falha de Serviço','Outros'];

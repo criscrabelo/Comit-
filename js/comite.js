@@ -8,7 +8,6 @@ function renderComite() {
   // Fetch all data for this comite
   const fatos      = DB.forComite('fatos', cid).sort((a,b)=>a.data.localeCompare(b.data));
   const notifs     = DB.forComite('notificacoes', cid);
-  const conts      = DB.forComite('contratos', cid);
   const rets       = DB.forComite('retomadas', cid);
   const dists      = DB.forComite('distratos', cid);
   const procsExt   = DB.forComite('processos', cid).filter(p=>!p.interno);
@@ -103,18 +102,6 @@ function renderComite() {
         {id:'ch_c_notif_mes',   label:`Notificações por Mês — ${(comite.ref||'').slice(0,4)} (${mesesDoAno(comite.ref).rangeLabel})`, full:true},
       ], notifEstagioHtml)}
 
-      <!-- SLIDE 6: CONTRATOS -->
-      ${buildKpiSlide('Contratos', comite.label, [
-        {label:'Total',                  value: conts.length, color:'green'},
-        {label:'Contratos Clientes',     value: conts.filter(c=>catOfCont(c)==='clientes').length},
-        {label:'Corretores e ADM',value: conts.filter(c=>catOfCont(c)==='prestadores').length, color:'purple'},
-        {label:'Obra',                   value: conts.filter(c=>catOfCont(c)==='obra').length, color:'orange'},
-      ], [
-        {id:'ch_c_cont_tipo', label:'Por Tipo', full:true},
-        {id:'ch_c_cont_empr', label:'Por Empreendimento', full:true},
-        {id:'ch_c_cont_mes',  label:`Evolução do Total de Contratos — ${(comite.ref||'').slice(0,4)} (${mesesDoAno(comite.ref).rangeLabel})`, full:true},
-      ])}
-
       <!-- SLIDE 7: RETOMADAS -->
       ${buildKpiSlide('Retomadas', comite.label, [
         {label:'Total Retomadas',       value: rets.length, color:'green'},
@@ -177,7 +164,7 @@ function renderComite() {
 
     <!-- VERSÃO PRINT -->
     <div id="printSlides" style="display:none;">
-      ${buildPrintSlides(comite, fatosByEmpr, notifs, conts, rets, dists, procsExt, procsInt, riscos, regs, geralFatos)}
+      ${buildPrintSlides(comite, fatosByEmpr, notifs, rets, dists, procsExt, procsInt, riscos, regs, geralFatos)}
     </div>
   `);
 
@@ -193,15 +180,6 @@ function renderComite() {
     const nevo = comite.notif_evolucao || {};
     const { meses: mesesN, labels: mesLabelsN } = mesesDoAno(comite.ref);
     ChartManager.bar('ch_c_notif_mes', mesLabelsN, [{data: mesesN.map(m=>nevo[m]||0)}]);
-
-    // ── Contratos ──
-    const ctS = Object.entries(countBy(conts,'tipo')).sort((a,b)=>a[1]-b[1]);
-    ChartManager.bar('ch_c_cont_tipo', ctS.map(e=>e[0]), [{data:ctS.map(e=>e[1])}], {horizontal:true, dataLabels:true});
-    const ceS = Object.entries(countBy(conts.map(c=>({_en:emprName(c.empreendimento_id)})),'_en')).sort((a,b)=>a[1]-b[1]);
-    ChartManager.bar('ch_c_cont_empr', ceS.map(e=>e[0]), [{data:ceS.map(e=>e[1]), color:'#16A34A'}], {horizontal:true, dataLabels:true});
-    const cevo = comite.contratos_evolucao || {};
-    const { meses: mesesC, labels: mesLabelsC } = mesesDoAno(comite.ref);
-    ChartManager.line('ch_c_cont_mes', mesLabelsC, [{label:'Contratos', data: mesesC.map(m=>cevo[m]||0)}], {dataLabels:true});
 
     // ── Retomadas ──
     const rm = mapToLabelData(countBy(rets,'motivo'));
@@ -485,7 +463,7 @@ function buildRiscoSlides(r) {
 }
 
 // ---- Print slides (hidden, for @media print) ----
-function buildPrintSlides(comite, fatosByEmpr, notifs, conts, rets, dists, procsExt, procsInt, riscos, regs, geralFatos) {
+function buildPrintSlides(comite, fatosByEmpr, notifs, rets, dists, procsExt, procsInt, riscos, regs, geralFatos) {
   const eids = Object.keys(fatosByEmpr);
   const fatoGroups = [];
   for (let i = 0; i < eids.length; i+=3) fatoGroups.push(eids.slice(i,i+3));
@@ -547,14 +525,6 @@ function buildPrintSlides(comite, fatosByEmpr, notifs, conts, rets, dists, procs
     {l:'Resolvidas',            v:notifRes, c:'green'},
     {l:'Tempo Médio Resolução', v:tMedNot!==null?tMedNot+' dias':'—'},
   ], countBy(notifs,'grupo'), countBy(notifs,'modelo'));
-
-  // CONTRATOS
-  out += printKpiSlide('CONTRATOS', comite.label, [
-    {l:'Total de Contratos',    v:conts.length},
-    {l:'Empreendimentos',       v:new Set(conts.map(c=>c.empreendimento_id)).size, c:''},
-    {l:'Assinados',             v:conts.filter(c=>c.status==='Assinado').length, c:'green'},
-    {l:'Em Análise',            v:conts.filter(c=>c.status==='Em análise').length, c:''},
-  ], countBy(conts,'tipo'), countBy(conts.map(c=>({...c,_en:emprName(c.empreendimento_id)})),'_en'));
 
   // RETOMADAS
   out += printKpiSlide('RETOMADAS', comite.label, [
