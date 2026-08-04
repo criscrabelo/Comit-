@@ -593,3 +593,197 @@ describe('exemplos sinteticos da entrega', () => {
     expect(r.explicacao).toMatch(/85 dia|dia\(s\) de diferenca|datas diferentes/i);
   });
 });
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CORREÇÃO: escopo do CPF/CNPJ
+//
+// Documento validado identifica a PESSOA. Não identifica sozinho a exposição
+// contratual, a unidade, a parcela, o processo nem o saldo — a mesma pessoa
+// costuma ter vários.
+// ═══════════════════════════════════════════════════════════════════════════
+describe('escopo do CPF/CNPJ: identifica a pessoa, nao a exposicao', () => {
+  it('para CLIENTE, documento validado gera vinculo automatico', () => {
+    const r = relacionar(
+      monday({ cpfCnpj: CPF_A, nome: 'Maria Aparecida Silva' }),
+      [sienge({ cpfCnpj: CPF_A, nome: 'MARIA APARECIDA SILVA' })],
+      { tipoEntidade: 'cliente' },
+    );
+
+    expect(r.situacao).toBe('automatico');
+    expect(r.avaliacao.confianca).toBe('alta');
+    expect(r.categoria).toBe('identidade_cliente');
+    expect(r.avaliacao.limitadoPorEscopo).toBe(false);
+  });
+
+  it('para CONTRATO, documento sozinho NAO gera vinculo automatico', () => {
+    const r = relacionar(
+      monday({ cpfCnpj: CPF_A, nome: 'Maria Aparecida Silva' }),
+      [sienge({ cpfCnpj: CPF_A, nome: 'MARIA APARECIDA SILVA' })],
+      { tipoEntidade: 'contrato' },
+    );
+
+    // O score continua alto, mas a confianca e limitada por escopo.
+    expect(r.avaliacao.score).toBeGreaterThanOrEqual(60);
+    expect(r.avaliacao.confianca).toBe('media');
+    expect(r.situacao).toBe('sugerido');
+    expect(r.avaliacao.limitadoPorEscopo).toBe(true);
+    expect(r.categoria).toBe('exposicao_contrato');
+  });
+
+  it('para PARCELA, TITULO, SALDO, PROCESSO e NOTIFICACAO tambem nao basta', () => {
+    for (const tipo of ['parcela', 'titulo', 'saldo', 'processo', 'notificacao'] as const) {
+      const r = relacionar(
+        monday({ cpfCnpj: CPF_A }),
+        [sienge({ cpfCnpj: CPF_A })],
+        { tipoEntidade: tipo },
+      );
+      expect(r.situacao, tipo).toBe('sugerido');
+      expect(r.avaliacao.limitadoPorEscopo, tipo).toBe(true);
+    }
+  });
+
+  it('documento MAIS contrato volta a permitir vinculo automatico de exposicao', () => {
+    const r = relacionar(
+      monday({ cpfCnpj: CPF_A, contrato: 'CT-2024/001' }),
+      [sienge({ cpfCnpj: CPF_A, contrato: 'CT2024001' })],
+      { tipoEntidade: 'contrato' },
+    );
+
+    expect(r.situacao).toBe('automatico');
+    expect(r.avaliacao.confianca).toBe('alta');
+    expect(r.avaliacao.limitadoPorEscopo).toBe(false);
+  });
+
+  it('documento MAIS empreendimento e unidade tambem basta', () => {
+    const r = relacionar(
+      monday({ cpfCnpj: CPF_A, empreendimentoId: 'e-1', unidade: '1105B' }),
+      [sienge({ cpfCnpj: CPF_A, empreendimentoId: 'e-1', unidade: '1105b' })],
+      { tipoEntidade: 'unidade' },
+    );
+
+    expect(r.situacao).toBe('automatico');
+    expect(r.avaliacao.limitadoPorEscopo).toBe(false);
+  });
+
+  it('as quatro categorias sao preservadas separadamente', () => {
+    const categorias = (['cliente', 'contrato', 'processo', 'saldo'] as const).map(
+      (tipo) =>
+        relacionar(monday({ cpfCnpj: CPF_A }), [sienge({ cpfCnpj: CPF_A })], {
+          tipoEntidade: tipo,
+        }).categoria,
+    );
+
+    expect(categorias).toEqual([
+      'identidade_cliente',
+      'exposicao_contrato',
+      'evento_juridico',
+      'posicao_financeira',
+    ]);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Os seis casos exigidos na correcao
+// ═══════════════════════════════════════════════════════════════════════════
+describe('casos exigidos na correcao de escopo', () => {
+  it('1. um CPF com DOIS CONTRATOS → ambiguo, nao automatico', () => {
+    const r = relacionar(
+      monday({ idOrigem: 'item-7001', cpfCnpj: CPF_A, nome: 'Maria Aparecida Silva' }),
+      [sienge({ idOrigem: 'contrato-A', cpfCnpj: CPF_A })],
+      { tipoEntidade: 'contrato', contratosDoDocumento: 2 },
+    );
+
+    expect(r.situacao).toBe('ambiguo');
+    expect(r.escolhido).toBeNull();
+    expect(r.exigeInconsistencia).toBe(true);
+    expect(r.bloqueios.some((b) => /2 contratos/.test(b.motivo))).toBe(true);
+  });
+
+  it('2. um CPF com DUAS UNIDADES no mesmo empreendimento → ambiguo', () => {
+    const r = relacionar(
+      monday({ idOrigem: 'item-7002', cpfCnpj: CPF_A, empreendimentoId: 'e-verano' }),
+      [sienge({ idOrigem: 'unidade-1105B', cpfCnpj: CPF_A, empreendimentoId: 'e-verano' })],
+      { tipoEntidade: 'unidade', unidadesDoDocumento: 2 },
+    );
+
+    expect(r.situacao).toBe('ambiguo');
+    expect(r.escolhido).toBeNull();
+    expect(r.bloqueios.some((b) => /2 unidades/.test(b.motivo))).toBe(true);
+  });
+
+  it('3. um CPF com unidades em EMPREENDIMENTOS DIFERENTES → ambiguo', () => {
+    const r = relacionar(
+      monday({ idOrigem: 'item-7003', cpfCnpj: CPF_A }),
+      [
+        sienge({ idOrigem: 'un-verano', cpfCnpj: CPF_A, empreendimentoId: 'e-verano', unidade: '1105B' }),
+        sienge({ idOrigem: 'un-aurora', cpfCnpj: CPF_A, empreendimentoId: 'e-aurora', unidade: '302A' }),
+      ],
+      { tipoEntidade: 'unidade' },
+    );
+
+    expect(r.situacao).toBe('ambiguo');
+    expect(r.candidatos).toHaveLength(2);
+    expect(r.escolhido).toBeNull();
+    expect(r.exigeInconsistencia).toBe(true);
+  });
+
+  it('4. CPF IGUAL mas CONTRATO DIVERGENTE → nao vincula', () => {
+    const r = relacionar(
+      monday({ idOrigem: 'item-7004', cpfCnpj: CPF_A, contrato: 'CT-2024/001' }),
+      [sienge({ idOrigem: 'titulo-9', cpfCnpj: CPF_A, contrato: 'CT-2024/999' })],
+      { tipoEntidade: 'contrato' },
+    );
+
+    expect(r.avaliacao.temConflito).toBe(true);
+    expect(r.avaliacao.confianca).toBe('baixa');
+    expect(r.situacao).toBe('recusado');
+    expect(r.escolhido).toBeNull();
+  });
+
+  it('5. cliente vinculado corretamente SEM vinculo automatico da exposicao', () => {
+    const registro = monday({ idOrigem: 'item-7005', cpfCnpj: CPF_A, nome: 'Maria Aparecida Silva' });
+    const candidato = sienge({ idOrigem: 'cli-77', cpfCnpj: CPF_A, nome: 'MARIA APARECIDA SILVA' });
+
+    // A identidade do cliente e estabelecida com confianca alta.
+    const identidade = relacionar(registro, [candidato], { tipoEntidade: 'cliente' });
+    expect(identidade.situacao).toBe('automatico');
+    expect(identidade.categoria).toBe('identidade_cliente');
+
+    // A exposicao contratual, com os MESMOS dados, nao e.
+    const exposicao = relacionar(registro, [candidato], { tipoEntidade: 'contrato' });
+    expect(exposicao.situacao).toBe('sugerido');
+    expect(exposicao.categoria).toBe('exposicao_contrato');
+    expect(exposicao.avaliacao.limitadoPorEscopo).toBe(true);
+
+    // Sao fatos independentes: um vinculado, outro pendente de revisao.
+    expect(identidade.categoria).not.toBe(exposicao.categoria);
+  });
+
+  it('6. selecao humana de um contrato entre varios candidatos', () => {
+    const candidatos = [
+      sienge({ idOrigem: 'contrato-A', cpfCnpj: CPF_A, contrato: 'CT-A', unidade: '1105B' }),
+      sienge({ idOrigem: 'contrato-B', cpfCnpj: CPF_A, contrato: 'CT-B', unidade: '1106A' }),
+      sienge({ idOrigem: 'contrato-C', cpfCnpj: CPF_A, contrato: 'CT-C', unidade: '2201C' }),
+    ];
+
+    const r = relacionar(
+      monday({ idOrigem: 'item-7006', cpfCnpj: CPF_A }),
+      candidatos,
+      { tipoEntidade: 'contrato' },
+    );
+
+    // O motor nao escolhe.
+    expect(r.situacao).toBe('ambiguo');
+    expect(r.escolhido).toBeNull();
+    expect(r.exigeInconsistencia).toBe(true);
+
+    // Mas preserva TODOS os candidatos, com o identificador de origem de cada
+    // um, para que a pessoa possa escolher com base no material completo.
+    expect(r.candidatos.map((c) => c.idOrigem)).toEqual([
+      'contrato-A',
+      'contrato-B',
+      'contrato-C',
+    ]);
+    expect(r.candidatos.map((c) => c.contrato)).toEqual(['CT-A', 'CT-B', 'CT-C']);
+  });
+});

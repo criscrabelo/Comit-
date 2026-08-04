@@ -47,6 +47,60 @@ export const PESOS = {
 
 export type NomeCriterio = keyof typeof PESOS;
 
+/**
+ * Tipo da entidade que está sendo relacionada.
+ *
+ * A distinção existe porque **CPF/CNPJ identifica a pessoa, não a exposição**.
+ * Um documento validado prova que os dois registros são da mesma pessoa; não
+ * prova que se referem ao mesmo contrato, unidade, parcela ou processo — a
+ * mesma pessoa costuma ter vários.
+ */
+export type TipoEntidade =
+  | 'cliente'
+  | 'contrato'
+  | 'unidade'
+  | 'parcela'
+  | 'titulo'
+  | 'saldo'
+  | 'processo'
+  | 'notificacao';
+
+/**
+ * Categorias de vínculo, preservadas separadamente.
+ *
+ * Um cliente pode estar corretamente identificado sem que nenhuma das suas
+ * exposições esteja vinculada. São fatos independentes e ficam registrados
+ * como tal.
+ */
+export type CategoriaVinculo =
+  | 'identidade_cliente'
+  | 'exposicao_contrato'
+  | 'evento_juridico'
+  | 'posicao_financeira';
+
+export const CATEGORIA_POR_ENTIDADE: Record<TipoEntidade, CategoriaVinculo> = {
+  cliente: 'identidade_cliente',
+  contrato: 'exposicao_contrato',
+  unidade: 'exposicao_contrato',
+  parcela: 'posicao_financeira',
+  titulo: 'posicao_financeira',
+  saldo: 'posicao_financeira',
+  processo: 'evento_juridico',
+  notificacao: 'evento_juridico',
+};
+
+/**
+ * Critérios que identificam a EXPOSIÇÃO, não a pessoa.
+ *
+ * Para qualquer entidade que não seja o próprio cliente, é preciso ao menos um
+ * destes para haver vínculo automático. Documento sozinho não basta.
+ */
+const CRITERIOS_DE_EXPOSICAO: ReadonlyArray<string> = [
+  'contrato',
+  'unidade',
+  'id_relacionado',
+];
+
 /** Limiares de confiança. */
 export const LIMIARES = {
   /** ≥ 60 → vínculo automático permitido. Só o documento válido alcança. */
@@ -75,6 +129,13 @@ export interface AvaliacaoConfianca {
   conflitantes: Criterio[];
   /** true quando algum critério conflitante impede vínculo automático. */
   temConflito: boolean;
+  tipoEntidade: TipoEntidade;
+  categoria: CategoriaVinculo;
+  /**
+   * true quando a confiança foi rebaixada de alta para média por faltar
+   * critério de exposição — o documento identificou a pessoa, não o contrato.
+   */
+  limitadoPorEscopo: boolean;
   versaoRegra: string;
 }
 
@@ -104,6 +165,12 @@ const CRITERIO_PARA_REGRA: Record<string, RegraVinculo> = {
 export function avaliarConfianca(
   atendidos: Criterio[],
   conflitantes: Criterio[],
+  /**
+   * Sem tipo informado, assume `cliente` — o caso em que o documento basta.
+   * Quem relaciona exposição, evento ou posição financeira precisa informar,
+   * e o motor sempre informa.
+   */
+  tipoEntidade: TipoEntidade = 'cliente',
 ): AvaliacaoConfianca {
   const score = Math.min(
     100,
@@ -137,6 +204,24 @@ export function avaliarConfianca(
     sustentacoes.length > 0 && sustentacoes.every((c) => c.nome === 'nome_completo');
   if (somenteNome) confianca = 'baixa';
 
+  // ── Escopo do documento ──────────────────────────────────────────────────
+  //
+  // CPF/CNPJ validado prova que é a MESMA PESSOA. Não prova que é a mesma
+  // exposição: a mesma pessoa costuma ter vários contratos, unidades, parcelas
+  // e processos. Para qualquer entidade que não seja o próprio cliente, exige-se
+  // também um critério de exposição — contrato, unidade ou identificador
+  // relacionado. Sem isso o vínculo no máximo é SUGERIDO, nunca automático.
+  const categoria = CATEGORIA_POR_ENTIDADE[tipoEntidade];
+  const temCriterioDeExposicao = sustentacoes.some((c) =>
+    CRITERIOS_DE_EXPOSICAO.includes(String(c.nome)),
+  );
+  let limitadoPorEscopo = false;
+
+  if (categoria !== 'identidade_cliente' && confianca === 'alta' && !temCriterioDeExposicao) {
+    confianca = 'media';
+    limitadoPorEscopo = true;
+  }
+
   return {
     score,
     confianca,
@@ -144,6 +229,9 @@ export function avaliarConfianca(
     atendidos,
     conflitantes,
     temConflito,
+    tipoEntidade,
+    categoria,
+    limitadoPorEscopo,
     versaoRegra: VERSAO_REGRA_VINCULO,
   };
 }
@@ -177,8 +265,19 @@ export function documentarCriterios() {
       ambiguo: 'gerar inconsistência obrigatória, sem escolher',
     },
     pesos: PESOS,
+    escopo_do_documento: {
+      regra:
+        'CPF/CNPJ validado identifica a PESSOA, não a exposição. Para cliente, basta. ' +
+        'Para contrato, unidade, parcela, título, saldo, processo e notificação, exige-se ' +
+        'também contrato, empreendimento+unidade ou identificador relacionado.',
+      sem_criterio_de_exposicao: 'confiança limitada a média (sugerido), nunca automático',
+      criterios_de_exposicao: CRITERIOS_DE_EXPOSICAO,
+      categorias: CATEGORIA_POR_ENTIDADE,
+    },
     observacoes: [
       'Documento só pontua se validado por dígito verificador.',
+      'Documento sozinho não vincula exposição, apenas identidade do cliente.',
+      'CPF com mais de um contrato ou unidade candidata é ambíguo, não automático.',
       'Nome exige dois ou mais termos: primeiro nome nunca vincula.',
       'Data compatível reforça, mas não sustenta vínculo sozinha.',
       'Conflito rebaixa para baixa independentemente do score.',

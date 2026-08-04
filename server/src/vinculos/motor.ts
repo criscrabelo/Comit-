@@ -26,10 +26,13 @@ import { avaliarDocumento } from '../dominio/documento.js';
 import { normalizarNome, normalizarContrato } from '../integracoes/monday/transformacao.js';
 import {
   avaliarConfianca,
+  CATEGORIA_POR_ENTIDADE,
   PESOS,
   situacaoPorConfianca,
   type AvaliacaoConfianca,
+  type CategoriaVinculo,
   type Criterio,
+  type TipoEntidade,
 } from './criterios.js';
 import {
   bloqueiosDeConjunto,
@@ -61,6 +64,8 @@ export interface ResultadoVinculo {
   chaveUsada: string | null;
   /** true quando exige inconsistência obrigatória. */
   exigeInconsistencia: boolean;
+  /** Categoria preservada separadamente: identidade, exposição, evento ou posição. */
+  categoria: CategoriaVinculo;
 }
 
 /**
@@ -227,10 +232,24 @@ function descreverChave(a: LadoRegistro, atendidos: Criterio[]): string | null {
 }
 
 export interface OpcoesRelacionamento {
+  /**
+   * O que está sendo relacionado. Determina se o documento basta.
+   * Sem informar, assume `cliente` — o único caso em que basta.
+   */
+  tipoEntidade?: TipoEntidade;
   /** Quantos contratos foram encontrados como candidatos. */
   contratosCandidatos?: number;
   /** Quantos clientes distintos o contrato aponta. */
   clientesPorContrato?: number;
+  /**
+   * Quantos contratos o documento possui na outra fonte.
+   *
+   * Mais de um torna o vínculo de exposição AMBÍGUO: o documento não distingue
+   * qual contrato é o correspondente.
+   */
+  contratosDoDocumento?: number;
+  /** Quantas unidades o documento possui. Mesma lógica. */
+  unidadesDoDocumento?: number;
 }
 
 /**
@@ -245,10 +264,13 @@ export function relacionar(
   opcoes: OpcoesRelacionamento = {},
 ): ResultadoVinculo {
   // ── Sem candidato: nada a decidir ────────────────────────────────────────
+  const tipoEntidade: TipoEntidade = opcoes.tipoEntidade ?? 'cliente';
+  const categoria = CATEGORIA_POR_ENTIDADE[tipoEntidade];
+
   if (candidatos.length === 0) {
     return {
       situacao: 'recusado',
-      avaliacao: avaliarConfianca([], []),
+      avaliacao: avaliarConfianca([], [], tipoEntidade),
       bloqueios: [
         {
           codigo: 'identificadores_minimos_ausentes',
@@ -259,33 +281,59 @@ export function relacionar(
       escolhido: null,
       chaveUsada: null,
       exigeInconsistencia: false,
+      categoria,
     };
   }
 
   // ── 1. Ambiguidade primeiro: é propriedade do conjunto ───────────────────
   const deConjunto = bloqueiosDeConjunto(candidatos, opcoes);
 
-  if (candidatos.length > 1) {
+  // Documento com mais de um contrato ou unidade: o documento identifica a
+  // pessoa, mas NÃO distingue qual exposição corresponde. Isso é ambiguidade,
+  // não vínculo fraco — e só se aplica a entidades de exposição, evento e
+  // posição. Para o próprio cliente, ter vários contratos é normal e irrelevante.
+  const documentoNaoDistingue =
+    categoria !== 'identidade_cliente' &&
+    ((opcoes.contratosDoDocumento ?? 0) > 1 || (opcoes.unidadesDoDocumento ?? 0) > 1);
+
+  if (candidatos.length > 1 || documentoNaoDistingue) {
     // Avalia cada candidato para a fila de revisão saber o que estava em jogo,
     // mas NÃO elege nenhum.
     const avaliacoes = candidatos.map((c) => {
       const { atendidos, conflitantes } = apurarCriterios(registro, c);
-      return avaliarConfianca(atendidos, conflitantes);
+      return avaliarConfianca(atendidos, conflitantes, tipoEntidade);
     });
 
     // A avaliação registrada é a do melhor candidato — para dimensionar o caso,
     // não para escolhê-lo.
     const melhor = avaliacoes.reduce((a, b) => (b.score > a.score ? b : a));
 
+    const bloqueiosAmbiguidade = [...deConjunto];
+    if (documentoNaoDistingue) {
+      const quantos = Math.max(
+        opcoes.contratosDoDocumento ?? 0,
+        opcoes.unidadesDoDocumento ?? 0,
+      );
+      const oQue = (opcoes.contratosDoDocumento ?? 0) > 1 ? 'contratos' : 'unidades';
+      bloqueiosAmbiguidade.push({
+        codigo: 'multiplas_correspondencias',
+        motivo:
+          `O documento possui ${quantos} ${oQue}. Ele identifica a pessoa, mas nao distingue ` +
+          `qual ${oQue === 'contratos' ? 'contrato' : 'unidade'} corresponde a este ${tipoEntidade}. ` +
+          'Encaminhado para escolha humana.',
+      });
+    }
+
     return {
       situacao: 'ambiguo',
       avaliacao: { ...melhor, confianca: 'baixa' },
-      bloqueios: deConjunto,
+      bloqueios: bloqueiosAmbiguidade,
       candidatos,
       escolhido: null,
       chaveUsada: null,
       // Ambiguidade sempre gera inconsistência: é obrigatório.
       exigeInconsistencia: true,
+      categoria,
     };
   }
 
@@ -306,7 +354,7 @@ export function relacionar(
 
     return {
       situacao: 'bloqueado',
-      avaliacao: avaliarConfianca(atendidos, [...conflitantes, ...conflitosDeBloqueio]),
+      avaliacao: avaliarConfianca(atendidos, [...conflitantes, ...conflitosDeBloqueio], tipoEntidade),
       bloqueios: todosBloqueios,
       candidatos,
       escolhido: null,
@@ -317,11 +365,12 @@ export function relacionar(
       exigeInconsistencia: todosBloqueios.some(
         (b) => b.codigo !== 'identificadores_minimos_ausentes',
       ),
+      categoria,
     };
   }
 
   // ── 3. Confiança ─────────────────────────────────────────────────────────
-  const avaliacao = avaliarConfianca(atendidos, conflitantes);
+  const avaliacao = avaliarConfianca(atendidos, conflitantes, tipoEntidade);
   const situacao = situacaoPorConfianca(avaliacao.confianca);
 
   return {
@@ -334,6 +383,7 @@ export function relacionar(
     escolhido: situacao === 'automatico' ? candidato : situacao === 'sugerido' ? candidato : null,
     chaveUsada: descreverChave(registro, atendidos),
     exigeInconsistencia: false,
+    categoria,
   };
 }
 

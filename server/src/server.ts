@@ -19,8 +19,21 @@ async function principal(): Promise<void> {
   if (!config.monday.habilitado) {
     logger.warn('MONDAY_TOKEN ausente — integracao com o Monday desligada.');
   }
+  // Recarrega as confirmacoes de endpoint gravadas no banco. Sem isto, um
+  // reinicio destravaria endpoints ja confirmados ou deixaria a memoria do
+  // processo divergir do banco.
+  const { carregarHomologacao } = await import('./integracoes/sienge/rotas.js');
+  const confirmados = await carregarHomologacao();
+
   if (!config.sienge.habilitado) {
-    logger.info('Conector Sienge desligado (SIENGE_HABILITADO=false), como previsto para a Fase 1.');
+    logger.info(
+      { endpoints_confirmados: confirmados },
+      'Conector Sienge desligado: endpoints ainda nao confirmados no ambiente da Coevo.',
+    );
+  } else if (confirmados === 0) {
+    logger.warn(
+      'SIENGE_HABILITADO=true mas nenhum endpoint confirmado. A ingestao continua travada.',
+    );
   }
 
   const app = await criarApp();
