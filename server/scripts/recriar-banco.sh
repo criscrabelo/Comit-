@@ -18,8 +18,11 @@ RAIZ="$(cd "$(dirname "$0")/.." && pwd)"
 executar() { psql -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" "$@"; }
 
 echo "→ recriando $PGDATABASE em $PGHOST:$PGPORT"
-executar -d postgres -q -c "DROP DATABASE IF EXISTS $PGDATABASE;"
-executar -d postgres -q -c "CREATE DATABASE $PGDATABASE;"
+# WITH FORCE encerra as conexoes abertas (PostgreSQL 13+). Sem isso, um servidor
+# de desenvolvimento conectado faz o DROP falhar — e, se a saida estiver
+# redirecionada, a falha passa despercebida e os testes rodam sobre dados velhos.
+executar -d postgres -v ON_ERROR_STOP=1 -q -c "DROP DATABASE IF EXISTS $PGDATABASE WITH (FORCE);"
+executar -d postgres -v ON_ERROR_STOP=1 -q -c "CREATE DATABASE $PGDATABASE;"
 
 for arquivo in "$RAIZ"/migrations/*.sql; do
   nome="$(basename "$arquivo")"
