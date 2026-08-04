@@ -54,19 +54,23 @@ const env = bruto.data;
 
 const origens = paraLista(env.CORS_ORIGINS);
 
-// CORS aberto e uma das falhas do servidor atual (server.js:84). Em qualquer
-// ambiente que nao seja development, "*" e recusado explicitamente.
-if (env.NODE_ENV !== 'development') {
-  if (origens.length === 0) {
-    throw new Error(
-      'CORS_ORIGINS e obrigatoria fora de development: liste as origens permitidas.',
-    );
-  }
-  if (origens.includes('*')) {
-    throw new Error(
-      'CORS_ORIGINS nao pode conter "*" fora de development. Liste as origens explicitamente.',
-    );
-  }
+// CORS aberto e uma das falhas do servidor atual (server.js:84).
+//
+// Curinga e recusado em qualquer ambiente que nao seja development — inclusive
+// em teste, para que ninguem passe a depender dele.
+if (env.NODE_ENV !== 'development' && origens.includes('*')) {
+  throw new Error(
+    'CORS_ORIGINS nao pode conter "*" fora de development. Liste as origens explicitamente.',
+  );
+}
+
+// A lista explicita e obrigatoria em producao. Em teste os modulos sao
+// importados sem servir HTTP, e exigir a variavel ali so acrescentaria
+// cerimonia sem ganho de seguranca.
+if (env.NODE_ENV === 'production' && origens.length === 0) {
+  throw new Error(
+    'CORS_ORIGINS e obrigatoria em producao: liste as origens permitidas.',
+  );
 }
 
 export const config = {

@@ -186,8 +186,13 @@ BEGIN
   $f$, p_tabela);
 
   -- Upsert idempotente por construcao, nao por disciplina do programador.
+  --
+  -- Indice NAO parcial de proposito: o PostgreSQL nao consegue inferir indice
+  -- parcial em ON CONFLICT, e registros de cadastro manual (sem id_origem)
+  -- continuam permitidos porque NULL e distinto de NULL num indice unico
+  -- (NULLS DISTINCT, o padrao).
   EXECUTE format(
-    'CREATE UNIQUE INDEX %I ON %I (fonte, id_origem) WHERE id_origem IS NOT NULL',
+    'CREATE UNIQUE INDEX %I ON %I (fonte, id_origem)',
     'ux_' || p_tabela || '_fonte_origem', p_tabela);
 
   EXECUTE format(

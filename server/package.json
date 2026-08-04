@@ -16,7 +16,8 @@
     "migrate:down": "npm run migrate -- down",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:banco": "PGPORT=${PGPORT:-5432} PGDATABASE=patrono_test ./scripts/recriar-banco.sh && vitest run"
   },
   "dependencies": {
     "@fastify/cors": "^11.3.0",
