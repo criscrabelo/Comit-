@@ -214,3 +214,42 @@ Verificadas por execução contra PostgreSQL 16 real.
 | Integração é somente leitura | `CHECK (modo = 'leitura')` em `integracoes` |
 | Prazo de acesso só para convidado | `CHECK prazo_so_para_convidado` em `usuarios` |
 | CORS nunca aberto fora de dev | `src/config.ts` recusa `*` e exige lista de origens |
+
+---
+
+## Backlog técnico registrado
+
+Itens identificados durante a construção, ainda não executados.
+
+### Chart.js por CDN → dependência local
+
+`index.html` carrega `chart.js@4.4.1` de `cdn.jsdelivr.net`. Três problemas:
+
+1. **Disponibilidade** — a plataforma para de renderizar gráficos se o CDN
+   estiver fora do ar ou bloqueado pela rede da Coevo. Já acontece no ambiente
+   de desenvolvimento desta sessão, onde o proxy bloqueia CDNs externos.
+2. **Integridade** — sem `subresource integrity`, uma alteração no CDN executa
+   código arbitrário na página que exibe dado de cliente.
+3. **Privacidade** — cada carregamento informa a um terceiro que alguém da Coevo
+   abriu a plataforma.
+
+**Encaminhamento:** empacotar a biblioteca junto à aplicação e servir da mesma
+origem. Enquanto não for feito, os gráficos dependem de rede externa.
+
+### Produção: mesma origem, sem servidor legado
+
+A implantação precisa comprovar, antes de subir:
+
+- frontend e backend na **mesma origem**, com `/api` encaminhado ao backend
+  (hoje o backend não serve os estáticos, e o frontend legado responde 404 em
+  `/api/monday/*` quando servido isoladamente);
+- `CORS_ORIGINS` com a lista explícita do domínio de produção — a configuração
+  já recusa `*` fora de development;
+- nenhuma dependência do `server.js` legado nem do Gist do GitHub como banco;
+- `DATABASE_URL` com `sslmode=require`.
+
+### Ingestão do Monday não validada contra a API real
+
+Cliente, transformações e persistência têm testes, mas a leitura ponta a ponta
+só se confirma com token real. Previsto para a homologação controlada do quadro
+Processos Judiciais.

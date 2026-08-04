@@ -68,15 +68,18 @@ CREATE TRIGGER tg_inconsistencia_aprovacao_imutavel
 -- `deliberar` e uma acao propria, para nao ser confundida com `editar`. Assim a
 -- Diretoria aprova sem receber permissao de alterar o tratamento operacional.
 -- ============================================================================
--- ATENCAO: ALTER TYPE ... ADD VALUE nao pode rodar dentro de uma transacao no
--- PostgreSQL. Por isso a acao `deliberar` NAO e um valor de enum: e verificada
--- no codigo, sobre a permissao `ler` mais o perfil `diretoria`. Manter no enum
--- exigiria uma migracao fora de transacao, o que quebraria a garantia de
--- atomicidade das demais.
+-- `deliberar` NAO e um valor do enum acao_permissao, por escolha de modelagem:
+-- a deliberacao nao e uma permissao sobre um modulo, e uma competencia do
+-- perfil Diretoria sobre um recurso especifico. Concede-la pelo enum abriria a
+-- porta para "diretoria pode deliberar em qualquer modulo", que nao e a regra.
 --
--- A permissao de deliberar da Diretoria e concedida por:
---   perfil = 'diretoria' AND permissoes_perfil(diretoria, juridico, 'ler')
--- e verificada em src/inconsistencias/rotas.ts.
+-- A verificacao e: perfil = 'diretoria' E permissoes_perfil(diretoria,
+-- juridico, 'ler'). Implementada em src/inconsistencias/rotas.ts
+-- (PERFIS_APROVAM), com teste cobrindo os outros cinco perfis.
+--
+-- Nota tecnica: ALTER TYPE ... ADD VALUE FUNCIONA dentro de transacao no
+-- PostgreSQL 12+, desde que o valor novo nao seja usado na mesma transacao.
+-- Verificado neste banco. A migracao 010 usa esse recurso.
 
 -- Down Migration
 DROP TRIGGER IF EXISTS tg_inconsistencia_aprovacao_imutavel ON inconsistencias;
