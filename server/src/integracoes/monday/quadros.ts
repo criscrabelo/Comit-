@@ -1,0 +1,272 @@
+/**
+ * Mapeamento dos quadros da Coevo no Monday.
+ *
+ * Os IDs vem de configuracao (banco ou variavel de ambiente); os valores abaixo
+ * sao apenas o padrao conhecido, extraido do codigo em producao
+ * (js/monday-sync.js:13-19) e de references/configuracao-coevo.md.
+ *
+ * REGRA: as colunas sao resolvidas por TITULO, nunca por ID fixo. IDs de coluna
+ * do Monday mudam quando alguem recria a coluna, e o quadro nao avisa. Resolver
+ * por titulo e o que a base em producao faz (fetchColumnMap) e sobreviveu a
+ * mudancas reais.
+ */
+
+export type ChaveQuadro =
+  | 'processos'
+  | 'notificacoes'
+  | 'distratos'
+  | 'retomadas'
+  | 'honorarios'
+  | 'entregas';
+
+export interface DefinicaoQuadro {
+  chave: ChaveQuadro;
+  /** ID padrao. Sobreposto pela configuracao em integracoes.configuracao. */
+  idPadrao: string;
+  nome: string;
+  destino: string;
+  /**
+   * Recorte da leitura:
+   *   'carteira'   — le tudo, sem filtro de periodo (posicao atual)
+   *   'competencia'— filtra pelo mes da competencia
+   *   'historico'  — le tudo e mantem o historico completo
+   */
+  recorte: 'carteira' | 'competencia' | 'historico';
+  /**
+   * Grupos que nao entram. Decisao do juridico registrada em
+   * js/monday-sync.js:258-264. Comparados em maiusculas, sem espaco nas pontas.
+   */
+  gruposExcluidos?: string[];
+  /**
+   * Titulos aceitos para cada campo, em ordem de preferencia. O primeiro que
+   * existir no quadro e usado. Aceitar variacoes evita quebrar quando alguem
+   * renomeia a coluna — a alternativa seria falhar em silencio.
+   */
+  colunas: Record<string, string[]>;
+}
+
+/**
+ * Grupos do quadro (JUR) PROCESSOS JUDICIAIS que nao entram no comite.
+ * Nao sao processos operacionais do dia a dia.
+ */
+export const PROCESSOS_GRUPOS_EXCLUIDOS = [
+  'CJ (REGRESSO)',
+  'TETUS LOCAÇÃO',
+  'CREDENTE',
+  'LEONICE',
+  'GILMAR',
+  'DANILO',
+  'FGLASS/GRADFIBRA',
+];
+
+export const QUADROS: Record<ChaveQuadro, DefinicaoQuadro> = {
+  processos: {
+    chave: 'processos',
+    idPadrao: '5959705266',
+    nome: '(JUR) PROCESSOS JUDICIAIS',
+    destino: 'processos_judiciais',
+    recorte: 'carteira',
+    gruposExcluidos: PROCESSOS_GRUPOS_EXCLUIDOS,
+    colunas: {
+      // A situacao vem de MEU TRABALHO, nao de STATUS (para comite).
+      // Regra explicita do CLAUDE.md do projeto de redesign.
+      situacao: ['MEU TRABALHO'],
+      situacao_comite: ['STATUS (PARA COMITÊ)', 'STATUS PARA COMITÊ', 'STATUS COMITÊ'],
+      tipo: ['TIPO DE AÇÃO', 'TIPO DE ACAO', 'NATUREZA'],
+      // ATUACAO (INTERNO/EXTERNO). NAO e comarca.
+      atuacao: ['LOCAL', 'ATUAÇÃO', 'ATUACAO'],
+      comarca: ['COMARCA'],
+      empreendimento: ['EMPREENDIMENTO', 'OBRA', 'PROJETO'],
+      cliente: ['CLIENTE', 'NOME DO CLIENTE', 'NOME'],
+      cpf_cnpj: ['CPF/CNPJ', 'CPF-CNPJ', 'CPF', 'CNPJ', 'DOCUMENTO'],
+      contrato: ['CONTRATO', 'NÚMERO DO CONTRATO', 'NUMERO DO CONTRATO'],
+      unidade: ['UNIDADE', 'APARTAMENTO', 'LOTE'],
+      numero: ['NÚMERO DO PROCESSO', 'NUMERO DO PROCESSO', 'PROCESSO', 'Nº PROCESSO'],
+      valor_causa: ['VALOR DA CAUSA', 'VALOR CAUSA'],
+      data_citacao: ['CITAÇÃO/PROTOCOLO', 'CITACAO/PROTOCOLO', 'CITAÇÃO', 'PROTOCOLO'],
+      data_finalizacao: ['DATA DE FINALIZAÇÃO', 'DATA DE FINALIZACAO', 'FINALIZAÇÃO'],
+      dias_processo: ['DIAS DO PROCESSO', 'DIAS'],
+      honorarios_efetivados: ['HONORÁRIOS EFETIVADOS', 'HONORARIOS EFETIVADOS'],
+      motivo: ['MOTIVO', 'OBJETO'],
+      posicao: ['POSIÇÃO', 'POSICAO', 'POLO'],
+    },
+  },
+
+  notificacoes: {
+    chave: 'notificacoes',
+    idPadrao: '5630368737',
+    nome: '(JUR) NOTIFICAÇÕES CLIENTES',
+    destino: 'notificacoes',
+    recorte: 'competencia',
+    colunas: {
+      cliente: ['CLIENTE', 'NOME DO CLIENTE', 'NOME'],
+      cpf_cnpj: ['CPF/CNPJ', 'CPF-CNPJ', 'CPF', 'CNPJ', 'DOCUMENTO'],
+      empreendimento: ['EMPREENDIMENTO', 'OBRA', 'PROJETO'],
+      contrato: ['CONTRATO', 'NÚMERO DO CONTRATO', 'NUMERO DO CONTRATO'],
+      unidade: ['UNIDADE', 'APARTAMENTO', 'LOTE'],
+      torre: ['TORRE'],
+      // Rotulo bruto; a normalizacao para Resolvida/Em Andamento e derivada.
+      estagio: ['ESTÁGIOS', 'ESTAGIOS', 'ESTÁGIO', 'ESTAGIO', 'ESTÁGIO-SITUAÇÃO'],
+      situacao: ['SITUAÇÃO', 'SITUACAO', 'STATUS'],
+      modelo: ['MODELO', 'TIPO DE NOTIFICAÇÃO', 'TIPO'],
+      resolucao: ['RESOLUÇÃO', 'RESOLUCAO'],
+      acordo: ['ACORDO'],
+      data_notificacao: ['DATA DA NOTIFICAÇÃO', 'DATA DA NOTIFICACAO', 'DATA'],
+      data_solucao: ['DATA DA SOLUÇÃO', 'DATA DA SOLUCAO', 'DATA DE SOLUÇÃO'],
+      total_dias: ['TOTAL DE DIAS', 'DIAS'],
+      saldo_vencido: ['SALDO VENCIDO', 'VALOR VENCIDO'],
+      saldo_atualizado: ['SALDO ATUALIZADO', 'VALOR ATUALIZADO'],
+      dias_atraso: ['DIAS DE ATRASO', 'DIAS EM ATRASO'],
+    },
+  },
+
+  distratos: {
+    chave: 'distratos',
+    idPadrao: '18404493605',
+    nome: '(JUR) DISTRATOS E DESISTÊNCIAS',
+    destino: 'distratos',
+    recorte: 'competencia',
+    colunas: {
+      cliente: ['CLIENTE', 'NOME DO CLIENTE', 'NOME'],
+      cpf_cnpj: ['CPF/CNPJ', 'CPF-CNPJ', 'CPF', 'CNPJ', 'DOCUMENTO'],
+      empreendimento: ['EMPREENDIMENTO', 'OBRA', 'PROJETO'],
+      unidade: ['UNIDADE', 'APARTAMENTO', 'LOTE'],
+      contrato: ['CONTRATO', 'NÚMERO DO CONTRATO'],
+      motivo: ['MOTIVO', 'MOTIVO DO DISTRATO'],
+      equipe: ['EQUIPE', 'RESPONSÁVEL', 'RESPONSAVEL'],
+      data_solicitacao: ['DATA DA SOLICITAÇÃO', 'DATA DA SOLICITACAO', 'DATA SOLICITAÇÃO'],
+      data_venda: ['DATA DA VENDA', 'DATA VENDA'],
+      data_conclusao: ['DATA DO DISTRATO', 'DATA DISTRATO', 'DATA DA CONCLUSÃO', 'CONCLUSÃO'],
+      tempo_dias: ['TEMPO', 'DIAS', 'TOTAL DE DIAS'],
+    },
+  },
+
+  retomadas: {
+    chave: 'retomadas',
+    idPadrao: '18413057491',
+    nome: '(JUR) RETOMADAS',
+    destino: 'distratos',
+    recorte: 'competencia',
+    colunas: {
+      cliente: ['CLIENTE', 'NOME DO CLIENTE', 'NOME'],
+      cpf_cnpj: ['CPF/CNPJ', 'CPF-CNPJ', 'CPF', 'CNPJ', 'DOCUMENTO'],
+      empreendimento: ['EMPREENDIMENTO', 'OBRA', 'PROJETO'],
+      unidade: ['UNIDADE', 'APARTAMENTO', 'LOTE'],
+      contrato: ['CONTRATO', 'NÚMERO DO CONTRATO'],
+      motivo: ['MOTIVO', 'MOTIVO DA RETOMADA'],
+      equipe: ['EQUIPE', 'RESPONSÁVEL', 'RESPONSAVEL'],
+      data_solicitacao: ['DATA DA SOLICITAÇÃO', 'DATA SOLICITAÇÃO'],
+      data_conclusao: ['DATA DA RETOMADA', 'DATA RETOMADA', 'DATA DA CONCLUSÃO'],
+      tempo_dias: ['TEMPO', 'DIAS', 'TOTAL DE DIAS'],
+    },
+  },
+
+  honorarios: {
+    chave: 'honorarios',
+    idPadrao: '7231876117',
+    nome: '(JUR) HONORÁRIOS EXTRAJUDICIAIS',
+    destino: 'honorarios',
+    recorte: 'historico',
+    colunas: {
+      cliente: ['CLIENTE', 'NOME DO CLIENTE', 'NOME'],
+      cpf_cnpj: ['CPF/CNPJ', 'CPF-CNPJ', 'CPF', 'CNPJ', 'DOCUMENTO'],
+      empreendimento: ['EMPREENDIMENTO', 'OBRA'],
+      categoria: ['CATEGORIA', 'TIPO'],
+      valor_principal: ['VALOR PRINCIPAL', 'PRINCIPAL'],
+      valor_honorarios: ['HONORÁRIOS', 'HONORARIOS', 'VALOR DOS HONORÁRIOS'],
+      valor_oab: ['OAB', 'VALOR OAB'],
+      status: ['STATUS', 'SITUAÇÃO'],
+      cliente_novo: ['CLIENTE NOVO', 'NOVO CLIENTE'],
+      data_evento: ['DATA', 'DATA DO PAGAMENTO', 'DATA DE PAGAMENTO'],
+    },
+  },
+
+  entregas: {
+    chave: 'entregas',
+    idPadrao: '18410779605',
+    nome: 'CONTROLE DE ENTREGA CARPE DIEM',
+    destino: 'unidades',
+    recorte: 'carteira',
+    colunas: {
+      cliente: ['CLIENTE', 'NOME DO CLIENTE', 'NOME'],
+      empreendimento: ['EMPREENDIMENTO', 'OBRA'],
+      unidade: ['UNIDADE', 'APARTAMENTO'],
+      torre: ['TORRE'],
+      bloco: ['BLOCO'],
+      situacao: ['SITUAÇÃO', 'SITUACAO', 'STATUS'],
+      status_juridico: ['STATUS JURÍDICO', 'STATUS JURIDICO'],
+      tipo_financiamento: ['FINANCIAMENTO', 'TIPO DE FINANCIAMENTO'],
+      prazo_habite_se: ['HABITE-SE', 'PRAZO HABITE-SE'],
+      prazo_180: ['PRAZO 180', 'PRAZO 180 DIAS'],
+      previsao_entrega: ['PREVISÃO DE ENTREGA', 'PREVISAO DE ENTREGA', 'ENTREGA'],
+    },
+  },
+};
+
+/**
+ * Resolve o mapa titulo -> id de coluna.
+ *
+ * Quando duas colunas tem o mesmo titulo (acontece com EMPREENDIMENTO: uma
+ * coluna de status e uma espelhada), prefere a que NAO e mirror — a espelhada
+ * costuma vir vazia em `text`, e so traz valor em `display_value`.
+ * Regra herdada de js/monday-sync.js:106-112, onde foi descoberta na pratica.
+ */
+export function montarMapaColunas(
+  colunas: Array<{ id: string; title: string; type: string }>,
+): Map<string, { id: string; type: string }> {
+  const mapa = new Map<string, { id: string; type: string }>();
+
+  for (const coluna of colunas) {
+    const chave = (coluna.title || '').toUpperCase().trim();
+    if (!chave) continue;
+
+    const anterior = mapa.get(chave);
+    if (!anterior || anterior.type === 'mirror') {
+      mapa.set(chave, { id: coluna.id, type: coluna.type });
+    }
+  }
+
+  return mapa;
+}
+
+/** Primeiro titulo que existir no quadro. `null` quando nenhum existe. */
+export function resolverColuna(
+  mapa: Map<string, { id: string; type: string }>,
+  titulos: string[],
+): { id: string; type: string } | null {
+  for (const titulo of titulos) {
+    const achado = mapa.get(titulo.toUpperCase().trim());
+    if (achado) return achado;
+  }
+  return null;
+}
+
+export interface MapaResolvido {
+  /** campo do dominio -> id da coluna no Monday */
+  porCampo: Map<string, string>;
+  /** campos que o quadro nao tem — reportados, nunca preenchidos por suposicao */
+  ausentes: string[];
+}
+
+/**
+ * Resolve todos os campos da definicao contra as colunas reais do quadro.
+ *
+ * Campo ausente e REPORTADO, nao inventado. mapeamento-colunas.md e explicito:
+ * "coluna nao identificada com seguranca => informar e sinalizar".
+ */
+export function resolverMapa(
+  definicao: DefinicaoQuadro,
+  colunas: Array<{ id: string; title: string; type: string }>,
+): MapaResolvido {
+  const mapa = montarMapaColunas(colunas);
+  const porCampo = new Map<string, string>();
+  const ausentes: string[] = [];
+
+  for (const [campo, titulos] of Object.entries(definicao.colunas)) {
+    const coluna = resolverColuna(mapa, titulos);
+    if (coluna) porCampo.set(campo, coluna.id);
+    else ausentes.push(campo);
+  }
+
+  return { porCampo, ausentes };
+}

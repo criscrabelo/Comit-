@@ -1,0 +1,405 @@
+/**
+ * Transformacao dos itens do Monday em registros do dominio.
+ *
+ * Cada regra aqui foi extraida do codigo em producao, com a origem citada.
+ * Nenhuma regra nova foi inventada — as que existem foram descobertas na
+ * pratica, contra os quadros reais da Coevo, e perde-las seria regressao.
+ *
+ * O valor bruto de origem e sempre preservado: a transformacao produz o
+ * normalizado, nunca substitui o original.
+ */
+import type { ItemMonday, ValorColuna } from './cliente.js';
+
+/**
+ * Le uma coluna do item.
+ *
+ * Colunas mirror e formula vem com `text` vazio — o valor visivel esta em
+ * `display_value`. Regra de js/monday-sync.js:90-96, ausente no code-drop
+ * paralelo e no adaptador Python.
+ */
+export function lerColuna(item: ItemMonday, idColuna: string | null | undefined): string {
+  if (!idColuna) return '';
+  const coluna = item.column_values?.find((c: ValorColuna) => c.id === idColuna);
+  if (!coluna) return '';
+  return (coluna.text || coluna.display_value || '').trim();
+}
+
+/** Le por campo do dominio, usando o mapa resolvido do quadro. */
+export function lerCampo(
+  item: ItemMonday,
+  mapa: Map<string, string>,
+  campo: string,
+): string {
+  return lerColuna(item, mapa.get(campo));
+}
+
+// ── Normalizacao de texto ───────────────────────────────────────────────────
+
+/**
+ * Normaliza nome para comparacao: sem acento, sem pontuacao, sem espaco duplo,
+ * maiusculas. Conforme references/metodologia.md secao Normalizacao.
+ *
+ * ATENCAO: normalizar NAO autoriza unir nomes parecidos. A metodologia proibe
+ * uniao automatica por semelhanca — nome so vincula por igualdade exata do
+ * normalizado, e mesmo assim como ultimo recurso.
+ */
+export function normalizarNome(valor: string | null | undefined): string {
+  if (!valor) return '';
+  return valor
+    .normalize('NFD')
+    // Remove marcas diacriticas combinantes (escape explicito para nao depender
+    // de caractere literal no arquivo-fonte).
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[^\w\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toUpperCase();
+}
+
+/** Mantem apenas digitos. Usado em CPF/CNPJ e numero de contrato. */
+export function somenteDigitos(valor: string | null | undefined): string {
+  return (valor ?? '').replace(/\D/g, '');
+}
+
+/**
+ * Normaliza numero de contrato preservando letras (alguns contratos as tem),
+ * removendo separadores e espaco.
+ */
+export function normalizarContrato(valor: string | null | undefined): string | null {
+  if (!valor) return null;
+  const limpo = valor.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  return limpo || null;
+}
+
+// ── Valores numericos e monetarios ──────────────────────────────────────────
+
+/**
+ * Converte texto do Monday em numero.
+ *
+ * Trata as duas convencoes que aparecem nos quadros: pt-BR (1.234,56) e
+ * en (1234.56). Devolve `null` quando nao ha valor — nunca zero, porque zero
+ * e um valor legitimo e confundi-lo com ausencia falsearia indicador.
+ */
+export function paraNumero(valor: string | null | undefined): number | null {
+  if (valor === null || valor === undefined) return null;
+  const texto = String(valor).trim();
+  if (!texto) return null;
+
+  // Remove simbolo de moeda e espacos (inclusive o espaco fino do pt-BR).
+  // \u00a0 = espaco inquebravel, \u2009 = espaco fino: aparecem em valores
+  // formatados em pt-BR e nem todo \s cobre os dois de forma consistente.
+  let limpo = texto.replace(/R\$/gi, '').replace(/[\s\u00a0\u2009\u202f]/g, '');
+  if (!limpo) return null;
+
+  const temVirgula = limpo.includes(',');
+  const temPonto = limpo.includes('.');
+
+  if (temVirgula && temPonto) {
+    // O ultimo separador e o decimal.
+    limpo =
+      limpo.lastIndexOf(',') > limpo.lastIndexOf('.')
+        ? limpo.replace(/\./g, '').replace(',', '.')
+        : limpo.replace(/,/g, '');
+  } else if (temVirgula) {
+    // Virgula unica: decimal em pt-BR, exceto quando e separador de milhar
+    // (ex: "1,234" com exatamente 3 digitos depois).
+    const partes = limpo.split(',');
+    limpo =
+      partes.length === 2 && partes[1]!.length === 3
+        ? limpo.replace(/,/g, '')
+        : limpo.replace(',', '.');
+  }
+
+  const numero = Number(limpo);
+  return Number.isFinite(numero) ? numero : null;
+}
+
+/** Inteiro, ou `null`. Usado em dias de atraso e contagens. */
+export function paraInteiro(valor: string | null | undefined): number | null {
+  const n = paraNumero(valor);
+  if (n === null) return null;
+  return Math.trunc(n);
+}
+
+/**
+ * Converte texto em data ISO (YYYY-MM-DD).
+ *
+ * Aceita ISO e dd/mm/yyyy. Recusa data invalida em vez de aproximar — data
+ * errada em indicador de periodo e pior do que data ausente.
+ */
+export function paraData(valor: string | null | undefined): string | null {
+  if (!valor) return null;
+  const texto = String(valor).trim();
+  if (!texto) return null;
+
+  const iso = texto.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) return validarData(Number(iso[1]), Number(iso[2]), Number(iso[3]));
+
+  const brasileira = texto.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (brasileira) {
+    return validarData(Number(brasileira[3]), Number(brasileira[2]), Number(brasileira[1]));
+  }
+
+  return null;
+}
+
+function validarData(ano: number, mes: number, dia: number): string | null {
+  if (mes < 1 || mes > 12 || dia < 1 || dia > 31) return null;
+  const d = new Date(Date.UTC(ano, mes - 1, dia));
+  // Rejeita 31/02 e afins: o Date normalizaria para marco em silencio.
+  if (d.getUTCFullYear() !== ano || d.getUTCMonth() !== mes - 1 || d.getUTCDate() !== dia) {
+    return null;
+  }
+  return `${ano.toString().padStart(4, '0')}-${String(mes).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
+}
+
+export function paraBooleano(valor: string | null | undefined): boolean | null {
+  if (!valor) return null;
+  const t = normalizarNome(valor);
+  if (['SIM', 'S', 'TRUE', 'V', 'X', 'OK'].includes(t)) return true;
+  if (['NAO', 'N', 'FALSE', 'F'].includes(t)) return false;
+  return null;
+}
+
+// ── Empreendimento, torre e unidade ─────────────────────────────────────────
+
+export interface LocalizacaoExtraida {
+  empreendimento: string;
+  torre: string | null;
+  unidade: string | null;
+}
+
+/**
+ * Separa empreendimento, torre e unidade.
+ *
+ * Regra de js/monday-sync.js:544-555, descoberta contra os quadros reais:
+ *   "AURORA TORRE B"        -> empreendimento AURORA, torre TORRE B
+ *   item "AURORA 1105B"     -> unidade 1105B
+ *   item "MORATTA APTO 703A"-> unidade APTO 703A
+ *
+ * Sem isso, cada torre viraria um empreendimento diferente e o historico do
+ * mesmo ativo ficaria fragmentado.
+ */
+export function extrairLocalizacao(
+  nomeEmpreendimento: string,
+  nomeItem: string,
+): LocalizacaoExtraida {
+  const bruto = (nomeEmpreendimento || '').trim();
+
+  // Remove o sufixo de torre do nome do empreendimento.
+  const base = bruto.replace(/\s+TORRE\s+[A-Z]$/i, '').trim();
+
+  const casaTorre = bruto.match(/\bTORRE\s+([A-Z])\b/i);
+  const torre = casaTorre ? `TORRE ${casaTorre[1]!.toUpperCase()}` : null;
+
+  // A unidade e o nome do item sem o prefixo do empreendimento.
+  let unidade: string | null = null;
+  const item = (nomeItem || '').trim();
+  if (item) {
+    if (base) {
+      const escapado = base.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      unidade = item.replace(new RegExp(`^${escapado}\\s*`, 'i'), '').trim() || item;
+    } else {
+      unidade = item;
+    }
+  }
+
+  return { empreendimento: base || bruto, torre, unidade };
+}
+
+// ── Estagio da notificacao ──────────────────────────────────────────────────
+
+/**
+ * Normaliza o estagio para os dois valores usados nos indicadores.
+ *
+ * Regra de js/monday-sync.js:557-560. O rotulo BRUTO tambem e preservado
+ * (coluna estagio_detalhe), porque o wireframe exige fidelidade ao rotulo de
+ * origem — "RE-COMPRA" e exibido como "Recompra", mas o valor da fonte
+ * continua registrado.
+ */
+export function normalizarEstagio(bruto: string | null | undefined): 'Resolvida' | 'Em Andamento' {
+  return /resolvid|unidade retomada/i.test(bruto ?? '') ? 'Resolvida' : 'Em Andamento';
+}
+
+// ── Distrato, desistencia, retomada e recompra ──────────────────────────────
+
+export type CategoriaDistrato = 'distrato' | 'desistencia' | 'retomada' | 'recompra';
+
+/**
+ * Classifica pelo titulo do GRUPO do quadro.
+ *
+ * Regra de js/monday-sync.js:357-362. Distrato e Desistencia sao categorias
+ * distintas — o code-drop paralelo perdeu essa distincao e passou a contar as
+ * duas juntas.
+ */
+export function classificarCategoriaDistrato(
+  tituloGrupo: string | null | undefined,
+  quadro: 'distratos' | 'retomadas',
+): CategoriaDistrato {
+  const grupo = (tituloGrupo ?? '').toUpperCase();
+
+  // O quadro dedicado de retomadas classifica tudo como retomada, exceto
+  // recompra, que tem grupo proprio.
+  if (quadro === 'retomadas') {
+    return grupo.includes('RECOMPRA') || grupo.includes('RE-COMPRA') ? 'recompra' : 'retomada';
+  }
+
+  if (grupo.includes('RECOMPRA') || grupo.includes('RE-COMPRA')) return 'recompra';
+  if (grupo.includes('RETOMADA')) return 'retomada';
+  if (grupo.includes('DESIST')) return 'desistencia';
+  return 'distrato';
+}
+
+// ── Judicializacao ──────────────────────────────────────────────────────────
+
+/**
+ * Termos que caracterizam judicializacao.
+ * references/regras-classificacao.md linhas 4-6.
+ */
+const TERMOS_JUDICIAL = [
+  'processo judicial',
+  'acao judicial',
+  'acao ajuizada',
+  'ajuizad',
+  'processo distribuido',
+  'distribuido',
+  'execucao judicial',
+  'execucao',
+  'cumprimento de sentenca',
+  'citac',
+];
+
+/**
+ * Termos que NAO judicializam, mesmo parecendo.
+ * references/regras-classificacao.md linhas 8-10.
+ *
+ * "Enviar para advogado" nao e processo judicial. Confundir os dois inflaria a
+ * taxa de judicializacao.
+ */
+const TERMOS_NAO_JUDICIAL = [
+  'enviar para advogado',
+  'para advogado',
+  'encaminhado ao juridico',
+  'encaminh',
+  'analise juridica',
+  'documentacao para processo',
+  'aguardando ajuizamento',
+  'possivel processo',
+  // 'extraj' e o resultado de neutralizar "extrajudicial" (ver prepararTexto).
+  // Cobre "cobranca extrajudicial", "execucao extrajudicial" e variacoes.
+  'extraj',
+];
+
+/**
+ * Termos fortes: vencem a exclusao quando presentes.
+ *
+ * "execucao" NAO entra aqui de proposito: existe execucao extrajudicial de
+ * garantia, que nao e judicializacao. Ela permanece apenas na lista positiva,
+ * consultada somente quando nenhuma exclusao casou.
+ */
+const TERMOS_JUDICIAL_FORTES = ['judicial', 'ajuizad'];
+
+/**
+ * Prepara o texto para classificacao.
+ *
+ * O ponto critico: a palavra "extrajudicial" CONTEM "judicial". Sem neutralizar,
+ * toda cobranca extrajudicial seria classificada como judicializada, inflando a
+ * taxa de judicializacao — o erro que references/regras-classificacao.md existe
+ * para evitar. Trocar por "extraj" remove a colisao e ainda serve de marcador
+ * de exclusao.
+ */
+function prepararTexto(situacao: string | null | undefined): string {
+  return normalizarNome(situacao).toLowerCase().replace(/extrajudicial/g, 'extraj');
+}
+
+export interface ClassificacaoJudicial {
+  judicializado: boolean;
+  /** true quando o termo nao permite decidir — vira 'Revisao necessaria'. */
+  revisaoNecessaria: boolean;
+}
+
+/**
+ * Classifica judicializacao a partir da situacao.
+ *
+ * Duvida NAO vira "sim" nem "nao" em silencio: vira revisao necessaria, para
+ * decisao humana (regras-classificacao.md linha 12).
+ */
+export function classificarJudicializacao(
+  situacao: string | null | undefined,
+): ClassificacaoJudicial {
+  const texto = prepararTexto(situacao);
+
+  if (!texto) return { judicializado: false, revisaoNecessaria: true };
+
+  const temExclusao = TERMOS_NAO_JUDICIAL.some((t) => texto.includes(t));
+  const temForte = TERMOS_JUDICIAL_FORTES.some((t) => texto.includes(t));
+
+  if (temExclusao && !temForte) {
+    return { judicializado: false, revisaoNecessaria: false };
+  }
+
+  if (TERMOS_JUDICIAL.some((t) => texto.includes(t))) {
+    // Termo positivo E termo de exclusao ao mesmo tempo: ambiguo de verdade.
+    return { judicializado: true, revisaoNecessaria: temExclusao };
+  }
+
+  // Situacao preenchida mas que nao casa com nenhuma lista: nao presumir.
+  return { judicializado: false, revisaoNecessaria: true };
+}
+
+// ── Atuacao (INTERNO / EXTERNO) ─────────────────────────────────────────────
+
+/**
+ * Interpreta a coluna LOCAL do quadro de processos.
+ *
+ * ATENCAO: essa coluna e ATUACAO (INTERNO / EXTERNO <nome do escritorio>), NAO
+ * comarca. Reaproveita-la como comarca produziria um indicador geografico
+ * inteiramente falso.
+ */
+export function interpretarAtuacao(valor: string | null | undefined): {
+  atuacao: string | null;
+  interno: boolean | null;
+} {
+  const texto = (valor ?? '').trim();
+  if (!texto) return { atuacao: null, interno: null };
+
+  const normalizado = normalizarNome(texto);
+  if (normalizado.startsWith('INTERNO')) return { atuacao: texto, interno: true };
+  if (normalizado.startsWith('EXTERNO')) return { atuacao: texto, interno: false };
+  return { atuacao: texto, interno: null };
+}
+
+// ── Competencia ─────────────────────────────────────────────────────────────
+
+const MESES: Record<string, string> = {
+  JANEIRO: '01', FEVEREIRO: '02', MARCO: '03', ABRIL: '04',
+  MAIO: '05', JUNHO: '06', JULHO: '07', AGOSTO: '08',
+  SETEMBRO: '09', OUTUBRO: '10', NOVEMBRO: '11', DEZEMBRO: '12',
+};
+
+/**
+ * Deriva a competencia (YYYY-MM) do titulo do grupo.
+ *
+ * O mes da notificacao vem do TITULO DO GRUPO, nao de coluna de data — regra do
+ * quadro real, herdada de js/monday-sync.js. Aceita "JULHO 2026", "JULHO/2026",
+ * "2026-07" e "07/2026".
+ */
+export function competenciaDoGrupo(tituloGrupo: string | null | undefined): string | null {
+  const bruto = (tituloGrupo ?? '').trim();
+  if (!bruto) return null;
+
+  const iso = bruto.match(/\b(\d{4})-(0[1-9]|1[0-2])\b/);
+  if (iso) return `${iso[1]}-${iso[2]}`;
+
+  const numerica = bruto.match(/\b(0?[1-9]|1[0-2])\s*[/\-]\s*(\d{4})\b/);
+  if (numerica) return `${numerica[2]}-${numerica[1]!.padStart(2, '0')}`;
+
+  const normalizado = normalizarNome(bruto);
+  for (const [nome, numero] of Object.entries(MESES)) {
+    if (!normalizado.includes(nome)) continue;
+    const ano = normalizado.match(/\b(20\d{2})\b/);
+    if (ano) return `${ano[1]}-${numero}`;
+  }
+
+  return null;
+}
