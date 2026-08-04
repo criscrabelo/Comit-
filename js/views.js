@@ -1388,26 +1388,39 @@ function renderBackup() {
   `);
 }
 
-function exportarDados() {
-  const json = DB.exportAll();
-  const blob = new Blob([json], {type: 'application/json'});
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href = url;
-  a.download = `comite_backup_${new Date().toISOString().slice(0,10)}.json`;
-  a.click();
-  URL.revokeObjectURL(url);
-  toast('Backup exportado!', 'success');
+// O dump vem do servidor, com autorizacao aplicada e exportacao registrada na
+// trilha. Por isso a funcao passou a ser assincrona: o navegador nao tem mais a
+// base inteira para serializar.
+async function exportarDados() {
+  toast('Gerando backup no servidor…', 'info');
+  try {
+    const json = await DB.exportAll();
+    const blob = new Blob([json], {type: 'application/json'});
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url;
+    a.download = `comite_backup_${new Date().toISOString().slice(0,10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast('Backup exportado!', 'success');
+  } catch (erro) {
+    toast(erro.semPermissao
+      ? 'Seu perfil nao permite exportar.'
+      : 'Falha ao exportar: ' + erro.message, 'error');
+  }
 }
 
 function restaurarDados(input) {
   const file = input.files[0];
   if (!file) return;
   const reader = new FileReader();
-  reader.onload = e => {
+  reader.onload = async e => {
     try {
-      DB.importAll(e.target.result);
-      toast('Dados restaurados!', 'success');
+      // Passa pelo fluxo de migracao: classifica, versiona, audita e nao
+      // duplica se repetido. O toast so aparece depois da confirmacao.
+      const r = await DB.importAll(e.target.result);
+      toast(`Restaurado: ${r.incluidos} incluido(s), ${r.atualizados} atualizado(s).`,
+        r.status === 'concluida' ? 'success' : 'warning');
       populateMonthSelector();
       Router.navigate('dashboard');
     } catch(err) {
@@ -1417,10 +1430,22 @@ function restaurarDados(input) {
   reader.readAsText(file);
 }
 
+// Apagar a base inteira deixou de ser operacao de tela.
+//
+// Antes, este botao removia as chaves do localStorage — o que hoje nao apagaria
+// nada de verdade, ja que os dados vivem no PostgreSQL, e daria a impressao de
+// ter apagado. Uma exclusao em massa e irreversivel, precisa de trilha e de
+// autorizacao propria, e sera tratada com backup e restauracao.
 function limparTudo() {
-  confirmDelete('Isso irá apagar TODOS os dados da plataforma. Tem certeza absoluta?',
-    `()=>{ Object.keys(localStorage).filter(k=>k.startsWith('jur_comite_')).forEach(k=>localStorage.removeItem(k)); toast('Dados apagados'); populateMonthSelector(); Router.navigate('dashboard'); }`
-  );
+  openModal('Limpar todos os dados',
+    `<div class="alert alert-warning">
+       Esta operacao nao e feita pela interface.
+       <br><br>
+       Os dados agora vivem no PostgreSQL. Uma exclusao em massa e irreversivel
+       e exige registro de quem pediu, quando e por que — com backup verificado
+       antes. Fale com a administracao da plataforma.
+     </div>`,
+    `<button class="btn btn-outline" onclick="closeModal()">Entendi</button>`);
 }
 
 // ============================================================

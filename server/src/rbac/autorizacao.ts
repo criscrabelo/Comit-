@@ -118,6 +118,31 @@ export function exigirModulo(
   }
 }
 
+/**
+ * Migrar o proprio navegador.
+ *
+ * Exigir perfil de administracao aqui foi um erro de escopo: quem tem dado de
+ * versao anterior no navegador e quem usava a plataforma — a gestora, o lider —
+ * e nao o administrador. Com a regra antiga, o dado ficaria preso no navegador
+ * de quem nao pode migra-lo.
+ *
+ * A permissao correta e a de CRIAR no modulo para onde o dado vai. Colaborador
+ * e convidado continuam recusados, porque nao criam registro juridico — e
+ * migracao grava em tabela compartilhada, nao numa area privada da pessoa.
+ *
+ * A propriedade do dump continua garantida no servico, que filtra por usuario.
+ */
+export function exigirPodeMigrar(ctx: ContextoAutorizacao, acao: 'ler' | 'executar'): void {
+  if (podeNoModulo(ctx, 'administracao', acao)) return;
+  if (podeNoModulo(ctx, 'juridico', acao === 'ler' ? 'ler' : 'criar')) return;
+
+  throw naoAutorizado(
+    'Seu perfil nao permite migrar dados de versoes anteriores. ' +
+      'Fale com a administracao da plataforma.',
+    { perfil: ctx.perfil },
+  );
+}
+
 // ── Dimensao 2: area ────────────────────────────────────────────────────────
 
 export function podeNaArea(ctx: ContextoAutorizacao, area: AreaOrganizacional): boolean {

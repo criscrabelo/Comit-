@@ -61,7 +61,12 @@ const MondaySync = (() => {
       res = await fetch(API_URL, {
         method: 'POST',
         credentials: 'same-origin',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          // Exigido pelo servidor nas escritas autenticadas por cookie: e o que
+          // impede um formulario de outro site de usar a sessao.
+          'X-Patrono-App': '1',
+        },
         body: JSON.stringify({ query, variables }),
       });
     } catch (netErr) {
@@ -314,7 +319,7 @@ const MondaySync = (() => {
     const nExcluidos = allItems.length - items.length;
 
     // Wipe existing for this comitê
-    DB.forComite('processos', comiteId).forEach(p => DB.remove('processos', p.id));
+    DB.removerLote('processos', DB.forComite('processos', comiteId).map(p => p.id));
 
     let count = 0;
     items.forEach(item => {
@@ -394,7 +399,7 @@ const MondaySync = (() => {
       return inRange(dataSol, start, end) || (!dataSol && inRange(ca, start, end));
     });
 
-    DB.forComite('distratos', comiteId).forEach(d => DB.remove('distratos', d.id));
+    DB.removerLote('distratos', DB.forComite('distratos', comiteId).map(d => d.id));
 
     let ndist = 0, nretSkip = 0;
     filtered.forEach(item => {
@@ -476,7 +481,7 @@ const MondaySync = (() => {
       return inRange(dataSol, start, end) || (!dataSol && inRange(ca, start, end));
     });
 
-    DB.forComite('retomadas', comiteId).forEach(r => DB.remove('retomadas', r.id));
+    DB.removerLote('retomadas', DB.forComite('retomadas', comiteId).map(r => r.id));
 
     // Diagnóstico (uma vez por sync): mostra os títulos das colunas e o 1o item
     try {
@@ -582,7 +587,7 @@ const MondaySync = (() => {
       log(`⚠️ Nenhuma notificação no grupo do mês ${mesRef}.`, 'warn');
     }
 
-    DB.forComite('notificacoes', comiteId).forEach(n => DB.remove('notificacoes', n.id));
+    DB.removerLote('notificacoes', DB.forComite('notificacoes', comiteId).map(n => n.id));
 
     filtered.forEach(item => {
       const emprNome = cv(item, idEmpr) || cv(item, 'color_mky02302') || cv(item, 'empreendimento') || '';
@@ -657,8 +662,8 @@ const MondaySync = (() => {
     let carpeId = findOrMakeEmpr('Carpe Diem');
 
     // Replace all units for Carpe Diem (not comitê-scoped)
-    DB.where('unidades', u => u.empreendimento_id === carpeId)
-      .forEach(u => DB.remove('unidades', u.id));
+    DB.removerLote('unidades',
+      DB.where('unidades', u => u.empreendimento_id === carpeId).map(u => u.id));
 
     let count = 0;
     items.forEach(item => {

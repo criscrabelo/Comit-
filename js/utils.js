@@ -96,7 +96,10 @@ function num(n) { return (n || 0).toLocaleString('pt-BR'); }
 // ---- Storage size in sidebar ----
 function updateStorageInfo() {
   const el = document.getElementById('storageInfo');
-  if (el) el.textContent = 'Armazenamento: ' + DB.storageSize();
+  // Nao ha mais armazenamento local de dado de negocio para medir. O rodape
+  // passa a informar quantos registros estao carregados e como esta a
+  // sincronizacao com o servidor.
+  if (el) el.textContent = 'Dados: ' + DB.storageSize();
 }
 
 // ---- Confirm delete ----
@@ -144,7 +147,7 @@ function openNewMonthModal() {
   );
 }
 
-function createNewMonth() {
+async function createNewMonth() {
   const mes  = document.getElementById('nm_mes').value;
   const ano  = document.getElementById('nm_ano').value;
   const data = document.getElementById('nm_data').value;
@@ -154,11 +157,23 @@ function createNewMonth() {
   if (DB.getComites().find(c => c.ref === ref)) {
     toast('Já existe um comitê para esse mês!', 'error'); return;
   }
-  const c = DB.insert('comites', { ref, label, data_apresentacao: data, status: 'rascunho' });
-  DB.setActiveComite(c.id);
+  DB.insert('comites', { ref, label, data_apresentacao: data, status: 'rascunho' });
+
+  // Espera a confirmacao do servidor antes de abrir o mes: o id definitivo e o
+  // do PostgreSQL, e anunciar "criado" antes disso seria anunciar o que ainda
+  // pode nao ter acontecido.
+  await DB.aguardar();
+
+  const criado = DB.getComites().find(c => c.ref === ref);
+  if (!criado || String(criado.id).indexOf('tmp-') === 0) {
+    // O adaptador ja mostrou o motivo (sem conexao, sem permissao, conflito).
+    return;
+  }
+
+  await DB.trocarComite(criado.id);
   closeModal();
   populateMonthSelector();
-  document.getElementById('monthSelector').value = c.id;
+  document.getElementById('monthSelector').value = criado.id;
   toast(`Comitê ${label} criado!`, 'success');
   Router.navigate('dashboard');
 }

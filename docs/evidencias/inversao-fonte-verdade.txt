@@ -1,0 +1,80 @@
+
+VERIFICAÇÃO DA INVERSÃO DA FONTE DA VERDADE
+======================================================================
+  OK    SPA e API na mesma origem (fora CDN de gráfico)
+          https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js
+  OK    nenhuma requisição ao servidor legado nem ao Gist
+  OK    nenhuma requisição direta ao Monday
+  OK    sem sessão, a plataforma pede login em vez de abrir vazia
+  OK    sessão emitida em cookie
+  OK    cookie é httpOnly — o token não chega ao JavaScript
+  OK    cookie é SameSite=Strict
+  OK    nenhuma credencial legível pelo JavaScript
+  OK    gravação confirmada pelo servidor
+          {"nome":"salvo","detalhe":"","pendentes":0}
+  OK    o registro existe no PostgreSQL
+          encontrados: 1
+  OK    o id do registro é o do banco, não o provisório
+          b6b38254-82ce-4e1d-8930-a5f04c245857
+  OK    localStorage só contém preferências de interface
+          preferências: nenhuma
+  OK    sessionStorage vazio
+  OK    após recarregar, o dado volta do servidor
+  OK    edição sobre versão vencida é recusada
+          {"recusou":true,"codigo":"conflito","atual":"Taubate"}
+  OK    o valor de quem gravou primeiro é preservado
+          Taubate
+  OK    o registro excluído sai da tela
+  OK    o registro excluído permanece no banco
+  OK    criar comitê pelo formulário funciona
+          {"id":"7494930a-a26e-4f13-9629-59016f91e672","ref":"2026-08","provisorio":false}
+  OK    tela "fatos": cadastro pelo formulário grava
+          {"nome":"salvo","detalhe":"","pendentes":0}
+  OK    tela "notificacoes": cadastro pelo formulário grava
+          {"nome":"salvo","detalhe":"","pendentes":0}
+  OK    tela "distratos": cadastro pelo formulário grava
+          {"nome":"salvo","detalhe":"","pendentes":0}
+  OK    tela "processos": cadastro pelo formulário grava
+          {"nome":"salvo","detalhe":"","pendentes":0}
+  OK    tela "regulatorio": cadastro pelo formulário grava
+          {"nome":"salvo","detalhe":"","pendentes":0}
+  OK    rota "dashboard" renderiza
+          1505 caracteres
+  OK    rota "comite" renderiza
+          5504 caracteres
+  OK    rota "fatos" renderiza
+          388 caracteres
+  OK    rota "notificacoes" renderiza
+          1237 caracteres
+  OK    rota "distratos" renderiza
+          654 caracteres
+  OK    rota "processos" renderiza
+          324 caracteres
+  OK    rota "risco" renderiza
+          115 caracteres
+  OK    rota "regulatorio" renderiza
+          202 caracteres
+  OK    rota "empreendimentos" renderiza
+          250 caracteres
+  OK    rota "unidades" renderiza
+          475 caracteres
+  OK    rota "backup" renderiza
+          710 caracteres
+  OK    após usar todas as telas, nenhum dado de negócio no navegador
+  OK    dado de versão anterior detectado no navegador
+          jur_comite_active_comite, jur_comite_empreendimentos, jur_comite_comites
+  OK    a plataforma detectou sozinha e ofereceu a migração
+  OK    o dado legado foi para o PostgreSQL
+          1 → 2 empreendimento(s)
+  OK    as chaves de negócio saíram do navegador
+  OK    o mês aberto virou preferência, não dado de negócio
+          patrono.pref.v1.comite_ativo
+  OK    repetir não encontra mais nada para migrar
+  OK    após a migração e nova recarga, os dados vêm do servidor
+          2 empreendimento(s)
+  OK    e o navegador continua sem dado de negócio
+  OK    nenhum erro de JavaScript da aplicação
+  NOTA  Chart.js não carregou (13 ocorrência(s)): CDN externo
+          indisponível neste ambiente. Backlog: empacotar a dependência localmente.
+======================================================================
+TODAS AS VERIFICAÇÕES PASSARAM

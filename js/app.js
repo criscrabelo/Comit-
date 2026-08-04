@@ -51,12 +51,31 @@ document.getElementById('monthSelector').addEventListener('change', function() {
 // ---- New month button ----
 document.getElementById('btnNewMonth').addEventListener('click', openNewMonthModal);
 
-// ---- Bootstrap: aguarda o banco carregar do servidor antes de renderizar ----
-DB.ready.then(() => {
-  seedIfEmpty();             // Insere dados demo se banco estiver vazio
+// ---- Estado da fonte de dados na barra lateral ----
+// O rodapé passa a informar a situação da sincronização com o servidor. Antes
+// mostrava o tamanho do localStorage — métrica que deixou de existir, porque
+// não há mais dado de negócio no navegador.
+DB.aoMudarEstado(() => updateStorageInfo());
+
+// ---- Bootstrap ----
+//
+// Nada é desenhado antes de o servidor responder. Enquanto o dado vinha do
+// navegador, abrir sem servidor era possível; agora, abrir sem servidor
+// significaria mostrar uma base vazia como se fosse a base real.
+DB.ready.then((inicio) => {
+  if (!inicio.autenticado) {
+    const estado = DB.estado();
+    Login.mostrar(
+      estado.nome === DB.ESTADOS.SEM_CONEXAO
+        ? 'Sem conexão com o servidor. Verifique a rede e tente novamente.'
+        : (inicio.erro || null),
+    );
+    return;
+  }
+
   populateMonthSelector();   // Preenche o seletor de mês
-  updateStorageInfo();       // Exibe uso de armazenamento
-  Router.navigate('dashboard'); // Abre o dashboard
+  updateStorageInfo();       // Exibe o estado da sincronização
+  Router.navigate('dashboard');
 
   // Dados de versões anteriores no navegador: oferece a migração para o
   // PostgreSQL. Não apaga nada por conta própria — pergunta antes, e só remove

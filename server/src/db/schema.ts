@@ -136,6 +136,12 @@ export interface Proveniencia {
   demonstrativo: Auto<boolean>;
   criado_em: Instante;
   atualizado_em: Instante;
+  /**
+   * Controle otimista de concorrencia. Incrementada pelo gatilho de trilha
+   * apenas quando algum campo muda de fato. Uma edicao que informe versao
+   * vencida e recusada com 409 — nunca aplicada por cima.
+   */
+  versao: Auto<number>;
 }
 
 // ── Identidade e acesso ─────────────────────────────────────────────────────
@@ -252,6 +258,8 @@ export interface TabelaEmpreendimentos extends Proveniencia {
   torres: Auto<string[]>;
   blocos: Auto<string[]>;
   qtd_unidades: number | null;
+  /** Classificacao do ativo na tela de cadastro. Distinto de status. */
+  tipo: string | null;
   status: Auto<string>;
   ativo_para_importacao: Auto<boolean>;
   data_inicio_historico: Dia | null;
@@ -478,6 +486,11 @@ export interface TabelaComites {
   ata_aprovada_por: string | null;
   criado_em: Instante;
   atualizado_em: Instante;
+  versao: Auto<number>;
+  /** Movimentacao mensal (AAAA-MM -> quantidade). Nao e posicao. */
+  distratos_evolucao: Auto<Record<string, number>>;
+  notif_evolucao: Auto<Record<string, number>>;
+  notif_evolucao_empr: Auto<Record<string, Record<string, number>>>;
 }
 
 export interface TabelaNotificacoes extends Proveniencia {
@@ -543,6 +556,38 @@ export interface TabelaDistratos extends Proveniencia {
   data_venda: Dia | null;
   data_conclusao: Dia | null;
   tempo_dias: number | null;
+}
+
+/** Cadastro manual do comite: fatos relevantes do mes. */
+export interface TabelaFatos extends Proveniencia {
+  id: Auto<string>;
+  comite_id: string | null;
+  empreendimento_id: string | null;
+  data: Dia | null;
+  titulo: string | null;
+  descricao: string;
+}
+
+export interface TabelaRiscos extends Proveniencia {
+  id: Auto<string>;
+  comite_id: string | null;
+  empreendimento_id: string | null;
+  contrato_ref: string | null;
+  alerta: string | null;
+  cronograma: Auto<unknown>;
+  riscos_lista: Auto<unknown>;
+  renegociacao: unknown | null;
+  recomendacoes: Auto<unknown>;
+}
+
+export interface TabelaRegulatorios extends Proveniencia {
+  id: Auto<string>;
+  comite_id: string | null;
+  titulo: string;
+  descricao: string | null;
+  data_vigencia: Dia | null;
+  destaque: string | null;
+  checklist: Auto<unknown>;
 }
 
 // ── Historico ───────────────────────────────────────────────────────────────
@@ -668,6 +713,9 @@ export interface Database {
   notificacoes: TabelaNotificacoes;
   processos_judiciais: TabelaProcessosJudiciais;
   distratos: TabelaDistratos;
+  fatos: TabelaFatos;
+  riscos: TabelaRiscos;
+  regulatorios: TabelaRegulatorios;
 
   fotografias_diarias: TabelaFotografiasDiarias;
 

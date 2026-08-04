@@ -14,6 +14,7 @@
 import { z } from 'zod';
 import type { FastifyInstance } from 'fastify';
 import { entradaInvalida, naoAutenticado } from '../errors.js';
+import { exigirPodeMigrar } from '../rbac/autorizacao.js';
 import {
   CATALOGO,
   CATALOGO_PROTOTIPOS,
@@ -39,8 +40,15 @@ const esquemaDump = z.object({
 export async function rotasMigracao(app: FastifyInstance): Promise<void> {
   const base = '/api/migracao';
 
-  const contextoDe = (req: import('fastify').FastifyRequest): ContextoMigracao => {
-    if (!req.usuario) throw naoAutenticado();
+  // A permissao e verificada aqui, e nao no `config.exige` da rota, porque a
+  // regra e "administracao OU juridico" — e a declaracao da rota so aceita um
+  // modulo. Ver exigirPodeMigrar em rbac/autorizacao.ts.
+  const contextoDe = (
+    req: import('fastify').FastifyRequest,
+    acao: 'ler' | 'executar',
+  ): ContextoMigracao => {
+    if (!req.usuario || !req.autorizacao) throw naoAutenticado();
+    exigirPodeMigrar(req.autorizacao, acao);
     return {
       usuarioId: req.usuario.id,
       usuarioNome: req.usuario.nome,
@@ -53,7 +61,6 @@ export async function rotasMigracao(app: FastifyInstance): Promise<void> {
   // ── Catálogo, para a interface explicar o que vai acontecer ───────────────
   app.get(
     `${base}/catalogo`,
-    { config: { exige: { modulo: 'administracao', acao: 'ler' } } },
     async () => ({
       chaves: CATALOGO.map((d) => ({
         chave: d.chave,
@@ -77,9 +84,8 @@ export async function rotasMigracao(app: FastifyInstance): Promise<void> {
   // ── 1. Inspeção: mostra sem gravar ────────────────────────────────────────
   app.post(
     `${base}/inspecionar`,
-    { config: { exige: { modulo: 'administracao', acao: 'ler' } } },
     async (req) => {
-      const ctx = contextoDe(req);
+      const ctx = contextoDe(req, 'ler');
 
       const corpo = esquemaDump.safeParse(req.body);
       if (!corpo.success) {
@@ -109,9 +115,8 @@ export async function rotasMigracao(app: FastifyInstance): Promise<void> {
   // ── 2. Importação ─────────────────────────────────────────────────────────
   app.post(
     `${base}/importar`,
-    { config: { exige: { modulo: 'administracao', acao: 'executar' } } },
     async (req, reply) => {
-      const ctx = contextoDe(req);
+      const ctx = contextoDe(req, 'executar');
 
       const corpo = esquemaDump.safeParse(req.body);
       if (!corpo.success) {
@@ -131,18 +136,16 @@ export async function rotasMigracao(app: FastifyInstance): Promise<void> {
   // ── 3. Relatório ──────────────────────────────────────────────────────────
   app.get<{ Params: { id: string } }>(
     `${base}/:id`,
-    { config: { exige: { modulo: 'administracao', acao: 'ler' } } },
     async (req) => {
-      const ctx = contextoDe(req);
+      const ctx = contextoDe(req, 'ler');
       return relatorio(req.params.id, ctx.usuarioId);
     },
   );
 
   app.get(
     base,
-    { config: { exige: { modulo: 'administracao', acao: 'ler' } } },
     async (req) => {
-      const ctx = contextoDe(req);
+      const ctx = contextoDe(req, 'ler');
       return { migracoes: await listar(ctx.usuarioId) };
     },
   );
@@ -150,9 +153,8 @@ export async function rotasMigracao(app: FastifyInstance): Promise<void> {
   // ── 4. Confirmação de remoção ─────────────────────────────────────────────
   app.post<{ Params: { id: string } }>(
     `${base}/:id/confirmar-remocao`,
-    { config: { exige: { modulo: 'administracao', acao: 'executar' } } },
     async (req) => {
-      const ctx = contextoDe(req);
+      const ctx = contextoDe(req, 'executar');
       return confirmarRemocao(req.params.id, ctx);
     },
   );

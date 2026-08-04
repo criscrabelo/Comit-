@@ -11,8 +11,9 @@
  */
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import fp from 'fastify-plugin';
-import { naoAutenticado } from '../errors.js';
+import { naoAutenticado, naoAutorizado } from '../errors.js';
 import { resolverSessao, type UsuarioAutenticado } from '../auth/sessoes.js';
+import { CABECALHO_APP, lerCookie } from '../auth/cookie.js';
 import {
   carregarContexto,
   exigirModulo,
@@ -24,6 +25,8 @@ declare module 'fastify' {
   interface FastifyRequest {
     usuario: UsuarioAutenticado | null;
     autorizacao: ContextoAutorizacao | null;
+    /** Como a sessao chegou. Cookie exige protecao contra CSRF; Bearer nao. */
+    origemSessao: 'cabecalho' | 'cookie' | null;
     /** Dados de contexto para a trilha de auditoria. */
     contextoAuditoria: {
       usuarioId: string | null;
@@ -42,23 +45,38 @@ declare module 'fastify' {
   }
 }
 
-/** Extrai o token do cabecalho Authorization: Bearer <token>. */
-function extrairToken(req: FastifyRequest): string | null {
+/**
+ * Extrai o token: primeiro do cabecalho, depois do cookie httpOnly.
+ *
+ * A ordem importa. Uma integracao que mande Bearer explicitamente nao deve ter
+ * o token trocado pelo cookie que o navegador anexou por conta propria.
+ */
+function extrairToken(req: FastifyRequest): { token: string; origem: 'cabecalho' | 'cookie' } | null {
   const cabecalho = req.headers.authorization;
-  if (!cabecalho) return null;
-  const [esquema, valor] = cabecalho.split(' ');
-  if (!valor || esquema?.toLowerCase() !== 'bearer') return null;
-  return valor.trim() || null;
+  if (cabecalho) {
+    const [esquema, valor] = cabecalho.split(' ');
+    if (valor && esquema?.toLowerCase() === 'bearer' && valor.trim()) {
+      return { token: valor.trim(), origem: 'cabecalho' };
+    }
+  }
+
+  const doCookie = lerCookie(req);
+  return doCookie ? { token: doCookie, origem: 'cookie' } : null;
 }
+
+/** Metodos que nao alteram estado dispensam a protecao contra CSRF. */
+const METODOS_SEGUROS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
 async function preencherContexto(req: FastifyRequest, _reply: FastifyReply): Promise<void> {
   req.usuario = null;
   req.autorizacao = null;
+  req.origemSessao = null;
 
   const enderecoIp = req.ip ?? null;
   const agenteUsuario = req.headers['user-agent'] ?? null;
 
-  const usuario = await resolverSessao(extrairToken(req));
+  const credencial = extrairToken(req);
+  const usuario = await resolverSessao(credencial?.token ?? null);
 
   req.contextoAuditoria = {
     usuarioId: usuario?.id ?? null,
@@ -72,6 +90,7 @@ async function preencherContexto(req: FastifyRequest, _reply: FastifyReply): Pro
   if (!usuario) return;
 
   req.usuario = usuario;
+  req.origemSessao = credencial?.origem ?? null;
   req.autorizacao = await carregarContexto(usuario.id, usuario.perfil, usuario.area);
 }
 
@@ -80,8 +99,30 @@ async function verificarAcesso(req: FastifyRequest, _reply: FastifyReply): Promi
 
   if (config.publica === true) return;
 
+  // Os arquivos estaticos da interface (HTML, JS, CSS) sao publicos: sao a
+  // casca, e nao contem dado nenhum. Exigir sessao para baixa-los impediria a
+  // propria tela de login de carregar. O que exige sessao e /api — e e ali que
+  // os dados estao.
+  //
+  // A regra e por prefixo, e nao por lista de arquivos: qualquer rota nova
+  // sob /api continua negada por omissao.
+  if (!req.url.startsWith('/api/') && METODOS_SEGUROS.has(req.method)) return;
+
   if (!req.usuario || !req.autorizacao) {
     throw naoAutenticado();
+  }
+
+  // CSRF: quando a sessao veio do cookie, o navegador a anexa sozinho — e um
+  // formulario hospedado em outro site tambem consegue disparar a requisicao.
+  // O que ele NAO consegue e definir um cabecalho proprio sem passar pela
+  // verificacao de origem. Exigir o cabecalho nas escritas fecha esse caminho.
+  if (req.origemSessao === 'cookie' && !METODOS_SEGUROS.has(req.method)) {
+    if (req.headers[CABECALHO_APP] !== '1') {
+      throw naoAutorizado(
+        'Requisicao de escrita sem identificacao de origem da aplicacao.',
+        { cabecalho: CABECALHO_APP },
+      );
+    }
   }
 
   if (config.exige) {
@@ -97,6 +138,7 @@ export const pluginAutenticacao = fp(
     // decorateRequest nao aceita null diretamente.
     app.decorateRequest('usuario', null as never);
     app.decorateRequest('autorizacao', null as never);
+    app.decorateRequest('origemSessao', null as never);
     app.decorateRequest('contextoAuditoria', null as never);
 
     // Resolve a sessao para todas as rotas, inclusive as publicas: o login

@@ -19,6 +19,13 @@ import type { Database } from './schema.js';
 // aproximam de 2^53.
 pg.types.setTypeParser(pg.types.builtins.INT8, (v) => Number(v));
 
+// `date` (sem hora) chega como Date por padrao, interpretado no fuso do
+// processo. Um prazo de habite-se em 2026-12-31 vira 2026-12-30T... a oeste de
+// Greenwich — o dia muda por causa do fuso do servidor, e a tela mostra a data
+// errada. Mantendo a string, a data e exatamente a que foi gravada. E o que os
+// tipos em db/schema.ts ja declaravam (`Dia` e string).
+pg.types.setTypeParser(pg.types.builtins.DATE, (v) => v);
+
 export const pool = new pg.Pool({
   connectionString: config.banco.url,
   max: config.banco.poolMax,

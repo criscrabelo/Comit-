@@ -8,9 +8,12 @@
  *   - formato uniforme de erro, sem vazar rastro de pilha
  *   - toda rota exige sessao por omissao (ver plugins/autenticacao.ts)
  */
+import { existsSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import Fastify, { type FastifyBaseLogger, type FastifyInstance } from 'fastify';
 import cors from '@fastify/cors';
 import rateLimit from '@fastify/rate-limit';
+import estaticos from '@fastify/static';
 import { config } from './config.js';
 import { logger } from './logging.js';
 import { ErroApi } from './errors.js';
@@ -21,6 +24,7 @@ import { rotasInconsistencias } from './inconsistencias/rotas.js';
 import { rotasMonday } from './integracoes/monday/rotas.js';
 import { rotasSienge } from './integracoes/sienge/rotas.js';
 import { rotasMigracao } from './migracao/rotas.js';
+import { rotasDados } from './dados/rotas.js';
 
 /** 1 MiB cobre com folga qualquer carga legitima da API. */
 const TAMANHO_MAXIMO_CORPO = 1_048_576;
@@ -105,6 +109,31 @@ export async function criarApp(): Promise<FastifyInstance> {
   await app.register(rotasMonday);
   await app.register(rotasSienge);
   await app.register(rotasMigracao);
+  await app.register(rotasDados);
+
+  // ── Interface, na mesma origem ────────────────────────────────────────────
+  //
+  // Servir a SPA daqui elimina a dependencia do server.js legado e faz `/api`
+  // ser mesma origem por construcao — o cookie de sessao e SameSite=Strict, e
+  // com origens diferentes ele simplesmente nao seria enviado.
+  //
+  // Registrado por ultimo: as rotas de API ja estao no roteador, e o curinga
+  // abaixo so alcanca o que sobrou.
+  const raizDaInterface = fileURLToPath(new URL('../../', import.meta.url));
+  if (existsSync(raizDaInterface + 'index.html')) {
+    await app.register(estaticos, {
+      root: raizDaInterface,
+      // Lista fechada: sem isto, o curinga serviria `server/`, `docs/` e o
+      // proprio `.git` para quem pedisse.
+      allowedPath: (caminho) =>
+        caminho === '/' ||
+        /^\/(index\.html|js\/[\w.-]+\.js|css\/[\w.-]+\.css)$/.test(caminho),
+      index: ['index.html'],
+      // A SPA nao usa rotas de historico; um caminho desconhecido deve dar 404,
+      // nao devolver a pagina inteira com status 200.
+      wildcard: false,
+    });
+  }
 
   return app;
 }

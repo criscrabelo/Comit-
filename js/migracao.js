@@ -52,22 +52,33 @@ const Migracao = (() => {
     return Object.keys(coletarDump().chaves).length > 0;
   }
 
-  /* ── Chamadas ao backend ────────────────────────────────────── */
-  async function chamar(caminho, corpo) {
-    const resposta = await fetch(API + caminho, {
-      method: corpo ? 'POST' : 'GET',
-      credentials: 'same-origin',
-      headers: corpo ? { 'Content-Type': 'application/json' } : {},
-      body: corpo ? JSON.stringify(corpo) : undefined,
-    });
-
-    const dados = await resposta.json().catch(() => null);
-
-    if (!resposta.ok) {
-      const erro = dados && dados.erro;
-      throw new Error((erro && erro.mensagem) || `HTTP ${resposta.status}`);
+  /**
+   * Quantos registros de uma entidade ainda existem neste navegador.
+   *
+   * Serve só para DETECTAR pendência de migração e comparar com o servidor.
+   * Não é fonte de leitura: o valor é uma contagem, não os dados. Devolve null
+   * quando a chave não existe ou está ilegível — ausência não é zero, e tratar
+   * como zero produziria uma divergência inventada.
+   */
+  function contarLegado(entidade) {
+    const bruto = localStorage.getItem('jur_comite_' + entidade);
+    if (bruto === null) return null;
+    try {
+      const lista = JSON.parse(bruto);
+      return Array.isArray(lista) ? lista.length : null;
+    } catch (e) {
+      return null;
     }
-    return dados;
+  }
+
+  /* ── Chamadas ao backend ────────────────────────────────────── */
+  // Passa por Sessao para herdar a sessão por cookie httpOnly e o cabeçalho
+  // de origem que o servidor exige nas escritas.
+  function chamar(caminho, corpo) {
+    return Sessao.requisitar(API + caminho, {
+      metodo: corpo ? 'POST' : 'GET',
+      corpo: corpo,
+    });
   }
 
   /* ── 1 e 2. Detectar e inspecionar ──────────────────────────── */
@@ -260,6 +271,7 @@ const Migracao = (() => {
     verificarAoCarregar,
     executar,
     existemDadosLegados,
+    contarLegado,
     definirPreferencia,
     lerPreferencia,
     PREFIXO_PREFERENCIA,

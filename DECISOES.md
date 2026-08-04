@@ -236,16 +236,19 @@ Itens identificados durante a construção, ainda não executados.
 **Encaminhamento:** empacotar a biblioteca junto à aplicação e servir da mesma
 origem. Enquanto não for feito, os gráficos dependem de rede externa.
 
-### Produção: mesma origem, sem servidor legado
+### Produção: mesma origem, sem servidor legado — resolvido
 
-A implantação precisa comprovar, antes de subir:
+O backend passou a servir a interface (`@fastify/static`, lista fechada de
+caminhos). Frontend e API são a mesma origem por construção, o que também é
+pré-requisito do cookie de sessão `SameSite=Strict`.
 
-- frontend e backend na **mesma origem**, com `/api` encaminhado ao backend
-  (hoje o backend não serve os estáticos, e o frontend legado responde 404 em
-  `/api/monday/*` quando servido isoladamente);
+Verificado em Chromium real (`docs/evidencias/inversao-fonte-verdade.txt`):
+nenhuma requisição ao `server.js` legado, ao Gist ou a `api.monday.com`.
+
+Continua pendente para a implantação:
+
 - `CORS_ORIGINS` com a lista explícita do domínio de produção — a configuração
   já recusa `*` fora de development;
-- nenhuma dependência do `server.js` legado nem do Gist do GitHub como banco;
 - `DATABASE_URL` com `sslmode=require`.
 
 ### Ingestão do Monday não validada contra a API real
@@ -253,3 +256,92 @@ A implantação precisa comprovar, antes de subir:
 Cliente, transformações e persistência têm testes, mas a leitura ponta a ponta
 só se confirma com token real. Previsto para a homologação controlada do quadro
 Processos Judiciais.
+
+
+---
+
+## Inversão da fonte da verdade no frontend
+
+Decisões tomadas ao apontar `js/db.js` para a API. Registradas aqui porque
+mudam comportamento visível e não são reversíveis sem nova decisão.
+
+### 1. `seed.js` foi removido
+
+Semeava treze fatos, oito notificações, treze processos e mais, direto pela
+interface, sem marcação de origem. Uma vez que a fonte da verdade é o banco,
+esses registros entrariam como dado real de abril de 2026.
+
+A regra do produto é explícita: *nenhum dado demonstrativo apresentado como
+real*. Banco vazio passa a mostrar o estado **sem dados**, com o caminho para
+criar o primeiro comitê. Os dados de exemplo continuam disponíveis pelo fluxo
+de migração, que os marca `demonstrativo = true` e nunca os mistura ao real.
+
+### 2. Exclusão pela interface passou a ser lógica
+
+`DELETE` marca `ausente_desde`; o registro sai das listagens e permanece no
+banco, com trilha. Não há exclusão física pela API — uma tela não deve
+conseguir destruir histórico.
+
+Consequência: o botão "Limpar Todos os Dados" da tela de Backup foi desativado.
+Ele removia chaves do navegador, o que hoje não apagaria nada de verdade e daria
+a impressão contrária. Exclusão em massa exige registro de quem pediu, quando e
+por quê, com backup verificado antes — tratado em B14.
+
+### 3. Concorrência por `versao`, não por "último a gravar vence"
+
+Coluna `versao` em todas as tabelas de negócio, incrementada pelo mesmo gatilho
+que mantém a trilha — e só quando algum campo muda de fato, para que reenviar o
+mesmo valor não invalide a versão de ninguém.
+
+`PATCH` sem versão, ou com versão vencida, responde **409** com o registro atual
+do servidor no corpo, para a tela poder comparar. O `UPDATE` ainda carrega
+`WHERE versao = ?`: se outra transação alterar entre a leitura e a escrita, a
+linha não é encontrada e a gravação não acontece.
+
+### 4. Sessão em cookie `httpOnly`
+
+A regra é *nenhuma credencial no navegador*. Guardar o token em `localStorage`
+ou `sessionStorage` o deixaria ao alcance de qualquer script da página.
+
+O servidor emite `patrono_sessao` com `HttpOnly`, `SameSite=Strict` e `Secure`
+em produção. O `Authorization: Bearer` continua valendo para integrações e
+testes. Contra CSRF, além do `SameSite`, escritas autenticadas por cookie exigem
+o cabeçalho `X-Patrono-App: 1` — que um formulário hospedado em outro site não
+consegue definir.
+
+Sem dependência nova: montar e ler um cookie são dez linhas em
+`src/auth/cookie.ts`.
+
+### 5. Migrar o próprio navegador não é ato administrativo
+
+A migração exigia `administracao`. Quem tem dado de versão anterior no navegador
+é quem usava a plataforma — a gestora, o líder —, não o administrador. Com a
+regra antiga o dado ficaria preso no navegador de quem não podia migrá-lo.
+
+Passou a exigir `administracao` **ou** `juridico:criar`. Colaborador e convidado
+continuam recusados, porque a migração grava em tabela compartilhada. A
+propriedade do dump continua garantida no serviço, que filtra por usuário.
+
+### 6. `date` do PostgreSQL passa a chegar como texto
+
+O driver devolvia `date` como `Date`, interpretado no fuso do processo. Um prazo
+de habite-se em `2026-12-31` virava `2026-12-30` a oeste de Greenwich: o dia
+mudava por causa do fuso do servidor. O parser foi fixado para manter a string —
+que é o que `db/schema.ts` já declarava.
+
+### 7. `exportAll` e `importAll` viraram assíncronos
+
+São os dois únicos métodos de `DB` cuja assinatura mudou. O navegador não tem
+mais a base inteira para serializar: o dump vem do servidor, com autorização
+aplicada e exportação registrada na trilha. A restauração passa pelo fluxo de
+migração, que classifica, versiona e audita.
+
+### Backlog acrescentado
+
+- **Filtro por responsável.** Nenhuma tabela da Fase 1 tem coluna de
+  responsável: no modelo atual essa informação vive no Monday e chega em
+  `valor_original`. O filtro busca ali. Quando houver coluna própria, trocar —
+  a busca por texto no dado bruto é correta, mas não usa índice.
+- **Aviso de sincronização parcial na tela.** A carga inicial informa quais
+  entidades foram truncadas em 500 registros e o estado existe no adaptador,
+  mas nenhuma tela ainda desenha esse aviso.

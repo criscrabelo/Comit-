@@ -28,6 +28,7 @@ import {
   revogarSessoesDoUsuario,
 } from './sessoes.js';
 import { limparFalhas, registrarTentativa, verificarLimite } from './tentativas.js';
+import { cookieDeRemocao, montarCookie } from './cookie.js';
 
 const MENSAGEM_CREDENCIAL = 'Usuario ou senha incorretos.';
 
@@ -184,6 +185,11 @@ export async function rotasAutenticacao(app: FastifyInstance): Promise<void> {
       }),
     ]);
 
+    // A interface usa o cookie httpOnly e nunca ve o token. O token no corpo
+    // continua para integracoes e testes, que nao tem navegador para guardar
+    // cookie — nao e o caminho da SPA.
+    reply.header('Set-Cookie', montarCookie(sessao.token, sessao.expiraEm));
+
     return {
       token: sessao.token,
       expira_em: sessao.expiraEm.toISOString(),
@@ -223,7 +229,7 @@ export async function rotasAutenticacao(app: FastifyInstance): Promise<void> {
   });
 
   // ── Logout ────────────────────────────────────────────────────────────────
-  app.post('/api/auth/logout', async (req) => {
+  app.post('/api/auth/logout', async (req, reply) => {
     if (!req.usuario) throw naoAutenticado();
 
     await revogarSessao(req.usuario.sessaoId, {
@@ -232,6 +238,7 @@ export async function rotasAutenticacao(app: FastifyInstance): Promise<void> {
     });
     await auditar({ ...req.contextoAuditoria, acao: 'logout' });
 
+    reply.header('Set-Cookie', cookieDeRemocao());
     return { encerrada: true };
   });
 
