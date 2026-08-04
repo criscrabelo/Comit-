@@ -359,6 +359,14 @@ export interface TabelaRegistrosBrutos {
   extraido_em: Instante;
 }
 
+export type ImpactoInconsistencia =
+  | 'nenhum'
+  | 'cadastro'
+  | 'indicador'
+  | 'valor_financeiro'
+  | 'situacao_juridica'
+  | 'multiplo';
+
 export interface TabelaInconsistencias {
   id: Auto<string>;
   tipo: TipoInconsistencia;
@@ -366,6 +374,21 @@ export interface TabelaInconsistencias {
   fonte: FonteDado;
   descricao: string;
   detectado_em: Instante;
+  // ── Extensao da migracao 008 (Central de Inconsistencias) ──
+  impacto: Auto<ImpactoInconsistencia>;
+  impacto_valor: string | null;
+  regra_vinculo: RegraVinculo | null;
+  confianca_vinculo: ConfiancaVinculo | null;
+  vinculo_id: string | null;
+  analise: string | null;
+  decisao: string | null;
+  justificativa: string | null;
+  bloqueia_indicador: Auto<boolean>;
+  competencia_ref: string | null;
+  data_referencia: Dia | null;
+  visualizacoes: Auto<number>;
+  vista_por: string | null;
+  atualizado_em: Instante;
   cliente: string | null;
   contrato: string | null;
   empreendimento: string | null;
@@ -386,6 +409,24 @@ export interface TabelaInconsistencias {
   chave_deduplicacao: string;
   ocorrencias: Auto<number>;
   vista_por_ultimo_em: Instante;
+}
+
+export interface TabelaInconsistenciasEventos {
+  id: Generated<number>;
+  inconsistencia_id: string;
+  ocorrido_em: Instante;
+  evento: string;
+  usuario_id: string | null;
+  usuario_nome: string | null;
+  status_antes: StatusRevisao | null;
+  status_depois: StatusRevisao | null;
+  responsavel_antes: string | null;
+  responsavel_depois: string | null;
+  analise: string | null;
+  decisao: string | null;
+  justificativa: string | null;
+  observacao: string | null;
+  detalhe: Auto<unknown>;
 }
 
 export interface TabelaVinculosFontes {
@@ -555,6 +596,7 @@ export interface Database {
   execucoes_importacao: TabelaExecucoesImportacao;
   registros_brutos: TabelaRegistrosBrutos;
   inconsistencias: TabelaInconsistencias;
+  inconsistencias_eventos: TabelaInconsistenciasEventos;
   vinculos_fontes: TabelaVinculosFontes;
 
   competencias: TabelaCompetencias;

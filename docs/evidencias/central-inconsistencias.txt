@@ -1,0 +1,476 @@
+
+══════════════════════════════════════════════════════════════════════════════
+AUTENTICACAO
+══════════════════════════════════════════════════════════════════════════════
+
+Sessao iniciada como cristiane (token de 43 caracteres, opaco).
+
+══════════════════════════════════════════════════════════════════════════════
+REQUISITO 8 — CATALOGO DE TIPOS
+══════════════════════════════════════════════════════════════════════════════
+
+20 tipos catalogados. Amostra:
+
+── primeiros tres
+[
+  {
+    "tipo": "cliente_sem_identificacao",
+    "rotulo": "Cliente sem identificacao",
+    "gravidade_padrao": "alta",
+    "area_responsavel": "juridico",
+    "orientacao": "Registro sem CPF/CNPJ, contrato ou unidade. Informe um identificador na origem para que o cliente possa ser contado uma unica vez.",
+    "bloqueia_indicador": true
+  },
+  {
+    "tipo": "cpf_cnpj_invalido",
+    "rotulo": "CPF/CNPJ invalido",
+    "gravidade_padrao": "alta",
+    "area_responsavel": "juridico",
+    "orientacao": "O documento tem digito verificador invalido e por isso nao serve como chave de vinculo. Corrija na origem.",
+    "bloqueia_indicador": false
+  },
+  {
+    "tipo": "contrato_ausente",
+    "rotulo": "Contrato ausente",
+    "gravidade_padrao": "media",
+    "area_responsavel": "juridico",
+    "orientacao": "Sem numero de contrato o vinculo com o Sienge cai para empreendimento + unidade.",
+    "bloqueia_indicador": false
+  }
+]
+
+══════════════════════════════════════════════════════════════════════════════
+RESUMO PARA OS CARTOES DA TELA
+══════════════════════════════════════════════════════════════════════════════
+
+── GET /resumo
+{
+  "resumo": [
+    {
+      "gravidade": "critica",
+      "status": "pendente",
+      "total": 1
+    },
+    {
+      "gravidade": "alta",
+      "status": "pendente",
+      "total": 1
+    }
+  ]
+}
+
+══════════════════════════════════════════════════════════════════════════════
+REQUISITO 13 — LISTA COM FILTROS
+══════════════════════════════════════════════════════════════════════════════
+
+── GET ?gravidade=critica&status=pendente
+{
+  "total": 1,
+  "inconsistencias": [
+    {
+      "id": "d987f1f3-1882-40ff-a222-f4b30423cae7",
+      "tipo": "vinculo_ambiguo",
+      "gravidade": "critica",
+      "impacto": "indicador",
+      "impacto_valor": null,
+      "fonte": "consolidacao",
+      "descricao": "cliente: 3 candidatos possiveis para nome = \"MARIA APARECIDA SILVA\". Nenhum foi escolhido automaticamente.",
+      "detectado_em": "2026-08-04T18:18:55.284Z",
+      "status_revisao": "aberta",
+      "cliente": null,
+      "contrato": null,
+      "empreendimento": null,
+      "empreendimento_id": "d7349fcc-5c51-4779-ace9-37f405fbf867",
+      "valores_em_conflito": [
+        {
+          "campo": "cliente",
+          "fonte": "monday",
+          "valor": "MARIA APARECIDA SILVA",
+          "id_origem": "item-12001",
+          "data_referencia": "2026-05-10"
+        },
+        {
+          "campo": "cliente",
+          "fonte": "sienge",
+          "valor": "MARIA APARECIDA SILVA",
+          "id_origem": "cli-77",
+          "data_referencia": "2026-05-28"
+        },
+        {
+          "campo": "cliente",
+          "fonte": "sienge",
+          "valor": "MARIA APARECIDA SILVA",
+          "id_origem": "cli-91",
+          "data_referencia": "2026-05-28"
+        }
+      ],
+      "precedencia_aplicada": null,
+      "valor_aplicado": null,
+      "hipotese": null,
+      "regra_vinculo": "nome",
+      "confianca_vinculo": "baixa",
+      "vinculo_id": null,
+      "analise": null,
+      "decisao": null,
+      "justificativa": null,
+      "observacao": null,
+      "bloqueia_indicador": true,
+      "competencia_ref": null,
+      "data_referencia": null,
+      "responsavel_id": null,
+      "responsavel_area": "juridico",
+      "ocorrencias": 1,
+      "resolvido_em": null,
+      "vista_por_ultimo_em": "2026-08-04T18:18:55.284Z",
+      "visualizacoes": 0,
+      "responsavel_nome": null,
+      "empreendimento_nome": "VERANO",
+      "status": "pendente",
+      "orientacao": "Mais de um candidato possivel no mesmo nivel de vinculo. A plataforma NAO escolhe automaticamente: confirme qual e o correto.",
+      "rotulo_tipo": "Vinculo ambiguo"
+    }
+  ]
+}
+
+══════════════════════════════════════════════════════════════════════════════
+REQUISITOS 1 a 5 — OS DOIS VALORES, FONTES, IDS, REGRA E CONFIANCA
+══════════════════════════════════════════════════════════════════════════════
+
+── GET /81f85baf-adea-4d88-bb25-1057f92b1062
+{
+  "id": "81f85baf-adea-4d88-bb25-1057f92b1062",
+  "tipo": "conflito_monday_sienge",
+  "gravidade": "alta",
+  "fonte": "consolidacao",
+  "descricao": "Divergencia em saldo_vencido: monday informa 64000, sienge informa 66071.1. Os dois valores estao preservados.",
+  "detectado_em": "2026-08-04T18:18:55.280Z",
+  "cliente": null,
+  "contrato": "C-1042",
+  "empreendimento": "VERANO",
+  "cliente_id": null,
+  "contrato_id": null,
+  "empreendimento_id": "d7349fcc-5c51-4779-ace9-37f405fbf867",
+  "valores_em_conflito": [
+    {
+      "campo": "saldo_vencido",
+      "fonte": "monday",
+      "valor": 64000,
+      "id_origem": "item-99887",
+      "url_origem": "https://coevo.monday.com/boards/5630368737/pulses/item-99887",
+      "extraido_em": "2026-03-04T06:00:00.000Z",
+      "data_referencia": "2026-03-04"
+    },
+    {
+      "campo": "saldo_vencido",
+      "fonte": "sienge",
+      "valor": 66071.1,
+      "id_origem": "titulo-4471",
+      "extraido_em": "2026-05-28T05:00:00.000Z",
+      "data_referencia": "2026-05-28"
+    }
+  ],
+  "precedencia_aplicada": "financeiro: sienge > base validada > monday",
+  "valor_aplicado": 66071.1,
+  "hipotese": null,
+  "status_revisao": "aberta",
+  "responsavel_id": null,
+  "responsavel_area": "financeiro",
+  "observacao": null,
+  "resolvido_em": null,
+  "resolvido_por": null,
+  "execucao_id": null,
+  "chave_deduplicacao": "9e0349d50ba15190fbc2be04c6aa06a1",
+  "ocorrencias": 1,
+  "vista_por_ultimo_em": "2026-08-04T18:18:55.280Z",
+  "impacto": "valor_financeiro",
+  "impacto_valor": "2071.10",
+  "regra_vinculo": "contrato",
+  "confianca_vinculo": "alta",
+  "vinculo_id": null,
+  "analise": null,
+  "decisao": null,
+  "justificativa": null,
+  "bloqueia_indicador": false,
+  "competencia_ref": null,
+  "data_referencia": "2026-05-28T00:00:00.000Z",
+  "visualizacoes": 0,
+  "vista_por": null,
+  "atualizado_em": "2026-08-04T18:18:55.280Z",
+  "responsavel_nome": null,
+  "empreendimento_nome": "VERANO",
+  "status": "pendente",
+  "orientacao": "Os dois valores estao preservados. A precedencia financeira e do Sienge; confirme qual esta correto na origem.",
+  "rotulo_tipo": "Divergencia Monday x Sienge"
+}
+
+══════════════════════════════════════════════════════════════════════════════
+REQUISITO 14 — REGISTRO ORIGINAL DO MONDAY E DO SIENGE
+══════════════════════════════════════════════════════════════════════════════
+
+── GET /81f85baf-adea-4d88-bb25-1057f92b1062/origem
+{
+  "lados": [
+    {
+      "campo": "saldo_vencido",
+      "fonte": "monday",
+      "valor": 64000,
+      "id_origem": "item-99887",
+      "url_origem": "https://coevo.monday.com/boards/5630368737/pulses/item-99887",
+      "extraido_em": "2026-03-04T06:00:00.000Z",
+      "data_referencia": "2026-03-04"
+    },
+    {
+      "campo": "saldo_vencido",
+      "fonte": "sienge",
+      "valor": 66071.1,
+      "id_origem": "titulo-4471",
+      "extraido_em": "2026-05-28T05:00:00.000Z",
+      "data_referencia": "2026-05-28"
+    }
+  ],
+  "registros_originais": [
+    {
+      "fonte": "sienge",
+      "id_origem": "titulo-4471",
+      "payload": {
+        "billId": "titulo-4471",
+        "referenceDate": "2026-05-28",
+        "contractNumber": "C-1042",
+        "overdueBalance": 66071.1
+      },
+      "extraido_em": "2026-08-04T18:18:55.273Z",
+      "escopo": "receivable-bills"
+    },
+    {
+      "fonte": "monday",
+      "id_origem": "item-99887",
+      "payload": {
+        "id": "item-99887",
+        "name": "VERANO 1105B",
+        "group": {
+          "title": "MARÇO 2026"
+        },
+        "column_values": [
+          {
+            "id": "texto1",
+            "text": "C-1042"
+          },
+          {
+            "id": "valor1",
+            "text": "R$ 64.000,00"
+          }
+        ]
+      },
+      "extraido_em": "2026-08-04T18:18:55.266Z",
+      "escopo": "notificacoes"
+    }
+  ],
+  "observacao": null
+}
+
+══════════════════════════════════════════════════════════════════════════════
+REQUISITO 6 — AMBIGUIDADE SEM ESCOLHA AUTOMATICA
+══════════════════════════════════════════════════════════════════════════════
+
+── candidatos preservados, nenhum eleito
+{
+  "tipo": "vinculo_ambiguo",
+  "gravidade": "critica",
+  "confianca_vinculo": "baixa",
+  "regra_vinculo": "nome",
+  "bloqueia_indicador": true,
+  "valor_aplicado": null,
+  "precedencia_aplicada": null,
+  "candidatos": [
+    {
+      "campo": "cliente",
+      "fonte": "monday",
+      "valor": "MARIA APARECIDA SILVA",
+      "id_origem": "item-12001",
+      "data_referencia": "2026-05-10"
+    },
+    {
+      "campo": "cliente",
+      "fonte": "sienge",
+      "valor": "MARIA APARECIDA SILVA",
+      "id_origem": "cli-77",
+      "data_referencia": "2026-05-28"
+    },
+    {
+      "campo": "cliente",
+      "fonte": "sienge",
+      "valor": "MARIA APARECIDA SILVA",
+      "id_origem": "cli-91",
+      "data_referencia": "2026-05-28"
+    }
+  ]
+}
+
+══════════════════════════════════════════════════════════════════════════════
+REQUISITO 7 — ATRIBUICAO DE RESPONSAVEL
+══════════════════════════════════════════════════════════════════════════════
+
+── POST /responsavel
+{
+  "atribuida": true
+}
+
+══════════════════════════════════════════════════════════════════════════════
+REQUISITO 9 — ANALISE
+══════════════════════════════════════════════════════════════════════════════
+
+── POST /analise
+{
+  "registrada": true
+}
+
+══════════════════════════════════════════════════════════════════════════════
+REQUISITO 10 — ENCERRAMENTO EXIGE DECISAO E JUSTIFICATIVA
+══════════════════════════════════════════════════════════════════════════════
+
+── sem justificativa — recusado
+{
+  "status_http": 400,
+  "erro": {
+    "codigo": "entrada_invalida",
+    "mensagem": "Encerrar exige status (resolvida ou descartada), decisao e justificativa.",
+    "detalhe": {}
+  }
+}
+
+── com decisao e justificativa — aceito
+{
+  "encerrada": true,
+  "status": "resolvida"
+}
+
+══════════════════════════════════════════════════════════════════════════════
+REQUISITO 11 — HISTORICO COMPLETO
+══════════════════════════════════════════════════════════════════════════════
+
+── GET /81f85baf-adea-4d88-bb25-1057f92b1062/historico
+{
+  "eventos": [
+    {
+      "id": 1,
+      "ocorrido_em": "2026-08-04T18:18:55.282Z",
+      "evento": "detectada",
+      "usuario_nome": null,
+      "status_antes": null,
+      "status_depois": "pendente",
+      "responsavel_antes": null,
+      "responsavel_depois": null,
+      "analise": null,
+      "decisao": null,
+      "justificativa": null,
+      "observacao": null,
+      "detalhe": {
+        "tipo": "conflito_monday_sienge",
+        "lados": 2,
+        "gravidade": "alta"
+      }
+    },
+    {
+      "id": 3,
+      "ocorrido_em": "2026-08-04T18:18:55.627Z",
+      "evento": "visualizada",
+      "usuario_nome": "Cristiane Rabelo",
+      "status_antes": null,
+      "status_depois": null,
+      "responsavel_antes": null,
+      "responsavel_depois": null,
+      "analise": null,
+      "decisao": null,
+      "justificativa": null,
+      "observacao": null,
+      "detalhe": {}
+    },
+    {
+      "id": 5,
+      "ocorrido_em": "2026-08-04T18:18:55.675Z",
+      "evento": "atribuida",
+      "usuario_nome": "Cristiane Rabelo",
+      "status_antes": "pendente",
+      "status_depois": "em_revisao",
+      "responsavel_antes": null,
+      "responsavel_depois": "05a93a62-f03b-48a0-a518-3d79c0bd3588",
+      "analise": null,
+      "decisao": null,
+      "justificativa": null,
+      "observacao": null,
+      "detalhe": {}
+    },
+    {
+      "id": 6,
+      "ocorrido_em": "2026-08-04T18:18:55.689Z",
+      "evento": "analisada",
+      "usuario_nome": "Cristiane Rabelo",
+      "status_antes": "em_revisao",
+      "status_depois": "em_revisao",
+      "responsavel_antes": null,
+      "responsavel_depois": null,
+      "analise": "As datas de referencia sao diferentes: o Monday traz a posicao de 04/03 e o Sienge a de 28/05. Nao ha erro de valor, ha defasagem de leitura.",
+      "decisao": null,
+      "justificativa": null,
+      "observacao": null,
+      "detalhe": {}
+    },
+    {
+      "id": 7,
+      "ocorrido_em": "2026-08-04T18:18:55.706Z",
+      "evento": "resolvida",
+      "usuario_nome": "Cristiane Rabelo",
+      "status_antes": "em_revisao",
+      "status_depois": "resolvida",
+      "responsavel_antes": null,
+      "responsavel_depois": null,
+      "analise": null,
+      "decisao": "Mantido o saldo do Sienge: R$ 66.071,10.",
+      "justificativa": "Precedencia financeira e do Sienge e a posicao de 28/05 e a mais recente. O valor do Monday permanece registrado para auditoria.",
+      "observacao": null,
+      "detalhe": {}
+    }
+  ]
+}
+
+══════════════════════════════════════════════════════════════════════════════
+REQUISITO 12 — OS VALORES ORIGINAIS DEPOIS DE RESOLVIDA
+══════════════════════════════════════════════════════════════════════════════
+
+── valores em conflito permanecem intactos
+{
+  "status": "resolvida",
+  "decisao": "Mantido o saldo do Sienge: R$ 66.071,10.",
+  "valores_em_conflito": [
+    {
+      "campo": "saldo_vencido",
+      "fonte": "monday",
+      "valor": 64000,
+      "id_origem": "item-99887",
+      "url_origem": "https://coevo.monday.com/boards/5630368737/pulses/item-99887",
+      "extraido_em": "2026-03-04T06:00:00.000Z",
+      "data_referencia": "2026-03-04"
+    },
+    {
+      "campo": "saldo_vencido",
+      "fonte": "sienge",
+      "valor": 66071.1,
+      "id_origem": "titulo-4471",
+      "extraido_em": "2026-05-28T05:00:00.000Z",
+      "data_referencia": "2026-05-28"
+    }
+  ]
+}
+
+══════════════════════════════════════════════════════════════════════════════
+REQUISITO 15 — TRILHA DE AUDITORIA GERADA POR ESTA DEMONSTRACAO
+══════════════════════════════════════════════════════════════════════════════
+
+  2026-08-04T18:18:55.627Z  consulta_dado_pessoal    Cristiane Rabelo     
+  2026-08-04T18:18:55.652Z  consulta_dado_pessoal    Cristiane Rabelo     
+  2026-08-04T18:18:55.675Z  inconsistencia_tratada   Cristiane Rabelo     atribuicao
+  2026-08-04T18:18:55.689Z  inconsistencia_tratada   Cristiane Rabelo     analise
+  2026-08-04T18:18:55.706Z  inconsistencia_tratada   Cristiane Rabelo     encerramento
+  2026-08-04T18:18:55.726Z  consulta_dado_pessoal    Cristiane Rabelo     
+
+

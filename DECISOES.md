@@ -97,6 +97,73 @@ O algoritmo fica **declarado no próprio registro** (`usuarios.algoritmo_senha`)
 então migrar para Argon2id depois é trocar a função de verificação e reidratar o
 hash no próximo login de cada pessoa — sem migração destrutiva.
 
+#### Parâmetros de segurança adotados
+
+Implementação em `server/src/auth/senha.ts`.
+
+| Parâmetro | Valor | Por quê |
+|---|---|---|
+| Algoritmo | `scrypt` (RFC 7914), via `node:crypto` | Memory-hard; sem dependência nativa |
+| `N` (custo de CPU/memória) | `32768` (2¹⁵) | ~32 MB por verificação, ~100 ms em servidor comum. Torna ataque por GPU caro sem inviabilizar o login |
+| `r` (tamanho do bloco) | `8` | Valor de referência da RFC 7914 |
+| `p` (paralelismo) | `1` | Recomendado quando `N` já é alto; aumentar `p` não acrescenta resistência aqui |
+| `maxmem` | `256 × N × r` (128 MB) | O mínimo exigido é `128 × N × r`; a folga de 2× evita falha por limite em ambiente com memória contada |
+| Tamanho do hash derivado | `32` bytes | 256 bits |
+
+**Salt**
+
+- **16 bytes (128 bits)**, gerado por `crypto.randomBytes` — CSPRNG do sistema
+  operacional.
+- **Único por senha.** Gerado a cada `gerarHashSenha`, inclusive quando a mesma
+  pessoa troca para uma senha que já usou antes. Duas contas com senhas
+  idênticas produzem hashes diferentes, o que inviabiliza tabela pré-computada.
+- **Armazenado junto ao hash**, em base64, dentro do próprio valor. Não existe
+  coluna separada de salt nem salt global — um salt compartilhado anularia o
+  propósito.
+
+**Formato armazenado em `usuarios.hash_senha`**
+
+```
+scrypt$32768$8$1$<salt-base64>$<hash-base64>
+```
+
+Os parâmetros viajam com o hash de propósito: a verificação lê o custo do
+próprio registro, em vez de assumir o custo atual do código. É isso que permite
+endurecer o custo no futuro sem invalidar as senhas já cadastradas.
+
+**Política de atualização do hash (rehash)**
+
+1. No login bem-sucedido, `verificarSenha` compara os parâmetros gravados com os
+   parâmetros atuais do código.
+2. Se diferirem, devolve `precisaRehash = true` e a rota de login regrava o hash
+   com os parâmetros novos — de forma transparente, **sem pedir a senha de novo**
+   e sem derrubar a sessão.
+3. Trocar `N`, `r` ou `p` no código é, portanto, suficiente: a base migra sozinha
+   conforme as pessoas entram.
+4. Quem não fizer login continua com o hash antigo, que permanece válido. Não há
+   invalidação em massa nem expiração forçada de senha.
+5. A mesma mecânica cobre a troca de algoritmo: o prefixo `scrypt` no valor
+   permite adicionar um verificador `argon2id` e migrar por login, sem migração
+   destrutiva.
+
+**Comparação em tempo constante**
+
+`timingSafeEqual` compara o hash derivado com o armazenado. Comparação com `===`
+vazaria informação pelo tempo de resposta.
+
+**Defesa contra enumeração de usuário**
+
+Quando o usuário não existe, `consumirTempoVerificacao` executa um scrypt
+descartável com os mesmos parâmetros, para que o tempo de resposta de "usuário
+inexistente" seja indistinguível de "senha errada". A mensagem devolvida também
+é idêntica nos dois casos.
+
+**Força mínima exigida**
+
+12 caracteres, no mínimo 5 caracteres distintos, sem espaço nas pontas, máximo
+256 caracteres. O comprimento é priorizado sobre composição obrigatória de
+caracteres, porque é o fator que mais encarece o ataque.
+
 ### `valor_original` renomeado no financeiro
 
 Colisão real de nomes. `valor_original` é coluna de proveniência (o payload cru

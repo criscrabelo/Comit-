@@ -245,7 +245,10 @@ export function traduzirMensagem(mensagem: string): TipoInconsistencia | null {
   if (/empreendimento vazio|empreendimento ausente/.test(t)) return 'empreendimento_ausente';
   if (/carteira de referencia/.test(t)) return 'ausencia_carteira_referencia';
   if (/percentual de perda|percentual de perda aprovado/.test(t)) return 'ausencia_percentual_perda';
-  if (/saldo (financeiro )?duplicado|saldo deduplicado/.test(t)) return 'saldo_duplicado';
+  // Precisa vir ANTES da regra generica de duplicidade: a mensagem real de
+  // analisar_cobrancas.py e "saldo financeiro deduplicado por contrato", e
+  // "deduplicado" contem "duplicad".
+  if (/saldo\b.*duplicad/.test(t)) return 'saldo_duplicado';
   if (/vinculo ambiguo|ambiguidade/.test(t)) return 'vinculo_ambiguo';
   if (/contrato divergente/.test(t)) return 'contrato_divergente';
   if (/contrato ausente|sem contrato/.test(t)) return 'contrato_ausente';

@@ -1,0 +1,163 @@
+
+
+══════════════════════════════════════════════════════════════════════════════
+1. AS MIGRATIONS EXECUTAM
+══════════════════════════════════════════════════════════════════════════════
+  → recriando patrono_test em 127.0.0.1:55432
+  → 001_base.sql ok
+  → 002_identidade_acesso.sql ok
+  → 003_cadastro.sql ok
+  → 004_integracao.sql ok
+  → 005_juridico.sql ok
+  → 006_financeiro.sql ok
+  → 007_historico.sql ok
+  → 008_central_inconsistencias.sql ok
+  ✓ patrono_test pronto — 52 tabelas, 20 de negocio com proveniencia
+  ✓ todas as migracoes aplicadas do zero, em transacao
+
+
+══════════════════════════════════════════════════════════════════════════════
+2. O BACKEND INICIA CORRETAMENTE
+══════════════════════════════════════════════════════════════════════════════
+  ── log de partida:
+  ── GET /api/saude
+    {"estado":"ok","ambiente":"development","banco":{"ok":true},"integracoes":{"monday":"desligada","sienge":"desligada"}}
+  ✓ servidor responde e o banco esta conectado
+  ✓ Monday desligado sem token (nao finge estar conectado)
+  ✓ Sienge desligado, como previsto para a Fase 1
+
+
+══════════════════════════════════════════════════════════════════════════════
+3. O POSTGRESQL PRESERVA OS DADOS
+══════════════════════════════════════════════════════════════════════════════
+  ✓ cristiane (gestora) · todos os empreendimentos · ve CPF/CNPJ completo
+  ✓ joao.colab (colaborador)
+  ── usuarios no banco: 2
+  ── reiniciando o servidor para provar a persistencia
+  ── usuarios apos reiniciar: 2
+  ✓ dados preservados entre reinicios (2 usuarios)
+  ✓ login funciona com a senha gravada antes do reinicio
+  ── esquema: 52 tabelas, 20 de negocio com proveniencia
+
+
+══════════════════════════════════════════════════════════════════════════════
+4. TESTES DE AUTENTICACAO E PERMISSOES
+══════════════════════════════════════════════════════════════════════════════
+  Verificando http://localhost:3199
+  
+  Formato de resposta e erro
+    ok   saude responde ok
+    ok   erro em formato uniforme
+    ok   rota inexistente nao vaza existencia
+  
+  Autenticacao
+    ok   senha errada recusada
+    ok   usuario inexistente recusado
+    ok   sem enumeracao de usuario (mensagens identicas)
+  
+  Sessao da gestora
+    ok   login devolve token
+    ok   perfil correto
+    ok   gestora ve documento completo
+    ok   gestora tem todos os empreendimentos
+    ok   gestora pode editar juridico
+    ok   rota inexistente da 404 com sessao
+  
+  Sessao do colaborador
+    ok   colaborador NAO ve documento completo
+    ok   colaborador NAO tem todos os empreendimentos
+    ok   colaborador nao pode editar juridico
+  
+  Revogacao de sessao
+    ok   lista sessao atual
+    ok   logout encerra
+    ok   token nao serve depois do logout
+  
+  Troca de senha encerra as outras sessoes
+    ok   senha alterada
+    ok   sessao anterior foi encerrada
+    ok   sessao que trocou continua
+    ok   senha antiga nao funciona mais
+    ok   senha nova funciona
+  
+  Senha fraca recusada
+    ok   senha curta recusada
+  
+  ✓ todas as verificacoes passaram
+  ✓ verificacao de autenticacao e permissoes passou
+  ── permissao por perfil na Central de Inconsistencias:
+  ✓ gestora acessa a Central
+  ✓ colaborador NAO acessa a Central
+  ✓ sem sessao nao acessa a Central
+
+
+══════════════════════════════════════════════════════════════════════════════
+5. TESTES DO PROXY DO MONDAY
+══════════════════════════════════════════════════════════════════════════════
+  ✓ admin.ti (administrador)
+  ── o estado da integracao NAO expoe o token, so a presenca dele:
+    {"token_configurado": false, "modo": "leitura", "estado": "desconectada", "ultima_carga_valida_em": null}
+  ✓ informa que o token nao esta configurado
+  ✓ integracao opera somente em leitura
+  ✓ sem carga valida ainda
+  ✓ nenhum valor de token na resposta
+  ── autorizacao vem ANTES do estado da integracao:
+    gestora em rota de administracao: {"erro":{"codigo":"nao_autorizado","mensagem":"Seu perfil nao permite executar em administracao.","detalhe":{"modulo":"administracao","acao":"executar","perfil":"gestora"}}}
+  ✓ gestora nao alcanca rota de administracao
+  ── com perfil correto e SEM token, recusa em vez de fingir:
+    {"erro":{"codigo":"integracao_desligada","mensagem":"MONDAY_TOKEN nao esta configurado no servidor. Configure a variavel de ambiente.","detalhe":{}}}
+  ✓ testar recusa sem MONDAY_TOKEN
+    sync: {"erro":{"codigo":"integracao_desligada","mensagem":"MONDAY_TOKEN nao esta configurado no servidor. A sincronizacao nao foi iniciada e nenhum dado foi alterado.","detalhe":{}}}
+  ✓ sync recusa sem MONDAY_TOKEN
+  ✓ sync afirma que nada foi alterado
+  ── nenhuma execucao foi criada pela tentativa recusada:
+    execucoes de monday no banco: 0
+  ✓ recusa antes de abrir execucao: nada foi tocado
+  ── sem sessao, o proxy nao responde nada sobre a integracao:
+  ✓ proxy exige sessao
+  ── testes automatizados do cliente e das transformacoes do Monday:
+    
+     Test Files  2 passed (2)
+          Tests  47 passed (47)
+       Start at  18:18:13
+       Duration  4.61s (transform 146ms, setup 0ms, import 412ms, tests 3.79s, environment 0ms)
+    
+  ✓ transformacoes e persistencia idempotente do Monday passaram
+
+
+══════════════════════════════════════════════════════════════════════════════
+6. NENHUMA CREDENCIAL NO FRONTEND OU NO REPOSITORIO
+══════════════════════════════════════════════════════════════════════════════
+  ── varredura por padroes de segredo no que esta versionado:
+  ✓ nenhum token, chave de API ou JWT no codigo versionado
+  ── o token do Monday sai do navegador? (js/ do frontend antigo)
+    ocorrencias no frontend legado: 2 (sera removido na migracao, item B8)
+  ── o backend novo le o token de onde?
+    31:  MONDAY_TOKEN: z.string().optional(),
+    97:    token: env.MONDAY_TOKEN?.trim() || null,
+    100:      return Boolean(env.MONDAY_TOKEN?.trim());
+  ✓ backend le o token apenas de variavel de ambiente
+  ── .env esta ignorado pelo git?
+  ✓ .env ignorado: valores reais nunca sao versionados
+  ── o token aparece em log? (redacao automatica)
+  ✓ token, senha e CPF/CNPJ redigidos na saida de log
+
+
+══════════════════════════════════════════════════════════════════════════════
+7. SUITE COMPLETA DE TESTES
+══════════════════════════════════════════════════════════════════════════════
+   RUN  v4.1.10 /home/user/Comit-/server
+  
+  
+   Test Files  4 passed (4)
+        Tests  102 passed (102)
+     Start at  18:18:19
+     Duration  18.09s (transform 313ms, setup 0ms, import 877ms, tests 16.43s, environment 0ms)
+  
+  ✓ suite completa passou
+
+
+══════════════════════════════════════════════════════════════════════════════
+RESULTADO
+══════════════════════════════════════════════════════════════════════════════
+  ✓ todas as confirmacoes passaram
