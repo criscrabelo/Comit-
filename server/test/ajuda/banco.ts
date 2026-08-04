@@ -17,6 +17,9 @@ const executar = promisify(execFile);
 
 /** Tabelas limpas entre testes, na ordem que respeita as chaves estrangeiras. */
 const TABELAS_LIMPAVEIS = [
+  'migracoes_chaves',
+  'migracoes_localstorage',
+  'vinculos_eventos',
   'inconsistencias_eventos',
   'registros_brutos',
   'vinculos_fontes',

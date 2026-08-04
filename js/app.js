@@ -57,4 +57,11 @@ DB.ready.then(() => {
   populateMonthSelector();   // Preenche o seletor de mês
   updateStorageInfo();       // Exibe uso de armazenamento
   Router.navigate('dashboard'); // Abre o dashboard
+
+  // Dados de versões anteriores no navegador: oferece a migração para o
+  // PostgreSQL. Não apaga nada por conta própria — pergunta antes, e só remove
+  // depois de o servidor confirmar a gravação.
+  if (typeof Migracao !== 'undefined') {
+    setTimeout(() => Migracao.verificarAoCarregar(), 1200);
+  }
 });

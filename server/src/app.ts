@@ -20,6 +20,7 @@ import { rotasAutenticacao } from './auth/rotas.js';
 import { rotasInconsistencias } from './inconsistencias/rotas.js';
 import { rotasMonday } from './integracoes/monday/rotas.js';
 import { rotasSienge } from './integracoes/sienge/rotas.js';
+import { rotasMigracao } from './migracao/rotas.js';
 
 /** 1 MiB cobre com folga qualquer carga legitima da API. */
 const TAMANHO_MAXIMO_CORPO = 1_048_576;
@@ -103,6 +104,7 @@ export async function criarApp(): Promise<FastifyInstance> {
   await app.register(rotasInconsistencias);
   await app.register(rotasMonday);
   await app.register(rotasSienge);
+  await app.register(rotasMigracao);
 
   return app;
 }

@@ -580,6 +580,64 @@ export interface TabelaFotografiasDiarias {
   criado_em: Instante;
 }
 
+export type StatusMigracao =
+  | 'iniciada' | 'em_andamento' | 'concluida' | 'parcial' | 'erro' | 'cancelada';
+export type ClasseChave = 'migrar' | 'preferencia' | 'excluir' | 'cache' | 'revisao';
+
+export interface TabelaMigracoesLocalstorage {
+  id: Auto<string>;
+  usuario_id: string;
+  usuario_nome: string;
+  iniciada_em: Instante;
+  finalizada_em: Instante | null;
+  status: Auto<StatusMigracao>;
+  origem_navegador: string | null;
+  endereco_ip: string | null;
+  snapshot: unknown;
+  snapshot_bytes: number;
+  snapshot_hash: string;
+  versao_formato: string | null;
+  chaves_encontradas: Auto<number>;
+  chaves_migradas: Auto<number>;
+  lidos: Auto<number>;
+  incluidos: Auto<number>;
+  atualizados: Auto<number>;
+  ignorados: Auto<number>;
+  conflitantes: Auto<number>;
+  com_erro: Auto<number>;
+  demonstrativos: Auto<number>;
+  persistencia_confirmada: Auto<boolean>;
+  chaves_removidas_em: Instante | null;
+  mensagem: string | null;
+  erros: Auto<unknown>;
+}
+
+export interface TabelaMigracoesChaves {
+  id: Auto<string>;
+  migracao_id: string;
+  chave: string;
+  classe: ClasseChave;
+  destino: string | null;
+  registros_lidos: Auto<number>;
+  incluidos: Auto<number>;
+  atualizados: Auto<number>;
+  ignorados: Auto<number>;
+  conflitantes: Auto<number>;
+  com_erro: Auto<number>;
+  demonstrativos: Auto<number>;
+  concluida: Auto<boolean>;
+  concluida_em: Instante | null;
+  removida_do_navegador: Auto<boolean>;
+  erro: string | null;
+  detalhe: Auto<unknown>;
+}
+
+export interface TabelaPreferenciasPermitidas {
+  chave: string;
+  descricao: string;
+  criado_em: Instante;
+}
+
 export interface Database {
   usuarios: TabelaUsuarios;
   permissoes_perfil: TabelaPermissoesPerfil;
@@ -612,4 +670,8 @@ export interface Database {
   distratos: TabelaDistratos;
 
   fotografias_diarias: TabelaFotografiasDiarias;
+
+  migracoes_localstorage: TabelaMigracoesLocalstorage;
+  migracoes_chaves: TabelaMigracoesChaves;
+  preferencias_permitidas: TabelaPreferenciasPermitidas;
 }
