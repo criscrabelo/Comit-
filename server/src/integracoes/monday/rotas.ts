@@ -19,7 +19,7 @@ import { config } from '../../config.js';
 import { db } from '../../db/pool.js';
 import { ErroApi, entradaInvalida, naoAutenticado } from '../../errors.js';
 import { auditar } from '../../audit/registrar.js';
-import { lerQuadro, testarConexao } from './cliente.js';
+import { consultar, lerQuadro, testarConexao } from './cliente.js';
 import { QUADROS, type ChaveQuadro } from './quadros.js';
 import { sincronizarQuadro } from './sincronizar.js';
 
@@ -34,6 +34,36 @@ const esquemaSync = z.object({
 const esquemaQuadro = z.object({
   id: z.string().regex(/^\d+$/, 'ID de quadro do Monday e numerico'),
 });
+
+const esquemaConsulta = z.object({
+  query: z.string().min(1).max(20_000),
+  variables: z.record(z.string(), z.unknown()).optional(),
+});
+
+/**
+ * Recusa qualquer operacao de escrita.
+ *
+ * O proxy repassa GraphQL, e sem esta trava um usuario autenticado poderia
+ * ALTERAR dados no Monday atraves do nosso token — que tem permissao de escrita
+ * na conta. A integracao da Fase 1 e somente leitura, e isso precisa ser
+ * imposto aqui, nao confiado ao cliente.
+ */
+function recusarEscrita(consulta: string): void {
+  // Remove comentarios e literais de texto antes de procurar palavras-chave,
+  // para que `query { x(nome: "mutation") }` nao seja recusado por engano.
+  const limpo = consulta
+    .replace(/#[^\n]*/g, ' ')
+    .replace(/"""[\s\S]*?"""/g, '""')
+    .replace(/"(?:[^"\\]|\\.)*"/g, '""');
+
+  if (/\b(mutation|subscription)\b/i.test(limpo)) {
+    throw new ErroApi(
+      'nao_autorizado',
+      'A integracao com o Monday opera somente em leitura. Operacoes de escrita nao sao permitidas pelo proxy.',
+      { operacao_recusada: /\bmutation\b/i.test(limpo) ? 'mutation' : 'subscription' },
+    );
+  }
+}
 
 export async function rotasMonday(app: FastifyInstance): Promise<void> {
   // ── Estado da integracao ──────────────────────────────────────────────────
@@ -121,6 +151,31 @@ export async function rotasMonday(app: FastifyInstance): Promise<void> {
       }
 
       return { conectado: true, conta: resultado.conta };
+    },
+  );
+
+  // ── Consulta repassada (somente leitura) ──────────────────────────────────
+  // O frontend chama esta rota em vez de api.monday.com. O token e adicionado
+  // aqui; o navegador nunca o possui.
+  app.post(
+    '/api/monday/consultar',
+    { config: { exige: { modulo: 'juridico', acao: 'ler' } } },
+    async (req) => {
+      if (!config.monday.habilitado) {
+        throw new ErroApi(
+          'integracao_desligada',
+          'MONDAY_TOKEN nao esta configurado no servidor. Nenhuma consulta foi enviada ao Monday.',
+        );
+      }
+
+      const corpo = esquemaConsulta.safeParse(req.body);
+      if (!corpo.success) throw entradaInvalida('Informe a consulta GraphQL.');
+
+      recusarEscrita(corpo.data.query);
+
+      const dados = await consultar<unknown>(corpo.data.query, corpo.data.variables ?? {});
+      // Formato identico ao da API do Monday, para o cliente nao precisar mudar.
+      return { data: dados };
     },
   );
 

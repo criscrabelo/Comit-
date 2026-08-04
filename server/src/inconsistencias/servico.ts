@@ -764,6 +764,113 @@ export async function encerrar(
   ]);
 }
 
+/**
+ * Marca que o caso depende de deliberacao formal da Diretoria.
+ *
+ * Acao da Gestora: e ela quem identifica o que precisa subir. Nao altera o
+ * estado do tratamento.
+ */
+export async function marcarRequerAprovacao(
+  id: string,
+  requer: boolean,
+  contexto: ContextoUsuario,
+): Promise<void> {
+  const atual = await db
+    .selectFrom('inconsistencias')
+    .select(['requer_aprovacao', 'aprovado_em'])
+    .where('id', '=', id)
+    .executeTakeFirst();
+
+  if (!atual) throw naoEncontrado('Inconsistencia nao encontrada.');
+  if (atual.aprovado_em) {
+    throw conflito('Este caso ja foi deliberado pela Diretoria.');
+  }
+
+  await db
+    .updateTable('inconsistencias')
+    .set({ requer_aprovacao: requer })
+    .where('id', '=', id)
+    .execute();
+
+  await Promise.all([
+    registrarEvento(id, requer ? 'encaminhada_para_aprovacao' : 'aprovacao_dispensada', contexto),
+    auditar({
+      ...contexto,
+      acao: 'inconsistencia_tratada',
+      recurso: 'inconsistencias',
+      recursoId: id,
+      modulo: 'juridico',
+      valorAntes: { requer_aprovacao: atual.requer_aprovacao },
+      valorDepois: { requer_aprovacao: requer },
+      detalhe: { operacao: 'encaminhamento_para_aprovacao' },
+    }),
+  ]);
+}
+
+export type DecisaoAprovacao = 'aprovada' | 'reprovada' | 'aprovada_com_ressalva';
+
+/**
+ * Deliberacao formal da Diretoria.
+ *
+ * Distinta do encerramento operacional: a Diretoria delibera sobre o caso, a
+ * Gestora executa o tratamento. Registra quem aprovou, quando, qual a decisao e
+ * a justificativa — os quatro sao obrigatorios, garantidos por CHECK no banco.
+ *
+ * A aprovacao e IMUTAVEL: aprovar de novo com decisao diferente apagaria a
+ * deliberacao anterior, e o gatilho do banco recusa.
+ */
+export async function aprovar(
+  id: string,
+  dados: { decisao: DecisaoAprovacao; justificativa: string },
+  contexto: ContextoUsuario,
+): Promise<void> {
+  if (!dados.justificativa?.trim()) {
+    throw conflito('A deliberacao exige justificativa.');
+  }
+
+  const atual = await db
+    .selectFrom('inconsistencias')
+    .select(['aprovado_em', 'status_revisao', 'gravidade'])
+    .where('id', '=', id)
+    .executeTakeFirst();
+
+  if (!atual) throw naoEncontrado('Inconsistencia nao encontrada.');
+  if (atual.aprovado_em) {
+    throw conflito(
+      'Este caso ja foi deliberado. A deliberacao nao se reescreve — registre uma nova inconsistencia se houver fato novo.',
+    );
+  }
+
+  await db
+    .updateTable('inconsistencias')
+    .set({
+      aprovado_por: contexto.usuarioId,
+      aprovado_em: new Date(),
+      aprovacao_decisao: dados.decisao,
+      aprovacao_justificativa: dados.justificativa,
+    })
+    .where('id', '=', id)
+    .execute();
+
+  await Promise.all([
+    registrarEvento(id, 'aprovada', contexto, {
+      decisao: dados.decisao,
+      justificativa: dados.justificativa,
+      detalhe: { gravidade: atual.gravidade, status_no_momento: paraStatusApi(atual.status_revisao) },
+    }),
+    auditar({
+      ...contexto,
+      acao: 'inconsistencia_tratada',
+      recurso: 'inconsistencias',
+      recursoId: id,
+      modulo: 'juridico',
+      valorDepois: { aprovacao_decisao: dados.decisao },
+      // Operacao propria na trilha: deliberacao nao se confunde com encerramento.
+      detalhe: { operacao: 'deliberacao_diretoria', decisao: dados.decisao },
+    }),
+  ]);
+}
+
 /** Catalogo, para a interface montar filtros e orientacoes. */
 export function catalogo() {
   return Object.values(TIPOS).map((d) => ({

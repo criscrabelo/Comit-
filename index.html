@@ -47,9 +47,10 @@
       <div class="nav-group-title">Monday.com</div>
       <a class="nav-item" id="nav-sync" onclick="MondaySync.openSyncModal()">
         🔄 Sincronizar Monday
-        <span id="monday-token-dot" class="token-dot" title="Token não configurado"></span>
+        <!-- Estado vem do servidor (GET /api/monday/estado). O navegador nunca
+             possui nem exibe credencial. -->
+        <span id="monday-token-dot" class="token-dot" title="Verificando integração…"></span>
       </a>
-      <a class="nav-item" onclick="MondaySync.openTokenSettings()">⚙️ Configurar Token</a>
     </nav>
 
     <div class="sidebar-footer">

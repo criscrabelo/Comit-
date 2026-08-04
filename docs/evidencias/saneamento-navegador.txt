@@ -1,0 +1,17 @@
+
+Verificando o saneamento em http://localhost:3188
+
+  ✓ token legado injetado, simulando instalacao anterior
+  ✓ token legado removido do localStorage
+  ✓ token legado removido do sessionStorage
+  ✓ nenhuma chave de credencial no navegador
+  ✓ nenhuma requisicao saiu para api.monday.com
+  ✓ nenhum campo de entrada de token na interface
+  ✓ nenhum item de menu para configurar token
+  ✓ modulo do Monday carregado e integro
+  ✓ consulta direcionada ao proxy do backend: /api/monday/estado
+  ✓ nenhuma consulta direta ao Monday em tempo de execucao
+  ✓ nenhum padrao de credencial no HTML entregue
+
+✓ saneamento verificado no navegador: nenhuma credencial, nenhuma chamada direta
+

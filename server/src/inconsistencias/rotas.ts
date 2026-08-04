@@ -26,9 +26,11 @@ import {
   aplicarMascaraDocumento,
 } from '../rbac/autorizacao.js';
 import {
+  aprovar,
   atribuir,
   catalogo,
   encerrar,
+  marcarRequerAprovacao,
   historico,
   listar,
   obter,
@@ -41,6 +43,31 @@ import {
 import { TIPOS } from './tipos.js';
 
 const TIPOS_VALIDOS = Object.keys(TIPOS) as [keyof typeof TIPOS, ...Array<keyof typeof TIPOS>];
+
+/**
+ * Quem encerra inconsistencia critica.
+ *
+ * Gestora e a titular do tratamento. Administrador entra por contingencia —
+ * quando a Gestora esta indisponivel — e cada encerramento seu fica na trilha
+ * com o perfil registrado, para que a excecao seja visivel depois.
+ *
+ * Lider trata mas NAO encerra critica: fechar um vinculo ambiguo que altera a
+ * exposicao da carteira excede o escopo de quem distribui trabalho.
+ * Diretoria delibera em /aprovar, nao encerra.
+ */
+const PERFIS_ENCERRAM_CRITICA: ReadonlyArray<string> = ['gestora', 'administrador'];
+
+/** Somente a Diretoria delibera. */
+const PERFIS_APROVAM: ReadonlyArray<string> = ['diretoria'];
+
+const esquemaAprovacao = z.object({
+  decisao: z.enum(['aprovada', 'reprovada', 'aprovada_com_ressalva']),
+  justificativa: z.string().min(10).max(5000),
+});
+
+const esquemaMarcarAprovacao = z.object({
+  requer_aprovacao: z.boolean(),
+});
 
 const esquemaFiltros = z.object({
   fonte: z.enum(['monday', 'sienge', 'cvcrm', 'manual', 'migracao', 'consolidacao']).optional(),
@@ -352,17 +379,87 @@ export async function rotasInconsistencias(app: FastifyInstance): Promise<void> 
       if (!alvo) throw naoEncontrado('Inconsistencia nao encontrada.');
       exigirEmpreendimento(ctx, alvo.empreendimento_id);
 
-      // Inconsistencia critica so e encerrada por quem pode aprovar. Um
-      // colaborador nao fecha um vinculo ambiguo que altera a exposicao.
-      if (alvo.gravidade === 'critica' && !['gestora', 'administrador', 'diretoria'].includes(ctx.perfil)) {
+      // Encerramento de critica: Gestora (titular) ou Administrador (por
+      // contingencia, sempre auditado).
+      //
+      // A Diretoria NAO entra aqui. Ela delibera em /aprovar, acao propria, e
+      // nao opera o tratamento — coerente com ser perfil de leitura. Listar a
+      // Diretoria aqui era contraditorio: com apenas `juridico:ler` ela nunca
+      // alcancaria esta rota, e a mencao dava a entender o contrario.
+      if (alvo.gravidade === 'critica' && !PERFIS_ENCERRAM_CRITICA.includes(ctx.perfil)) {
         throw naoAutorizado(
-          'Inconsistencia critica so pode ser encerrada por Gestora, Administrador ou Diretoria.',
+          'Inconsistencia critica so pode ser encerrada por Gestora ou, por contingencia, por Administrador. ' +
+            'A Diretoria delibera pela acao de aprovacao, nao pelo encerramento.',
           { gravidade: alvo.gravidade, perfil: ctx.perfil },
         );
       }
 
       await encerrar(req.params.id, corpo.data, contextoDe(req));
       return { encerrada: true, status: corpo.data.status };
+    },
+  );
+
+  // ── Encaminhar para deliberacao da Diretoria ──────────────────────────────
+  // Acao da Gestora: identifica o que precisa subir. Nao altera o tratamento.
+  app.post<{ Params: { id: string } }>(
+    `${base}/:id/requer-aprovacao`,
+    { config: { exige: { modulo: 'juridico', acao: 'editar' } } },
+    async (req) => {
+      const ctx = req.autorizacao;
+      if (!ctx) throw naoAutenticado();
+
+      const corpo = esquemaMarcarAprovacao.safeParse(req.body);
+      if (!corpo.success) throw entradaInvalida('Informe requer_aprovacao (true ou false).');
+
+      const alvo = await db
+        .selectFrom('inconsistencias')
+        .select('empreendimento_id')
+        .where('id', '=', req.params.id)
+        .executeTakeFirst();
+      if (!alvo) throw naoEncontrado('Inconsistencia nao encontrada.');
+      exigirEmpreendimento(ctx, alvo.empreendimento_id);
+
+      await marcarRequerAprovacao(req.params.id, corpo.data.requer_aprovacao, contextoDe(req));
+      return { requer_aprovacao: corpo.data.requer_aprovacao };
+    },
+  );
+
+  // ── Deliberacao formal da Diretoria ───────────────────────────────────────
+  //
+  // Exige `juridico:ler` (que a Diretoria tem) MAIS o perfil diretoria. Nao usa
+  // `editar`, para que aprovar nao implique poder alterar o tratamento
+  // operacional. E a separacao entre deliberar e operar.
+  app.post<{ Params: { id: string } }>(
+    `${base}/:id/aprovar`,
+    { config: { exige: { modulo: 'juridico', acao: 'ler' } } },
+    async (req) => {
+      const ctx = req.autorizacao;
+      if (!ctx) throw naoAutenticado();
+
+      if (!PERFIS_APROVAM.includes(ctx.perfil)) {
+        throw naoAutorizado(
+          'A deliberacao formal e exclusiva da Diretoria. Para encerrar o tratamento operacional, use a acao de encerramento.',
+          { perfil: ctx.perfil, perfis_permitidos: PERFIS_APROVAM },
+        );
+      }
+
+      const corpo = esquemaAprovacao.safeParse(req.body);
+      if (!corpo.success) {
+        throw entradaInvalida(
+          'A deliberacao exige decisao (aprovada, reprovada ou aprovada_com_ressalva) e justificativa com ao menos 10 caracteres.',
+        );
+      }
+
+      const alvo = await db
+        .selectFrom('inconsistencias')
+        .select('empreendimento_id')
+        .where('id', '=', req.params.id)
+        .executeTakeFirst();
+      if (!alvo) throw naoEncontrado('Inconsistencia nao encontrada.');
+      exigirEmpreendimento(ctx, alvo.empreendimento_id);
+
+      await aprovar(req.params.id, corpo.data, contextoDe(req));
+      return { deliberada: true, decisao: corpo.data.decisao };
     },
   );
 }

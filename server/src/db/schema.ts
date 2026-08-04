@@ -389,6 +389,12 @@ export interface TabelaInconsistencias {
   visualizacoes: Auto<number>;
   vista_por: string | null;
   atualizado_em: Instante;
+  // ── Migracao 009: deliberacao da Diretoria, separada do encerramento ──
+  aprovado_por: string | null;
+  aprovado_em: Instante | null;
+  aprovacao_decisao: string | null;
+  aprovacao_justificativa: string | null;
+  requer_aprovacao: Auto<boolean>;
   cliente: string | null;
   contrato: string | null;
   empreendimento: string | null;

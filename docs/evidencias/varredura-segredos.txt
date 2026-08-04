@@ -1,0 +1,15 @@
+VARREDURA DE SEGREDOS — 2026-08-04T18:50:50Z
+
+== padroes de credencial nos arquivos versionados ==
+(nenhum)
+
+== jur_monday_token no que e servido ao navegador ==
+js/monday-sync.js:9:   jur_monday_token e o navegador falava direto com api.monday.com — qualquer
+js/monday-sync.js:33:  const CHAVES_LEGADAS = ['jur_monday_token', 'monday_token', 'jur_token_monday'];
+
+== api.monday.com no que e servido ao navegador ==
+js/monday-sync.js:9:   jur_monday_token e o navegador falava direto com api.monday.com — qualquer
+js/monday-sync.js:16:  // Proxy do backend. NUNCA apontar para api.monday.com daqui: o navegador nao
+
+== cabecalho Authorization no frontend ==
+(nenhum)

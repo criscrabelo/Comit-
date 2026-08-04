@@ -1,13 +1,21 @@
 /* ===== MONDAY.COM SYNC MODULE =====
-   Puxa dados dos boards do Monday.com e salva no localStorage da plataforma.
-   Token armazenado em localStorage sob a chave jur_monday_token.
+   Puxa dados dos boards do Monday.com atraves do PROXY DO BACKEND.
+
+   O navegador NAO possui, NAO armazena e NAO recebe o token do Monday. Toda
+   consulta passa por POST /api/monday/consultar, onde o token e lido de
+   variavel de ambiente do servidor.
+
+   Antes deste saneamento o token ficava em localStorage sob a chave
+   jur_monday_token e o navegador falava direto com api.monday.com — qualquer
+   script na pagina, extensao ou XSS conseguia le-lo.
 ================================================================ */
 
 const MondaySync = (() => {
   'use strict';
 
-  const API_URL   = 'https://api.monday.com/v2';
-  const TOKEN_KEY = 'jur_monday_token';
+  // Proxy do backend. NUNCA apontar para api.monday.com daqui: o navegador nao
+  // tem credencial para isso, e passar a ter seria reintroduzir a falha.
+  const API_URL = '/api/monday/consultar';
 
   /* ── Board IDs ─────────────────────────────────────────────── */
   const BOARDS = {
@@ -18,34 +26,71 @@ const MondaySync = (() => {
     carpedie:     18410779605,   // CONTROLE DE ENTREGA CARPE DIEM
   };
 
-  /* ── Token helpers ─────────────────────────────────────────── */
-  function getToken()      { return localStorage.getItem(TOKEN_KEY) || ''; }
-  function hasToken()      { return !!getToken(); }
+  /* ── Limpeza do token legado ────────────────────────────────
+     Roda uma vez, na carga da pagina. Remove o token que versoes anteriores
+     gravaram no navegador. Sem isso, a credencial continuaria disponivel em
+     localStorage mesmo depois de o codigo parar de usa-la. */
+  const CHAVES_LEGADAS = ['jur_monday_token', 'monday_token', 'jur_token_monday'];
 
-  /* ── GraphQL call ──────────────────────────────────────────── */
+  function limparCredenciaisLegadas() {
+    let removidas = 0;
+    CHAVES_LEGADAS.forEach(chave => {
+      if (localStorage.getItem(chave) !== null) {
+        localStorage.removeItem(chave);
+        removidas++;
+      }
+      if (sessionStorage.getItem(chave) !== null) {
+        sessionStorage.removeItem(chave);
+        removidas++;
+      }
+    });
+    if (removidas > 0) {
+      console.info('[Monday] ' + removidas + ' credencial(is) legada(s) removida(s) do navegador.');
+    }
+    return removidas;
+  }
+
+  limparCredenciaisLegadas();
+
+  /* ── Consulta via proxy do backend ─────────────────────────
+     Sem cabecalho Authorization: a sessao do usuario ja autentica a chamada, e
+     o token do Monday e adicionado pelo servidor. */
   async function gql(query, variables = {}) {
-    const token = getToken();
-    if (!token) throw new Error('Token Monday.com não configurado. Use ⚙️ Configurar Token.');
-
     let res;
     try {
       res = await fetch(API_URL, {
-        method:  'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': token,
-          'API-Version':  '2024-10',
-        },
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query, variables }),
       });
     } catch (netErr) {
-      throw new Error('Falha de rede: ' + netErr.message +
-        '. Verifique conexão e permissões CORS (tente abrir via servidor local).');
+      throw new Error('Falha de rede ao falar com o servidor: ' + netErr.message);
     }
 
-    if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
-    const json = await res.json();
-    if (json.errors?.length) throw new Error(json.errors.map(e => e.message).join('; '));
+    let json;
+    try { json = await res.json(); }
+    catch (e) { throw new Error('Resposta invalida do servidor (HTTP ' + res.status + ')'); }
+
+    if (!res.ok) {
+      // O backend responde no formato { erro: { codigo, mensagem } }.
+      const erro = json && json.erro;
+      if (erro && erro.codigo === 'integracao_desligada') {
+        throw new Error('Integracao com o Monday desligada no servidor. '
+          + 'Um administrador precisa configurar MONDAY_TOKEN.');
+      }
+      if (erro && erro.codigo === 'nao_autenticado') {
+        throw new Error('Sua sessao expirou. Entre novamente.');
+      }
+      if (erro && erro.codigo === 'nao_autorizado') {
+        throw new Error('Seu perfil nao permite sincronizar o Monday.');
+      }
+      throw new Error((erro && erro.mensagem) || ('HTTP ' + res.status));
+    }
+
+    if (json.errors && json.errors.length) {
+      throw new Error(json.errors.map(e => e.message).join('; '));
+    }
     return json.data;
   }
 
@@ -702,58 +747,11 @@ const MondaySync = (() => {
   }
 
   /* ═══════════════════════════════════════════════════════════
-     UI: TOKEN SETTINGS MODAL
-  ═══════════════════════════════════════════════════════════ */
-  function openTokenSettings() {
-    openModal('⚙️ Configurar Token Monday.com',
-      `<div class="form-grid">
-        <div class="form-group span-full">
-          <label class="field-label">API Token pessoal</label>
-          <input type="password" id="mx_token"
-                 value="${esc(getToken())}"
-                 placeholder="eyJhbGciOiJIUzI1NiJ9…"
-                 style="font-family:monospace;font-size:12px;" />
-          <div class="field-hint">
-            Acesse: <strong>Monday.com → seu avatar → Administração → API</strong><br>
-            Copie o token pessoal e cole aqui. Ele fica salvo neste navegador.
-          </div>
-        </div>
-      </div>`,
-      `<button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
-       <button class="btn btn-primary" onclick="MondaySync.saveToken()">💾 Salvar Token</button>`
-    );
-    setTimeout(() => document.getElementById('mx_token')?.focus(), 80);
-  }
-
-  function saveToken() {
-    const val = (document.getElementById('mx_token')?.value || '').trim();
-    if (!val) { toast('Token não pode ser vazio', 'error'); return; }
-    localStorage.setItem(TOKEN_KEY, val);
-    closeModal();
-    toast('Token salvo!', 'success');
-    _updateSyncBtn();
-  }
-
-  /* ═══════════════════════════════════════════════════════════
      UI: SYNC MODAL
   ═══════════════════════════════════════════════════════════ */
   function openSyncModal() {
     const comite = DB.getActiveComite();
     if (!comite) { toast('Selecione um comitê antes de sincronizar.', 'error'); return; }
-
-    if (!hasToken()) {
-      openModal('🔄 Sincronizar Monday.com',
-        `<div class="alert alert-warning" style="margin-bottom:0">
-          ⚠️ Token não configurado.<br>
-          Configure o token antes de sincronizar.
-        </div>`,
-        `<button class="btn btn-outline" onclick="closeModal()">Fechar</button>
-         <button class="btn btn-primary" onclick="closeModal(); MondaySync.openTokenSettings()">
-           ⚙️ Configurar Token
-         </button>`
-      );
-      return;
-    }
 
     openModal('🔄 Sincronizar Monday.com',
       `<div class="sync-modal-wrap">
@@ -782,12 +780,26 @@ const MondaySync = (() => {
     await syncAll(comite.id, comite.ref);
   }
 
-  /* ── Sidebar token indicator ───────────────────────────────── */
-  function _updateSyncBtn() {
+  /* ── Indicador de estado da integracao ─────────────────────
+     O estado vem do servidor (GET /api/monday/estado), que informa apenas SE o
+     token existe — nunca o valor. */
+  async function _updateSyncBtn() {
     const indicator = document.getElementById('monday-token-dot');
     if (!indicator) return;
-    indicator.style.background = hasToken() ? 'var(--green)' : 'var(--orange)';
-    indicator.title = hasToken() ? 'Token configurado' : 'Token não configurado';
+
+    try {
+      const res = await fetch('/api/monday/estado', { credentials: 'same-origin' });
+      if (!res.ok) throw new Error('estado indisponivel');
+      const estado = await res.json();
+      const pronto = estado.token_configurado === true;
+      indicator.style.background = pronto ? 'var(--green)' : 'var(--orange)';
+      indicator.title = pronto
+        ? 'Integracao configurada no servidor'
+        : 'Integracao nao configurada — falar com a administracao';
+    } catch (e) {
+      indicator.style.background = 'var(--gray-400)';
+      indicator.title = 'Estado da integracao indisponivel';
+    }
   }
 
   // Run on load
@@ -796,10 +808,9 @@ const MondaySync = (() => {
   /* ── Public API ─────────────────────────────────────────────── */
   return {
     openSyncModal,
-    openTokenSettings,
-    saveToken,
-    hasToken,
     _run,
     _updateSyncBtn,
+    // Exposto para o teste de saneamento verificar que a limpeza existe.
+    limparCredenciaisLegadas,
   };
 })();
