@@ -1,0 +1,53 @@
+/**
+ * Pool PostgreSQL e acesso tipado via Kysely.
+ *
+ * As regras da metodologia (posicao x movimentacao, deduplicacao de carteira,
+ * cliente unico) sao agregacoes que ficam escritas em SQL — auditaveis e
+ * testaveis. Kysely da tipagem sem esconder o SQL.
+ */
+import { Kysely, PostgresDialect, sql } from 'kysely';
+import pg from 'pg';
+import { config } from '../config.js';
+import { logger } from '../logging.js';
+import type { Database } from './schema.js';
+
+// `numeric` do PostgreSQL chega como string no driver por padrao, para nao
+// perder precisao. Valores financeiros do Patrono cabem com folga em double,
+// mas a conversao e feita de forma explicita no dominio, nao aqui — manter a
+// string evita arredondamento silencioso em saldo e carteira.
+// `int8` (bigint) e convertido para number: contadores de execucao nunca se
+// aproximam de 2^53.
+pg.types.setTypeParser(pg.types.builtins.INT8, (v) => Number(v));
+
+export const pool = new pg.Pool({
+  connectionString: config.banco.url,
+  max: config.banco.poolMax,
+  // Falhar rapido na partida em vez de pendurar a requisicao.
+  connectionTimeoutMillis: 10_000,
+  idleTimeoutMillis: 30_000,
+  application_name: 'patrono-backend',
+});
+
+pool.on('error', (erro) => {
+  logger.error({ erro: erro.message }, 'Erro em conexao ociosa do pool PostgreSQL');
+});
+
+export const db = new Kysely<Database>({
+  dialect: new PostgresDialect({ pool }),
+});
+
+/** Verificacao de saude do banco: usada pelo health check e pelos testes. */
+export async function verificarBanco(): Promise<{ ok: boolean; versao?: string; erro?: string }> {
+  try {
+    const r = await sql<{ versao: string }>`select version() as versao`.execute(db);
+    return { ok: true, versao: r.rows[0]?.versao };
+  } catch (erro) {
+    return { ok: false, erro: erro instanceof Error ? erro.message : String(erro) };
+  }
+}
+
+export async function fecharBanco(): Promise<void> {
+  await db.destroy();
+}
+
+export { sql };
