@@ -102,7 +102,9 @@ export type TipoInconsistencia =
   | 'acordo_sem_confirmacao'
   | 'conflito_monday_sienge'
   | 'divergencia_valor'
-  | 'falha_importacao';
+  | 'falha_importacao'
+  /** Fontes concluiram judicializacao diferente para o mesmo registro. */
+  | 'divergencia_judicializacao';
 
 export type GravidadeInconsistencia = 'baixa' | 'media' | 'alta' | 'critica';
 export type StatusRevisao = 'aberta' | 'em_revisao' | 'resolvida' | 'ignorada';
@@ -552,6 +554,54 @@ export interface TabelaProcessosJudiciais extends Proveniencia {
   judicializado: Auto<boolean>;
   revisao_necessaria: Auto<boolean>;
   honorarios_efetivados: string | null;
+  /** Fonte cuja conclusao prevaleceu. NULL enquanto nenhuma politica aprovada alcanca o registro. */
+  judicializacao_fonte: FonteDado | null;
+  judicializacao_politica: string | null;
+  judicializacao_divergente: Auto<boolean>;
+}
+
+/** Como a politica conclui: o escopo decide, um mapa de rotulos decide, ou listas de termos. */
+export type TipoPoliticaJudicializacao = 'premissa_de_escopo' | 'por_rotulo' | 'por_termos';
+
+/** So `aprovada` classifica. `proposta` e simulavel e nao produz efeito nenhum. */
+export type SituacaoPolitica = 'proposta' | 'aprovada' | 'revogada';
+
+export interface TabelaPoliticasJudicializacao {
+  id: Auto<string>;
+  versao: string;
+  fonte: FonteDado;
+  escopo: string;
+  tipo: TipoPoliticaJudicializacao;
+  configuracao: Auto<Record<string, unknown>>;
+  precedencia: Auto<number>;
+  vigente_de: Dia;
+  vigente_ate: Dia | null;
+  situacao: Auto<SituacaoPolitica>;
+  justificativa: string;
+  proposta_por: string | null;
+  proposta_em: Instante;
+  aprovada_por: string | null;
+  aprovada_em: Instante | null;
+  revogada_por: string | null;
+  revogada_em: Instante | null;
+  revogada_motivo: string | null;
+  criado_em: Instante;
+  atualizado_em: Instante;
+}
+
+export interface TabelaJudicializacaoApuracoes {
+  id: Auto<number>;
+  entidade: string;
+  registro_id: string;
+  fonte: FonteDado;
+  politica_id: string | null;
+  /** NULL = a politica olhou e nao concluiu. Distinto de `false`, que e conclusao. */
+  judicializado: boolean | null;
+  revisao_necessaria: Auto<boolean>;
+  motivo: string;
+  valor_observado: string | null;
+  apurado_em: Instante;
+  execucao_id: string | null;
 }
 
 export interface TabelaDistratos extends Proveniencia {
@@ -865,4 +915,7 @@ export interface Database {
   migracoes_localstorage: TabelaMigracoesLocalstorage;
   migracoes_chaves: TabelaMigracoesChaves;
   preferencias_permitidas: TabelaPreferenciasPermitidas;
+
+  politicas_judicializacao: TabelaPoliticasJudicializacao;
+  judicializacao_apuracoes: TabelaJudicializacaoApuracoes;
 }

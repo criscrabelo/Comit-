@@ -815,3 +815,87 @@ de comitê. Heurística não aprova regra.
 
 A execução rodou em banco local de homologação (`patrono_homolog`), recriado
 pelas 17 migrações — o esquema é o de produção; o banco, não.
+
+## B16.4 — Regra de judicialização configurável por fonte e vigência
+
+**Data:** 2026-08-05 · **Decisão da Coevo, implementada como proposta pendente
+de aprovação**
+
+### A decisão
+
+> Neste momento, considerar judicializado todo registro que esteja no quadro
+> "Processos Judiciais" do Monday, pois hoje essa é a fonte oficial da
+> informação jurídica. Contudo, essa regra deve ser configurável e não ficar
+> presa ao Monday. A plataforma deve guardar a origem do dado e permitir que,
+> futuramente, o Sienge passe a ser a fonte principal sem necessidade de
+> refazer a lógica.
+
+Com cinco condições: (1) hoje, Monday como fonte oficial; (2) na transição,
+Monday e Sienge coexistem com identificação da fonte e tratamento de
+divergências; (3) futuramente, Sienge como principal, após homologação;
+(4) **não aplicar classificação definitiva aos 250 registros sem aprovação**;
+(5) regra versionada, auditável e configurável por fonte e data de vigência.
+
+### O que foi construído
+
+- **Migração 018** — `politicas_judicializacao` (fonte, escopo, tipo,
+  configuração, precedência, vigência, ciclo proposta→aprovada→revogada, autor
+  e justificativa obrigatórios) e `judicializacao_apuracoes` (a conclusão de
+  CADA fonte sobre CADA registro — na transição, as duas coexistem).
+  `processos_judiciais` ganhou `judicializacao_fonte`, `judicializacao_politica`
+  e `judicializacao_divergente`.
+- **Três travas no banco, por gatilho:** duas políticas aprovadas não podem
+  valer ao mesmo tempo para o mesmo par (fonte, escopo); política aprovada é
+  imutável no critério (mudança = versão nova); aprovação sem autor é recusada.
+- **`src/juridico/judicializacao.ts`** — `avaliar` (uma política, um registro),
+  `consolidar` (precedência decide o exibido; divergência **preserva os dois
+  lados**, reabre revisão e vira inconsistência `divergencia_judicializacao`,
+  que bloqueia indicador), `apurar`, `aprovar`, `revogar`. A sincronização do
+  Monday deixou de chamar as listas de termos diretamente: ela aplica as
+  políticas vigentes da fonte.
+- **`scripts/politica-judicializacao.ts`** — `listar`, `simular`, `aprovar`,
+  `revogar`, `reapurar`. Aprovar **não** reclassifica; reapurar é passo
+  separado, e a simulação usa a MESMA função da apuração real.
+- **Vigência de verdade:** `politicasVigentes(escopo, data)` recebe a data.
+  Reapurar março usa a política de março — o número de comitê fechado não muda
+  porque a regra mudou em agosto.
+- **21 testes novos** (`test/judicializacao-politica.test.ts`), incluindo a
+  transição completa Monday → Sienge sem alteração de lógica.
+- **`docs/REGRA-JUDICIALIZACAO.md`** — o documento da regra.
+
+### O que deliberadamente NÃO aconteceu
+
+A política `1.0.0 monday/processos` (premissa de escopo: estar no board
+5959705266 = judicializado) foi **semeada como `proposta`**, não aprovada. Os
+250 registros continuam em `revisao_necessaria` e a taxa de judicialização
+continua indisponível. Aprovar é ato registrado, com autor — não efeito
+colateral de migração. O comando para ver o efeito antes de decidir:
+`npx tsx scripts/politica-judicializacao.ts simular`.
+
+A coluna `'MEU TRABALHO'` continua alimentando `situacao` — ela descreve
+andamento, e é isso que ela passa a significar no sistema. Consequência para o
+indicador: se tudo no quadro é judicializado, a taxa não sai de rótulo; vira
+uma razão contra um denominador de outra fonte (contratos/distratos). A forma
+final do indicador fica para a etapa "indicadores com dados reais".
+
+### Correções e ajustes na passagem
+
+- O gatilho reescrito na 018 gravava o histórico como par `[antes, depois]` em
+  vez de `{de, para}` — regressão pega pela suíte; corrigido antes do commit.
+- `test/monday-homologacao.test.ts` agora aprova uma política `por_termos` de
+  teste no setup: o critério de termos continua existindo, mas como TIPO de
+  política, não como caminho fixo no código.
+- Catálogo de inconsistências: 20 → **21 tipos** com
+  `divergencia_judicializacao` (gravidade alta, área jurídico, bloqueia
+  indicador).
+
+### Backlog registrado nesta entrega
+
+- `reapurar` cobre apenas `processos`; distratos/notificações quando houver
+  política para eles.
+- Precedência por registro/empreendimento (o campo `escopo` suporta; sem
+  interface).
+- Tela de gestão de políticas (hoje: linha de comando).
+- `reapurar` não registra o operador que o disparou.
+- Remoção de aspas tipográficas simples ('') na normalização de título de
+  coluna (B16.3 cobre retas e duplas curvas).

@@ -14,11 +14,20 @@ import { avaliarDocumento } from '../../dominio/documento.js';
 import { registrar } from '../../inconsistencias/servico.js';
 import { gravarBruto, iniciarExecucao, type ResumoExecucao } from '../execucoes.js';
 import { marcarAusentes, persistirLote, type RegistroParaUpsert, type TabelaIntegravel } from '../upsert.js';
+import {
+  avaliar,
+  consolidar,
+  gravarApuracoes,
+  politicasVigentes,
+  ENTIDADE_PROCESSOS,
+  type Apuracao,
+  type Consolidacao,
+  type Politica,
+} from '../../juridico/judicializacao.js';
 import { lerColunas, lerTodosOsItens, type ItemMonday } from './cliente.js';
 import { QUADROS, resolverMapa, type ChaveQuadro } from './quadros.js';
 import {
   classificarCategoriaDistrato,
-  classificarJudicializacao,
   competenciaDoGrupo,
   extrairLocalizacao,
   interpretarAtuacao,
@@ -97,12 +106,77 @@ async function resolverEmpreendimento(nome: string): Promise<string | null> {
   return criado.id;
 }
 
+/** Data de hoje em ISO, sem hora. Isolada para os testes poderem congelar. */
+function hojeISO(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+/**
+ * Grava a conclusao de cada fonte e abre inconsistencia quando elas divergem.
+ *
+ * O casamento e por `id_origem`, e nao pela ordem do lote: o upsert reordena, e
+ * confiar na ordem associaria a apuracao de um processo ao registro de outro.
+ */
+async function persistirApuracoes(
+  destino: TabelaIntegravel,
+  judicializacoes: Map<string, Consolidacao>,
+  execucaoId: string,
+): Promise<void> {
+  const idsOrigem = [...judicializacoes.keys()];
+
+  const linhas = await db
+    .selectFrom(destino)
+    .select(['id', 'id_origem'])
+    .where('fonte', '=', 'monday')
+    .where('id_origem', 'in', idsOrigem)
+    .execute();
+
+  for (const linha of linhas) {
+    const consolidacao = judicializacoes.get(linha.id_origem ?? '');
+    if (!consolidacao || consolidacao.apuracoes.length === 0) continue;
+
+    await gravarApuracoes(ENTIDADE_PROCESSOS, linha.id, consolidacao.apuracoes, execucaoId);
+
+    if (!consolidacao.divergente) continue;
+
+    // Divergencia entre fontes: os dois lados vao para `valoresEmConflito`, e
+    // nenhum e descartado. A precedencia aplicada fica declarada.
+    await registrar({
+      tipo: 'divergencia_judicializacao',
+      fonte: 'monday',
+      descricao:
+        `Fontes divergem sobre a judicializacao do processo ${linha.id_origem}. ` +
+        consolidacao.motivo,
+      impacto: 'situacao_juridica',
+      valoresEmConflito: consolidacao.apuracoes.map((a) => ({
+        fonte: a.fonte,
+        id_origem: linha.id_origem,
+        campo: 'judicializado',
+        // O valor como a fonte concluiu, e o rotulo cru que a levou ate ele.
+        valor: a.judicializado,
+        valor_normalizado: a.valorObservado,
+      })),
+      precedenciaAplicada: consolidacao.fonte,
+      valorAplicado: consolidacao.judicializado,
+      execucaoId,
+      chaveExtra: ['judicializacao', destino, linha.id_origem ?? linha.id],
+    });
+  }
+}
+
 interface Transformado {
   registro: RegistroParaUpsert;
   /** Documento avaliado, para gerar inconsistencia quando invalido. */
   documento?: ReturnType<typeof avaliarDocumento>;
   cliente?: string;
   empreendimentoNome?: string;
+  /**
+   * Conclusao de cada fonte sobre a judicializacao, quando o quadro a produz.
+   *
+   * Guardada aqui e persistida depois do upsert, quando os ids do banco ja
+   * existem — a apuracao referencia o registro gravado, nao o id de origem.
+   */
+  judicializacao?: Consolidacao;
 }
 
 /**
@@ -115,7 +189,18 @@ async function transformarItem(
   quadro: ChaveQuadro,
   item: ItemMonday,
   mapa: Map<string, string>,
-  contexto: { competenciaRef: string | null; comiteId: string | null },
+  contexto: {
+    competenciaRef: string | null;
+    comiteId: string | null;
+    /**
+     * Politicas de judicializacao APROVADAS que alcancam este quadro hoje.
+     *
+     * Carregadas uma vez por sincronizacao e passadas para ca: consultar o
+     * banco por item transformaria uma carga de 273 registros em 273 consultas
+     * para obter sempre a mesma resposta.
+     */
+    politicas: Politica[];
+  },
 ): Promise<{ transformado: Transformado } | { ignorar: string }> {
   const def = QUADROS[quadro];
 
@@ -188,8 +273,15 @@ async function transformarItem(
   if (quadro === 'processos') {
     // Situacao vem de MEU TRABALHO, nao de STATUS (para comite).
     const situacao = lerCampo(item, mapa, 'situacao');
-    const { judicializado, revisaoNecessaria } = classificarJudicializacao(situacao);
     const { atuacao, interno } = interpretarAtuacao(lerCampo(item, mapa, 'atuacao'));
+
+    // A judicializacao sai da POLITICA vigente, nao de listas no codigo.
+    // Sem politica aprovada, `consolidar` devolve revisao necessaria — que e o
+    // estado correto para "ninguem decidiu ainda", e nao `false`.
+    const apuracoes: Apuracao[] = contexto.politicas
+      .filter((p) => p.fonte === 'monday')
+      .map((p) => avaliar(p, { situacao, grupo: tituloGrupo }));
+    const judicializacao = consolidar(apuracoes);
 
     return {
       transformado: {
@@ -209,8 +301,11 @@ async function transformarItem(
             valor_causa: paraNumero(lerCampo(item, mapa, 'valor_causa')),
             data_citacao: paraData(lerCampo(item, mapa, 'data_citacao')),
             data_finalizacao: paraData(lerCampo(item, mapa, 'data_finalizacao')),
-            judicializado,
-            revisao_necessaria: revisaoNecessaria,
+            judicializado: judicializacao.judicializado,
+            revisao_necessaria: judicializacao.revisaoNecessaria,
+            judicializacao_fonte: judicializacao.fonte,
+            judicializacao_politica: judicializacao.politicaId,
+            judicializacao_divergente: judicializacao.divergente,
             honorarios_efetivados: paraNumero(lerCampo(item, mapa, 'honorarios_efetivados')),
           },
           valorOriginal: item,
@@ -220,6 +315,7 @@ async function transformarItem(
         documento,
         cliente: clienteNome,
         empreendimentoNome: local.empreendimento,
+        judicializacao,
       },
     };
   }
@@ -335,14 +431,23 @@ export async function sincronizarQuadro(opcoes: OpcoesSincronizacao): Promise<Re
     );
 
     // 4. Transformacao.
+    //
+    // As politicas de judicializacao sao lidas UMA vez, antes do laco. A data
+    // usada e a de hoje: uma carga corrente aplica o criterio corrente. Reapurar
+    // competencia fechada e outro caminho, e passa a data daquele mes.
+    const politicas = await politicasVigentes(opcoes.quadro, hojeISO());
+
     const paraGravar: RegistroParaUpsert[] = [];
     const documentosInvalidos: Array<{ item: string; motivo: string; cliente: string }> = [];
+    /** idOrigem -> conclusao de cada fonte, para gravar depois do upsert. */
+    const judicializacoes = new Map<string, Consolidacao>();
 
     for (const item of leitura.itens) {
       try {
         const r = await transformarItem(opcoes.quadro, item, mapa.porCampo, {
           competenciaRef: opcoes.competenciaRef,
           comiteId: opcoes.comiteId,
+          politicas,
         });
 
         if ('ignorar' in r) {
@@ -351,6 +456,10 @@ export async function sincronizarQuadro(opcoes: OpcoesSincronizacao): Promise<Re
         }
 
         paraGravar.push(r.transformado.registro);
+
+        if (r.transformado.judicializacao) {
+          judicializacoes.set(r.transformado.registro.idOrigem, r.transformado.judicializacao);
+        }
 
         // Documento com digito invalido nao vincula: vira inconsistencia.
         const doc = r.transformado.documento;
@@ -386,6 +495,15 @@ export async function sincronizarQuadro(opcoes: OpcoesSincronizacao): Promise<Re
 
     // 5. Upsert idempotente.
     await persistirLote(destino, 'monday', paraGravar, execucao, { versaoRegra: VERSAO_REGRA });
+
+    // 5b. Apuracao de judicializacao por fonte.
+    //
+    // Depois do upsert porque a apuracao referencia o id do registro gravado.
+    // Nao vive dentro do registro: durante a transicao Monday -> Sienge, cada
+    // fonte tem a sua conclusao, e as duas precisam sobreviver lado a lado.
+    if (judicializacoes.size > 0) {
+      await persistirApuracoes(destino, judicializacoes, execucao.id);
+    }
 
     // 6. Marcar ausentes — NUNCA apagar.
     if (!leitura.truncado) {

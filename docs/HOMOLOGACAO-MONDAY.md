@@ -21,7 +21,7 @@ reais, em `docs/evidencias/homologacao-monday.md`.**
 | **Primeira execução** — 14 métricas | ✅ **273 lidos, 250 incluídos, 23 ignorados com motivo, 0 erros** |
 | **Segunda execução** — 7 provas | ✅ **7 de 7** — idempotência provada sobre o board real |
 | Rótulos reais do board | ✅ **levantados** — 31 colunas, todos os valores distintos |
-| Cobertura das regras de judicialização | ⚠️ **0 de 6 rótulos cobertos** — decisão da equipe pendente (seção 5) |
+| Cobertura das regras de judicialização | ⚠️ decisão tomada (premissa de escopo); política **proposta**, aguardando aprovação — seção 5 e `docs/REGRA-JUDICIALIZACAO.md` |
 | Propostas de regra | ✅ emitidas — **nenhuma aplicada**, aguardando aprovação |
 | Amostra anonimizada com dados reais | ✅ emitida; varredura final: **nenhum CPF/CNPJ presente** |
 | Suíte contra PostgreSQL real | **336 testes passando**, dos quais **39** de Monday |
@@ -335,6 +335,14 @@ talvez a resposta certa seja outra coluna (`DECISÃO` tem `AGUARDANDO
 JUDICIARIO / DECISÃO`, `AGUARDANDO CITAÇÃO`…) ou a premissa de que tudo neste
 quadro é judicializado; (2) essa é exatamente a decisão que muda indicador de
 comitê, e por isso fica com quem conhece o fluxo, não com a heurística.
+
+> **Atualização (05/08/2026):** a decisão foi tomada. Hoje o Monday é a fonte
+> oficial e **estar no quadro Processos Judiciais é o próprio critério**
+> (premissa de escopo) — com a regra configurável por fonte e vigência, para o
+> Sienge assumir no futuro sem reescrita. A política está cadastrada como
+> **proposta**, pendente de aprovação formal; até lá os 250 registros seguem em
+> `revisao_necessaria`. Ver `docs/REGRA-JUDICIALIZACAO.md` e o registro B16.4
+> em `DECISOES.md`. A tabela acima permanece como evidência do levantamento.
 
 ---
 

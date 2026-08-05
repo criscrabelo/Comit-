@@ -188,8 +188,50 @@ async function fotografar() {
   return r.rows[0]!;
 }
 
+/**
+ * Aprova uma politica `por_termos` para os testes de classificacao.
+ *
+ * A judicializacao passou a sair da POLITICA vigente, e nao mais de listas
+ * embutidas no codigo. Sem politica aprovada, todo registro fica em revisao —
+ * que e o comportamento correto e esta coberto por
+ * `judicializacao-politica.test.ts`. Os testes abaixo verificam o CRITERIO de
+ * termos, que continua existindo como tipo de politica; por isso cadastram uma.
+ */
+async function aprovarPoliticaPorTermos(): Promise<void> {
+  const aprovador = await db
+    .insertInto('usuarios')
+    .values({
+      usuario: 'aprovador-homologacao',
+      nome: 'Aprovador',
+      perfil: 'administrador',
+      area: 'juridico',
+      status: 'ativo',
+    })
+    .returning('id')
+    .executeTakeFirstOrThrow();
+
+  await db
+    .insertInto('politicas_judicializacao')
+    .values({
+      versao: '0.9.0-termos',
+      fonte: 'monday',
+      escopo: 'processos',
+      tipo: 'por_termos',
+      configuracao: {},
+      precedencia: 100,
+      vigente_de: '2020-01-01',
+      situacao: 'aprovada',
+      aprovada_por: aprovador.id,
+      aprovada_em: sql<Date>`now()`,
+      justificativa: 'Criterio historico de listas de termos, para os testes de classificacao.',
+    })
+    .execute();
+}
+
 beforeEach(async () => {
   await limparDados();
+  await db.deleteFrom('politicas_judicializacao').execute();
+  await aprovarPoliticaPorTermos();
   quadroFalso = JSON.parse(JSON.stringify(ITENS_PADRAO)) as ItemFalso[];
   itensPorPagina = 100;
   falharProximaLeitura = false;

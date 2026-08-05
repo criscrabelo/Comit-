@@ -137,6 +137,20 @@ export const TIPOS: Record<TipoInconsistencia, DefinicaoTipo> = {
     orientacao: 'Os dois valores estao preservados. A precedencia de reserva e do CVCRM.',
     bloqueiaIndicador: false,
   },
+  divergencia_judicializacao: {
+    tipo: 'divergencia_judicializacao',
+    rotulo: 'Divergencia de judicializacao entre fontes',
+    gravidadePadrao: 'alta',
+    areaResponsavel: 'juridico',
+    orientacao:
+      'As conclusoes das duas fontes estao preservadas em judicializacao_apuracoes. '
+      + 'O valor exibido segue a precedencia da politica vigente. Confirme qual fonte esta '
+      + 'correta antes de fechar a competencia.',
+    // Divergir sobre judicializacao e divergir sobre a taxa de judicializacao,
+    // que e indicador de comite. Numero apurado sobre divergencia aberta seria
+    // apresentado como certo sem ser.
+    bloqueiaIndicador: true,
+  },
   conflito_cvcrm_sienge: {
     tipo: 'conflito_cvcrm_sienge',
     rotulo: 'Divergencia CVCRM x Sienge',

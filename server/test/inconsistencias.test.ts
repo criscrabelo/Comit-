@@ -292,8 +292,9 @@ describe('requisito 7 — atribuicao de responsavel', () => {
 describe('requisito 8 — tipo, gravidade e impacto', () => {
   it('os 20 tipos do catalogo estao completos e classificados', () => {
     const tipos = catalogo();
-    // 17 do schema da skill + 3 extensoes documentadas em DECISOES.md.
-    expect(tipos).toHaveLength(20);
+    // 17 do schema da skill + 3 extensoes documentadas em DECISOES.md
+    // + `divergencia_judicializacao`, criado com a politica de judicializacao.
+    expect(tipos).toHaveLength(21);
     for (const t of tipos) {
       expect(t.gravidade_padrao).toMatch(/^(baixa|media|alta|critica)$/);
       expect(t.area_responsavel).toBeTruthy();
