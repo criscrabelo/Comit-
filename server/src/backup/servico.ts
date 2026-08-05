@@ -242,6 +242,15 @@ export async function executarBackup(
         '--compress', '6',
         '--no-owner',
         '--no-privileges',
+        // Exclui os schemas de rollback. Uma restauracao em producao deixa o
+        // estado anterior preservado em `antes_<carimbo>` (requisito B15.2);
+        // sem isto, o backup seguinte carregaria duas copias da base.
+        //
+        // Por exclusao, e nao por `--schema public`: restringir a um schema faz
+        // o pg_dump omitir `CREATE EXTENSION`, e o banco restaurado ficaria sem
+        // pgcrypto — ou seja, sem `gen_random_uuid()` em toda chave primaria.
+        '--exclude-schema', 'antes_*',
+        '--exclude-schema', 'descartado_*',
         '--file', temporario,
       ],
       { maxBuffer: 32 * 1024 * 1024 },
@@ -473,7 +482,15 @@ export async function relatorioContinuidade() {
     .where('id', '=', 1)
     .executeTakeFirst();
 
+  // Requisitos B15.5 e B15.6: a vigilancia entra no relatorio, porque um
+  // backup nunca verificado e uma janela agendada que nao fechou sao
+  // exatamente o que ninguem descobre sozinho.
+  const { janelasPerdidas, ultimasVerificacoes } = await import('./vigilancia.js');
+  const [perdidas, verificacoes] = await Promise.all([janelasPerdidas(), ultimasVerificacoes()]);
+
   return {
+    janelas_perdidas: perdidas,
+    verificacoes,
     ambiente: config.ambiente,
     cifra_configurada: config.backup.cifraConfigurada,
     agendamento_ativo: config.backup.horaDiaria !== null,
@@ -490,6 +507,8 @@ export async function relatorioContinuidade() {
       horasDesdeUltimo,
       testado: Boolean(ultimaRestauracaoTestada),
       minimo: politica?.minimo_recuperaveis ?? 3,
+      perdidas,
+      verificacoes,
     }),
   };
 }
@@ -499,8 +518,48 @@ function montarAlertas(estado: {
   horasDesdeUltimo: number | null;
   testado: boolean;
   minimo: number;
+  perdidas: Array<{ dia: string; horas_em_aberto: number; ultimo_erro: string | null }>;
+  verificacoes: {
+    checksum: { executada_em: unknown; corrompidos: number; ausentes: number } | null;
+    ensaio: { executada_em: unknown; corrompidos: number; erro: string | null } | null;
+  };
 }): string[] {
   const alertas: string[] = [];
+
+  // B15.6 — backup agendado que nao concluiu.
+  for (const j of estado.perdidas) {
+    alertas.push(
+      `Backup agendado de ${j.dia} NAO concluiu (${j.horas_em_aberto}h em aberto)` +
+        (j.ultimo_erro ? `: ${j.ultimo_erro.slice(0, 160)}` : '.'),
+    );
+  }
+
+  // B15.5 — verificacao periodica.
+  const c = estado.verificacoes.checksum;
+  if (!c) {
+    alertas.push('Nenhuma verificacao de checksum foi executada ainda.');
+  } else {
+    if (c.corrompidos > 0) {
+      alertas.push(`${c.corrompidos} backup(s) com checksum divergente na ultima verificacao.`);
+    }
+    if (c.ausentes > 0) {
+      alertas.push(`${c.ausentes} backup(s) com arquivo ausente no armazenamento.`);
+    }
+    const dias = (Date.now() - new Date(c.executada_em as string).getTime()) / 86_400_000;
+    if (dias > 2) {
+      alertas.push(`A ultima verificacao de checksum tem ${Math.round(dias)} dias.`);
+    }
+  }
+
+  const e = estado.verificacoes.ensaio;
+  if (e) {
+    if (e.erro) alertas.push(`O ultimo ensaio de restauracao falhou: ${e.erro.slice(0, 160)}`);
+    else if (e.corrompidos > 0) alertas.push('O ultimo ensaio de restauracao divergiu na conferencia.');
+    const dias = (Date.now() - new Date(e.executada_em as string).getTime()) / 86_400_000;
+    if (dias > 10) {
+      alertas.push(`O ultimo ensaio de restauracao tem ${Math.round(dias)} dias.`);
+    }
+  }
 
   if (!config.backup.cifraConfigurada) {
     alertas.push('BACKUP_CHAVE nao configurada: nenhum backup pode ser gerado.');

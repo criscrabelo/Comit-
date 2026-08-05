@@ -24,6 +24,14 @@ import { db } from '../db/pool.js';
 import { config } from '../config.js';
 import { logger } from '../logging.js';
 import { aplicarRetencao, executarBackup } from './servico.js';
+import {
+  abrirJanela,
+  ensaiarRestauracao,
+  fecharJanela,
+  janelasPerdidas,
+  registrarTentativa,
+  verificarChecksums,
+} from './vigilancia.js';
 
 /** Intervalo entre verificacoes. Curto o bastante para nao atrasar a janela. */
 const INTERVALO_MS = 10 * 60 * 1000;
@@ -66,9 +74,18 @@ async function verificar(): Promise<void> {
   if (await jaTemDeHoje()) return;
 
   rodando = true;
+
+  // Requisito B15.6: a janela e ABERTA antes da tentativa. Uma janela que fica
+  // aberta e o alerta — sem ela, um agendamento quebrado seria indistinguivel
+  // de um dia em que ninguem olhou.
+  const esperada = new Date(agora);
+  esperada.setHours(config.backup.horaDiaria, 0, 0, 0);
+  await abrirJanela(esperada);
+
   try {
     logger.info({ hora: config.backup.horaDiaria }, 'Backup agendado: iniciando');
     const resultado = await executarBackup({ tipo: 'agendado', origem: 'agendador' }, CONTEXTO);
+    await fecharJanela(esperada, resultado.id);
     logger.info(
       { rotulo: resultado.rotulo, tamanho: resultado.tamanho_bytes },
       'Backup agendado concluido',
@@ -80,15 +97,60 @@ async function verificar(): Promise<void> {
     if (retencao.expurgados.length) {
       logger.info({ expurgados: retencao.expurgados }, 'Retencao aplicada');
     }
+
+    await rodarVigilancia();
   } catch (erro) {
-    // Falha no agendado nao derruba a aplicacao. O registro fica na tabela de
-    // backups com status `erro`, e o relatorio de continuidade denuncia.
-    logger.error(
-      { erro: erro instanceof Error ? erro.message : String(erro) },
-      'Backup agendado falhou',
-    );
+    // Falha no agendado nao derruba a aplicacao. A janela permanece ABERTA, e
+    // e isso que o relatorio de continuidade denuncia.
+    const mensagem = erro instanceof Error ? erro.message : String(erro);
+    await registrarTentativa(esperada, mensagem).catch(() => {});
+    logger.error({ erro: mensagem }, 'Backup agendado falhou; a janela do dia continua aberta');
   } finally {
     rodando = false;
+  }
+}
+
+/**
+ * Requisito B15.5 — verificacao periodica e ensaio amostral.
+ *
+ * Roda depois do backup do dia, e nao em paralelo: as duas operacoes leem os
+ * mesmos arquivos, e o ensaio cria um banco. Concorrer com o backup so faria
+ * as duas demorarem mais.
+ *
+ * Cadencia: checksum de todos os backups todo dia — e barato, e so le arquivo.
+ * Ensaio de restauracao uma vez por semana: cria banco, restaura e derruba;
+ * fazer todo dia custaria sem acrescentar informacao.
+ */
+async function rodarVigilancia(): Promise<void> {
+  try {
+    const checksums = await verificarChecksums(CONTEXTO, 'agendador');
+    if (checksums.corrompidos > 0 || checksums.ausentes > 0) {
+      logger.error(
+        { corrompidos: checksums.corrompidos, ausentes: checksums.ausentes },
+        'Backups corrompidos ou ausentes encontrados na verificacao periodica',
+      );
+    }
+
+    // Domingo: ensaio de restauracao.
+    if (new Date().getDay() === 0) {
+      const ensaio = await ensaiarRestauracao(CONTEXTO, 'agendador');
+      if (ensaio.executado && ensaio.divergencias.length) {
+        logger.error(
+          { backup: ensaio.backup, divergencias: ensaio.divergencias },
+          'Ensaio semanal de restauracao divergiu',
+        );
+      }
+    }
+
+    const perdidas = await janelasPerdidas();
+    if (perdidas.length) {
+      logger.error({ janelas: perdidas }, 'Backup agendado nao concluiu em dia(s) anterior(es)');
+    }
+  } catch (erro) {
+    logger.error(
+      { erro: erro instanceof Error ? erro.message : String(erro) },
+      'Vigilancia da continuidade falhou',
+    );
   }
 }
 

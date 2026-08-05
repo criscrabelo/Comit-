@@ -468,3 +468,76 @@ derrubava a operação inteira.
 5. **Teste de restauração agendado** — um ensaio mensal automático em banco
    isolado transformaria "temos backup" em "sabemos que o backup funciona", sem
    depender de disciplina.
+
+
+---
+
+## B15 — Requisitos obrigatórios antes da produção
+
+Sete requisitos registrados na aprovação de B14. Quatro viraram código; três
+dependem da Coevo. Detalhe operacional em `docs/BACKUP-RESTAURACAO.md`, seção
+10b.
+
+### Por que quatro deles não ficaram só no documento
+
+Registrar como "obrigatório" algo que o sistema continua permitindo não é
+registrar — é adiar. Os requisitos 1 e 2 descreviam exatamente o que o código
+fazia de errado: `DROP SCHEMA` direto no banco vivo, sem ensaio prévio e sem
+estado anterior preservado. Ficaram como trava, verificada pelo servidor **e**
+pelo `CHECK` do banco.
+
+### 1 e 2 — corte com ensaio e rollback
+
+A restauração em produção deixou de destruir e passou a **renomear**:
+`ALTER SCHEMA public RENAME TO antes_<carimbo>`. O estado anterior fica no mesmo
+banco, íntegro, e o rollback vira um `ALTER SCHEMA` — sem depender de restaurar
+arquivo, e sem a janela em que não existe volta.
+
+O corte exige, além do que já existia: **ensaio isolado com status `concluida`
+nas últimas 72 horas** do mesmo backup, e **plano de corte declarado**.
+`concluida_com_ressalvas` não serve como ensaio: se a conferência divergiu no
+banco isolado, divergirá no de produção.
+
+### Dois problemas que só apareceram ao implementar
+
+**As extensões acompanham o rename.** `citext` e `pgcrypto` moram em `public`;
+renomear o schema as leva junto, e o `CREATE EXTENSION IF NOT EXISTS` do dump
+vira no-op. A restauração morria em `type public.citext does not exist`. São
+trazidas de volta logo após o rename — colunas e defaults referenciam tipo e
+função por OID, que acompanha a mudança de schema.
+
+**O registro do ensaio some com o restore.** `ensaio_id` aponta para uma linha
+de `restauracoes` que a própria restauração substitui. Sem reinseri-la, a
+operação falharia *depois* de já ter trocado o banco.
+
+**`pg_dump` exclui os schemas preservados por exclusão, não por `--schema
+public`.** Restringir a um schema faz o `pg_dump` omitir `CREATE EXTENSION`, e o
+banco restaurado ficaria sem `gen_random_uuid()` em toda chave primária.
+
+### 5 — verificação periódica e ensaio amostral
+
+`src/backup/vigilancia.ts`, disparado pelo agendador após o backup do dia:
+checksum de todos os backups **diariamente**; ensaio real de restauração em
+banco isolado **aos domingos**. O ensaio escolhe o backup mais antigo ainda não
+testado — o recente costuma estar bom; quem se degrada em repouso é o que está
+há mais tempo no disco. Divergência mantém o banco do ensaio de pé para
+investigação.
+
+### 6 — alerta de backup agendado não concluído
+
+A janela do dia é **aberta antes** da tentativa e só fecha quando o backup
+conclui. Janela aberta e vencida vira alerta no relatório de continuidade. O
+estado vive no banco: reiniciar o servidor não apaga a memória de que a janela
+de ontem ficou aberta.
+
+### 3, 4 e 7 — pendentes
+
+- **Chave em cofre** (3): depende da Coevo. Inclui **teste de recuperação** —
+  recuperar a chave do cofre e restaurar um backup com ela, sem consultar o
+  ambiente de produção. Sem esse teste, a cópia de emergência é suposição.
+- **Armazenamento externo** (4): a interface está isolada; falta o adaptador.
+- **Contatos de emergência** (7): três papéis a preencher. Enquanto vazios, o
+  procedimento de emergência não tem a quem escalar.
+
+Os requisitos 3 e 7 **bloqueiam a ida para produção** e não podem ser resolvidos
+deste lado.

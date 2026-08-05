@@ -93,8 +93,11 @@ export interface Avaliacao {
     tabelas_que_perdem: Array<{ tabela: string; atual: number; no_backup: number }>;
     texto: string;
   };
+  /** Ensaio isolado que habilita o corte. Null impede a restauracao em producao. */
+  ensaio: { id: string; em: Date } | null;
   /** Passo 7 — o que precisa ser digitado. */
   confirmacao_exigida: string | null;
+  plano_corte_exigido: boolean;
   pode_prosseguir: boolean;
   impedimentos: string[];
 }
@@ -193,7 +196,18 @@ export async function avaliar(
     b.total_registros === null ? null : Number(b.total_registros),
   );
 
+  let ensaio: { id: string; em: Date } | null = null;
+
   if (destino === 'producao') {
+    // Requisito B15.1: ensaio isolado validado antes do corte.
+    ensaio = await ensaioValidoDe(backupId);
+    if (!ensaio) {
+      impedimentos.push(
+        'Nenhuma restauracao isolada bem-sucedida deste backup nas ultimas ' +
+          `${VALIDADE_DO_ENSAIO_HORAS} horas. Restaure primeiro num banco isolado, confira o ` +
+          'relatorio, e so entao substitua o banco em uso.',
+      );
+    }
     if (!config.backup.permitirRestauracaoProducao) {
       impedimentos.push(
         'PERMITIR_RESTAURACAO_PRODUCAO nao esta ligada neste servidor. ' +
@@ -226,7 +240,9 @@ export async function avaliar(
     esquema,
     ambiente,
     impacto,
+    ensaio: ensaio ? { id: ensaio.id, em: ensaio.em } : null,
     confirmacao_exigida: destino === 'producao' ? CONFIRMACAO_PRODUCAO : null,
+    plano_corte_exigido: destino === 'producao',
     pode_prosseguir: impedimentos.length === 0,
     impedimentos,
   };
@@ -298,10 +314,45 @@ export interface PedidoRestauracao {
   /** Passo 7. Exigida no destino `producao`. */
   confirmacao?: string | null;
   justificativa?: string | null;
+  /**
+   * Plano de corte: quem para a aplicacao, em que janela, quem confere depois,
+   * e como se volta atras. Obrigatorio em producao — requisito B15.1.
+   */
+  planoCorte?: string | null;
   /** Nome do banco isolado. Gerado quando ausente. */
   bancoIsolado?: string | null;
   /** Perfil de quem pediu — a checagem fina fica nas rotas. */
   perfil?: string | null;
+}
+
+/**
+ * Requisito B15.1 — ensaio antes do corte.
+ *
+ * Substituir o banco em uso exige uma restauracao ISOLADA bem-sucedida do
+ * MESMO backup, feita antes. Ninguem deve descobrir que o arquivo nao presta
+ * com o banco de producao ja substituido.
+ *
+ * A janela existe porque um ensaio de tres meses atras nao diz nada sobre o
+ * estado atual do arquivo no disco.
+ */
+const VALIDADE_DO_ENSAIO_HORAS = 72;
+
+async function ensaioValidoDe(backupId: string): Promise<{ id: string; em: Date } | null> {
+  const limite = new Date(Date.now() - VALIDADE_DO_ENSAIO_HORAS * 3_600_000);
+
+  const ensaio = await db
+    .selectFrom('restauracoes')
+    .select(['id', 'iniciada_em'])
+    .where('backup_id', '=', backupId)
+    .where('destino', '=', 'isolado')
+    // `concluida_com_ressalvas` NAO serve como ensaio: se a conferencia
+    // divergiu no banco isolado, divergira tambem no de producao.
+    .where('status', '=', 'concluida')
+    .where('iniciada_em', '>=', limite)
+    .orderBy('iniciada_em', 'desc')
+    .executeTakeFirst();
+
+  return ensaio ? { id: ensaio.id, em: new Date(ensaio.iniciada_em) } : null;
 }
 
 export interface RelatorioRestauracao {
@@ -324,6 +375,8 @@ export interface RelatorioRestauracao {
   iniciada_em: Date;
   concluida_em: Date | null;
   erro: string | null;
+  /** Schema com o estado anterior, quando houve corte em producao. */
+  schema_preservado: string | null;
   /** Como voltar atras, se algo deu errado. */
   como_reverter: string | null;
 }
@@ -373,6 +426,15 @@ export async function restaurar(
         'Informe a justificativa. Substituir o banco em uso e um ato que precisa de motivo registrado.',
       );
     }
+    // Requisito B15.1: plano de corte declarado. Sem ele, "restaurar producao"
+    // vira uma acao sem hora marcada, sem quem confere e sem volta combinada.
+    if ((pedido.planoCorte ?? '').trim().length < 20) {
+      throw entradaInvalida(
+        'Informe o plano de corte: quem para a aplicacao, em que janela, quem confere ' +
+          'depois e como se volta atras.',
+        { campo: 'plano_corte' },
+      );
+    }
   }
 
   if (!avaliacao.pode_prosseguir) {
@@ -415,6 +477,8 @@ export async function restaurar(
       solicitada_por_nome: contexto.usuarioNome,
       confirmacao: pedido.confirmacao ?? null,
       justificativa: pedido.justificativa ?? null,
+      plano_corte: pedido.planoCorte ?? null,
+      ensaio_id: avaliacao.ensaio?.id ?? null,
       backup_preventivo_id: preventivo?.id ?? null,
       checksum_conferido: avaliacao.checksum.confere,
       versao_conferida: avaliacao.esquema.impedimentos.length === 0,
@@ -444,6 +508,7 @@ export async function restaurar(
   });
 
   const temporario = join(tmpdir(), `patrono-restauracao-${registro.id}.dump`);
+  let schemaPreservado: string | null = null;
 
   // Capturado ANTES da restauracao. Depois dela o catalogo ja foi substituido
   // pelo do backup, e estas linhas nao existem mais para serem lidas — foi
@@ -454,6 +519,19 @@ export async function restaurar(
           .selectFrom('backups')
           .selectAll()
           .where('id', 'in', [pedido.backupId, preventivo?.id].filter(Boolean) as string[])
+          .execute()
+      : [];
+
+  // O ensaio tambem e uma linha de `restauracoes`, e some com o restore. Sem
+  // reinseri-lo, a chave estrangeira `ensaio_id` da restauracao atual nao teria
+  // para onde apontar — e a operacao falharia DEPOIS de ja ter substituido o
+  // banco, que e o pior momento possivel para falhar.
+  const ensaioASalvar =
+    pedido.destino === 'producao' && avaliacao.ensaio
+      ? await db
+          .selectFrom('restauracoes')
+          .selectAll()
+          .where('id', '=', avaliacao.ensaio.id)
           .execute()
       : [];
 
@@ -484,13 +562,49 @@ export async function restaurar(
     // particoes, e o PostgreSQL recusa derruba-la isoladamente
     // ("cannot drop inherited constraint"). A restauracao morria no meio.
     //
-    // Recriar o schema inteiro resolve na raiz e ainda e mais fiel: nao sobra
-    // objeto do estado anterior que o dump nao conheca.
+    // Recriar o schema resolve na raiz e ainda e mais fiel: nao sobra objeto do
+    // estado anterior que o dump nao conheca.
     //
-    // As duas etapas rodam numa UNICA transacao do psql — `-c` executa antes
-    // do `-f`, e `--single-transaction` envolve os dois. Ou o banco inteiro
-    // volta, ou nada muda. E o que torna segura uma restauracao interrompida.
+    // A DIFERENCA ENTRE OS DOIS DESTINOS IMPORTA (requisito B15.2):
+    //
+    //   isolado  — banco recem-criado, nada a preservar: DROP SCHEMA.
+    //   producao — o estado anterior e RENOMEADO, nao apagado. Fica no mesmo
+    //              banco, sob `antes_<carimbo>`. Rollback passa a ser um
+    //              ALTER SCHEMA, sem depender de restaurar arquivo nenhum e
+    //              sem a janela em que nao existe volta.
+    //
+    // As etapas rodam numa UNICA transacao do psql — `-c` executa antes do
+    // `-f`, e `--single-transaction` envolve os dois. Ou o banco inteiro volta,
+    // ou nada muda. E o que torna segura uma restauracao interrompida.
     const sqlTemporario = temporario + '.sql';
+    const carimbo = new Date().toISOString().replace(/[-:T.]/g, '').slice(0, 14);
+    schemaPreservado = pedido.destino === 'producao' ? `antes_${carimbo}` : null;
+
+    // Renomear `public` leva junto as EXTENSOES que moram nele — `citext` e
+    // `pgcrypto`. O dump traz `CREATE EXTENSION IF NOT EXISTS ... WITH SCHEMA
+    // public`, que vira no-op porque a extensao ainda existe, so que noutro
+    // schema: e a restauracao morre em "type public.citext does not exist".
+    //
+    // Por isso as extensoes sao trazidas de volta logo apos o rename. Elas nao
+    // fazem falta no schema preservado: colunas e defaults referenciam tipo e
+    // funcao por OID, que acompanha a mudanca de schema.
+    const prepararSchema = schemaPreservado
+      ? `ALTER SCHEMA public RENAME TO ${schemaPreservado};
+         CREATE SCHEMA public;
+         DO $rec$
+         DECLARE e record;
+         BEGIN
+           FOR e IN
+             SELECT x.extname FROM pg_extension x
+             JOIN pg_namespace n ON n.oid = x.extnamespace
+             WHERE n.nspname = '${schemaPreservado}'
+           LOOP
+             EXECUTE format('ALTER EXTENSION %I SET SCHEMA public', e.extname);
+           END LOOP;
+         END
+         $rec$;`
+      : 'DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;';
+
     try {
       await executar(
         binario('pg_restore'),
@@ -505,7 +619,7 @@ export async function restaurar(
           '--single-transaction',
           '--set', 'ON_ERROR_STOP=1',
           '--quiet',
-          '-c', 'DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;',
+          '-c', prepararSchema,
           '-f', sqlTemporario,
         ],
         { maxBuffer: 64 * 1024 * 1024 },
@@ -522,7 +636,7 @@ export async function restaurar(
     // O catalogo precisa sobreviver a restauracao que ele descreve. Por isso
     // as linhas sao reinseridas logo depois.
     if (pedido.destino === 'producao') {
-      await reconciliarCatalogo(urlDestino, catalogoASalvar);
+      await reconciliarCatalogo(urlDestino, catalogoASalvar, ensaioASalvar);
     }
 
     // ── Passo 10: verificacoes de integridade ──────────────────────────────
@@ -551,6 +665,7 @@ export async function restaurar(
       duracao_ms: duracao,
       integridade: JSON.stringify(integridade.resumo),
       divergencias: JSON.stringify(divergencias),
+      schema_preservado: schemaPreservado,
     };
 
     // Insert-com-conflito, e nao UPDATE puro: numa restauracao sobre o banco em
@@ -615,6 +730,7 @@ export async function restaurar(
       divergencias,
       duracao,
       erro: null,
+      schemaPreservado,
     });
   } catch (erro) {
     const mensagem = mascarar(erro instanceof Error ? erro.message : String(erro));
@@ -719,8 +835,9 @@ async function registrarRecusa(
 async function reconciliarCatalogo(
   urlDestino: string,
   linhas: Array<Record<string, unknown>>,
+  ensaios: Array<Record<string, unknown>> = [],
 ): Promise<void> {
-  if (!linhas.length) return;
+  if (!linhas.length && !ensaios.length) return;
 
   const pool = new pg.Pool({ connectionString: urlDestino, max: 2 });
   const alvo = new Kysely<Database>({ dialect: new PostgresDialect({ pool }) });
@@ -741,6 +858,20 @@ async function reconciliarCatalogo(
           }),
         } as never)
         .onConflict((oc) => oc.column('rotulo').doNothing())
+        .execute();
+    }
+
+    for (const ensaio of ensaios) {
+      await alvo
+        .insertInto('restauracoes')
+        .values({
+          ...ensaio,
+          solicitada_por: null,
+          integridade: JSON.stringify(ensaio.integridade),
+          divergencias: JSON.stringify(ensaio.divergencias),
+          detalhe: JSON.stringify(ensaio.detalhe),
+        } as never)
+        .onConflict((oc) => oc.column('id').doNothing())
         .execute();
     }
   } catch (erro) {
@@ -879,6 +1010,7 @@ function montarRelatorio(dados: {
   divergencias: string[];
   duracao: number;
   erro: string | null;
+  schemaPreservado: string | null;
 }): RelatorioRestauracao {
   return {
     id: dados.id,
@@ -904,8 +1036,13 @@ function montarRelatorio(dados: {
     iniciada_em: new Date(Date.now() - dados.duracao),
     concluida_em: new Date(),
     erro: dados.erro,
-    como_reverter: dados.preventivo
-      ? `Restaure o backup preventivo "${dados.preventivo.rotulo}" para voltar ao estado anterior.`
+    schema_preservado: dados.schemaPreservado,
+    como_reverter: dados.schemaPreservado
+      ? `Rollback imediato: ALTER SCHEMA public RENAME TO descartado_${dados.id.slice(0, 8)}; ` +
+        `ALTER SCHEMA ${dados.schemaPreservado} RENAME TO public; ` +
+        `(o estado anterior esta preservado ali). ` +
+        `Alternativa: restaurar o backup preventivo "${dados.preventivo?.rotulo ?? '—'}". ` +
+        `Descarte o schema preservado apenas depois de fechada a janela de corte.`
       : dados.destino === 'isolado'
         ? `O banco em uso nao foi alterado. Para descartar, remova o banco "${dados.bancoDestino}".`
         : null,

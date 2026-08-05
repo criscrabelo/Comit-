@@ -11,10 +11,14 @@
  *   npx tsx scripts/restaurar.ts --backup <id|rotulo>            (banco isolado)
  *   npx tsx scripts/restaurar.ts --backup <id> --destino producao \
  *       --confirmacao "SUBSTITUIR DADOS DE PRODUCAO" \
- *       --justificativa "..."
+ *       --justificativa "..." \
+ *       --plano-corte "quem para, em que janela, quem confere, como se volta"
  *
  * A confirmacao literal e obrigatoria em producao, e existe para que nao se
  * substitua a base por engano de digitacao num identificador.
+ *
+ * O corte tambem exige um ENSAIO em banco isolado nas ultimas 72 horas
+ * (requisito B15.1). Rode antes: `--backup <id>` sem `--destino`.
  */
 import { db, fecharBanco } from '../src/db/pool.js';
 import { config } from '../src/config.js';
@@ -135,6 +139,7 @@ async function principal(): Promise<void> {
       destino: destinoBruto,
       confirmacao: argumento('confirmacao') ?? null,
       justificativa: argumento('justificativa') ?? null,
+      planoCorte: argumento('plano-corte') ?? null,
       bancoIsolado: argumento('banco') ?? null,
     },
     contexto,
@@ -159,6 +164,10 @@ async function principal(): Promise<void> {
   if (relatorio.divergencias.length) {
     console.log('\nDIVERGENCIAS');
     for (const d of relatorio.divergencias) console.log(`  ! ${d}`);
+  }
+  if (relatorio.schema_preservado) {
+    console.log(`\n  estado anterior preservado em: ${relatorio.schema_preservado}`);
+    console.log('  descarte-o apenas depois de fechada a janela de corte.');
   }
   if (relatorio.como_reverter) console.log(`\n${relatorio.como_reverter}`);
 }

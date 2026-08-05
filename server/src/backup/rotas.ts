@@ -51,6 +51,7 @@ import {
   restaurar,
   CONFIRMACAO_PRODUCAO,
 } from './restauracao.js';
+import { ensaiarRestauracao, janelasPerdidas, verificarChecksums } from './vigilancia.js';
 
 const esquemaCriacao = z.object({
   motivo: z.string().min(3).max(500).optional(),
@@ -61,6 +62,8 @@ const esquemaRestauracao = z.object({
   destino: z.enum(['isolado', 'producao']).default('isolado'),
   confirmacao: z.string().max(200).optional(),
   justificativa: z.string().min(10).max(1000).optional(),
+  // Requisito B15.1: obrigatorio em producao, verificado no servico.
+  plano_corte: z.string().min(20).max(4000).optional(),
   banco_isolado: z
     .string()
     .regex(/^[a-z_][a-z0-9_]{0,62}$/, 'Use letras minusculas, numeros e sublinhado.')
@@ -310,6 +313,28 @@ export async function rotasBackup(app: FastifyInstance): Promise<void> {
     },
   );
 
+  // ── Vigilancia da continuidade (B15.5 e B15.6) ────────────────────────────
+  app.post(
+    `${base}/verificar-tudo`,
+    { config: { exige: { modulo: 'sistema', acao: 'backup' } } },
+    async (req) => verificarChecksums(contextoDe(req), 'api'),
+  );
+
+  app.post(
+    `${base}/ensaiar`,
+    { config: { exige: { modulo: 'sistema', acao: 'restaurar' } } },
+    async (req) => {
+      exigirAdministrador(req);
+      return ensaiarRestauracao(contextoDe(req), 'api');
+    },
+  );
+
+  app.get(
+    `${base}/janelas`,
+    { config: { exige: { modulo: 'sistema', acao: 'ler' } } },
+    async () => ({ perdidas: await janelasPerdidas() }),
+  );
+
   // ── Restauracao ───────────────────────────────────────────────────────────
   //
   // Avaliar exige `ler`: mostrar o impacto a quem acompanha nao restaura nada,
@@ -348,6 +373,7 @@ export async function rotasBackup(app: FastifyInstance): Promise<void> {
           destino: corpo.data.destino,
           confirmacao: corpo.data.confirmacao ?? null,
           justificativa: corpo.data.justificativa ?? null,
+          planoCorte: corpo.data.plano_corte ?? null,
           bancoIsolado: corpo.data.banco_isolado ?? null,
           perfil: req.usuario?.perfil ?? null,
         },

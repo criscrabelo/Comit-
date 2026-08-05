@@ -36,6 +36,14 @@ import {
   verificarBackup,
 } from '../src/backup/servico.js';
 import { avaliar, restaurar, CONFIRMACAO_PRODUCAO } from '../src/backup/restauracao.js';
+import {
+  abrirJanela,
+  ensaiarRestauracao,
+  fecharJanela,
+  janelasPerdidas,
+  registrarTentativa,
+  verificarChecksums,
+} from '../src/backup/vigilancia.js';
 import { compararEsquema, levantarVersoes, migracoesDoCodigo } from '../src/backup/versoes.js';
 import { criarComite, criarEmpreendimento, limparDados } from './ajuda/banco.js';
 import type { Database } from '../src/db/schema.js';
@@ -43,6 +51,11 @@ import type { Database } from '../src/db/schema.js';
 const executar = promisify(execFile);
 
 const CONTEXTO = { usuarioId: null, usuarioNome: 'teste' };
+
+/** Plano de corte minimo aceito pela trava B15.1. */
+const PLANO_DE_CORTE =
+  'Janela 02h-03h. TI para a aplicacao. Gestora confere apos. ' +
+  'Rollback pelo schema preservado.';
 const bancosCriados: string[] = [];
 
 /** Diretorio descartavel; `config` e congelado, entao sobrescrevemos a chave. */
@@ -571,6 +584,12 @@ describe('8. backup preventivo', () => {
     await semearDados();
     const origem = await executarBackup({ tipo: 'completo', origem: 'cli' }, CONTEXTO);
 
+    // Requisito B15.1: o corte so acontece depois de um ensaio isolado validado.
+    await restaurar(
+      { backupId: origem.id, destino: 'isolado', bancoIsolado: nomeIsolado('prev') },
+      CONTEXTO,
+    );
+
     (config.backup as { permitirRestauracaoProducao: boolean }).permitirRestauracaoProducao = true;
     try {
       const relatorio = await restaurar(
@@ -579,6 +598,7 @@ describe('8. backup preventivo', () => {
           destino: 'producao',
           confirmacao: CONFIRMACAO_PRODUCAO,
           justificativa: 'Teste automatizado da restauracao real sobre o banco de teste.',
+          planoCorte: PLANO_DE_CORTE,
         },
         CONTEXTO,
       );
@@ -608,6 +628,11 @@ describe('8. backup preventivo', () => {
     await semearDados();
     const origem = await executarBackup({ tipo: 'completo', origem: 'cli' }, CONTEXTO);
 
+    await restaurar(
+      { backupId: origem.id, destino: 'isolado', bancoIsolado: nomeIsolado('cat') },
+      CONTEXTO,
+    );
+
     (config.backup as { permitirRestauracaoProducao: boolean }).permitirRestauracaoProducao = true;
     try {
       const relatorio = await restaurar(
@@ -616,6 +641,7 @@ describe('8. backup preventivo', () => {
           destino: 'producao',
           confirmacao: CONFIRMACAO_PRODUCAO,
           justificativa: 'Conferindo que o catalogo sobrevive a propria restauracao.',
+          planoCorte: PLANO_DE_CORTE,
         },
         CONTEXTO,
       );
@@ -660,6 +686,185 @@ describe('8. backup preventivo', () => {
     // Agora e o minimo de recuperaveis que barra — outra trava, deliberada.
     await expect(excluirBackup(r.id, CONTEXTO)).rejects.toThrow(/recuperaveis/i);
   });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 8b. Requisitos obrigatorios antes da producao (B15)
+// ═══════════════════════════════════════════════════════════════════════════
+describe('8b. travas pre-producao', () => {
+  async function comProducaoLiberada<T>(usar: () => Promise<T>): Promise<T> {
+    (config.backup as { permitirRestauracaoProducao: boolean }).permitirRestauracaoProducao = true;
+    try {
+      return await usar();
+    } finally {
+      (config.backup as { permitirRestauracaoProducao: boolean }).permitirRestauracaoProducao = false;
+    }
+  }
+
+  it('B15.1 — sem ensaio isolado, o corte em producao e recusado', async () => {
+    await semearDados();
+    const b = await executarBackup({ tipo: 'completo', origem: 'cli' }, CONTEXTO);
+
+    await comProducaoLiberada(async () => {
+      const a = await avaliar(b.id, 'producao', CONTEXTO);
+      expect(a.ensaio).toBeNull();
+      expect(a.pode_prosseguir).toBe(false);
+      expect(a.impedimentos.join(' ')).toMatch(/restauracao isolada bem-sucedida/i);
+    });
+  });
+
+  it('B15.1 — com ensaio isolado validado, o corte passa a ser possivel', async () => {
+    await semearDados();
+    const b = await executarBackup({ tipo: 'completo', origem: 'cli' }, CONTEXTO);
+
+    await restaurar(
+      { backupId: b.id, destino: 'isolado', bancoIsolado: nomeIsolado('ensaio') },
+      CONTEXTO,
+    );
+
+    await comProducaoLiberada(async () => {
+      const a = await avaliar(b.id, 'producao', CONTEXTO);
+      expect(a.ensaio).not.toBeNull();
+      expect(a.pode_prosseguir).toBe(true);
+    });
+  }, 120_000);
+
+  it('B15.1 — plano de corte e obrigatorio', async () => {
+    await semearDados();
+    const b = await executarBackup({ tipo: 'completo', origem: 'cli' }, CONTEXTO);
+    await restaurar(
+      { backupId: b.id, destino: 'isolado', bancoIsolado: nomeIsolado('semplano') },
+      CONTEXTO,
+    );
+
+    await comProducaoLiberada(async () => {
+      await expect(
+        restaurar(
+          {
+            backupId: b.id,
+            destino: 'producao',
+            confirmacao: CONFIRMACAO_PRODUCAO,
+            justificativa: 'Teste da trava de plano de corte.',
+          },
+          CONTEXTO,
+        ),
+      ).rejects.toThrow(/plano de corte/i);
+    });
+  }, 120_000);
+
+  it('B15.2 — o estado anterior fica preservado num schema, para rollback', async () => {
+    const semente = await semearDados();
+    const b = await executarBackup({ tipo: 'completo', origem: 'cli' }, CONTEXTO);
+    await restaurar(
+      { backupId: b.id, destino: 'isolado', bancoIsolado: nomeIsolado('preserva') },
+      CONTEXTO,
+    );
+
+    // Altera o banco DEPOIS do backup: e o que precisa sobreviver no schema
+    // preservado, e o que se perderia se a restauracao apagasse.
+    await db
+      .updateTable('notificacoes')
+      .set({ cliente_nome: 'ALTERADO DEPOIS DO BACKUP' } as never)
+      .where('id', '=', semente.notificacaoId)
+      .execute();
+
+    const relatorio = await comProducaoLiberada(() =>
+      restaurar(
+        {
+          backupId: b.id,
+          destino: 'producao',
+          confirmacao: CONFIRMACAO_PRODUCAO,
+          justificativa: 'Teste da preservacao do estado anterior.',
+          planoCorte:
+            'Janela 02h-03h. Aplicacao parada por TI. Conferencia pela Gestora. ' +
+            'Rollback pelo schema preservado.',
+        },
+        CONTEXTO,
+      ),
+    );
+
+    expect(relatorio.schema_preservado).toMatch(/^antes_\d{14}$/);
+    expect(relatorio.como_reverter).toMatch(/ALTER SCHEMA/);
+
+    // O banco em uso voltou ao estado do backup...
+    const atual = await db
+      .selectFrom('notificacoes')
+      .select('cliente_nome')
+      .executeTakeFirstOrThrow();
+    expect(atual.cliente_nome).toBe('MARIA APARECIDA SILVA');
+
+    // ...e o estado anterior continua acessivel para rollback.
+    const preservado = await sql<{ cliente_nome: string }>`
+      SELECT cliente_nome FROM ${sql.table(relatorio.schema_preservado!)}.notificacoes LIMIT 1
+    `.execute(db);
+    expect(preservado.rows[0]!.cliente_nome).toBe('ALTERADO DEPOIS DO BACKUP');
+
+    await sql`DROP SCHEMA ${sql.table(relatorio.schema_preservado!)} CASCADE`.execute(db);
+  }, 180_000);
+
+  it('B15.5 — a verificacao periodica confere todos os checksums', async () => {
+    await semearDados();
+    const bom = await executarBackup({ tipo: 'completo', origem: 'cli' }, CONTEXTO);
+    const ruim = await executarBackup({ tipo: 'completo', origem: 'cli' }, CONTEXTO);
+
+    const caminho = join(ruim.local_armazenamento!, ruim.arquivo!);
+    const conteudo = await fs.readFile(caminho);
+    conteudo[200] ^= 0xff;
+    await fs.writeFile(caminho, conteudo);
+
+    const r = await verificarChecksums(CONTEXTO, 'cli');
+    expect(r.avaliados).toBe(2);
+    expect(r.integros).toBe(1);
+    expect(r.corrompidos).toBe(1);
+    expect(r.detalhe.find((d) => d.rotulo === bom.rotulo)!.situacao).toBe('integro');
+    expect(r.detalhe.find((d) => d.rotulo === ruim.rotulo)!.situacao).toBe('corrompido');
+
+    const registrada = await db
+      .selectFrom('verificacoes_backup')
+      .select(['tipo', 'corrompidos'])
+      .where('id', '=', r.id)
+      .executeTakeFirstOrThrow();
+    expect(registrada.tipo).toBe('checksum');
+    expect(registrada.corrompidos).toBe(1);
+  }, 120_000);
+
+  it('B15.5 — o ensaio amostral restaura de verdade e registra o resultado', async () => {
+    await semearDados();
+    await executarBackup({ tipo: 'completo', origem: 'cli' }, CONTEXTO);
+
+    const r = await ensaiarRestauracao(CONTEXTO, 'cli');
+    expect(r.executado).toBe(true);
+    expect(r.status).toBe('concluida');
+    expect(r.divergencias).toEqual([]);
+
+    const registro = await db
+      .selectFrom('verificacoes_backup')
+      .select(['tipo', 'backup_id', 'restauracao_id'])
+      .where('id', '=', r.id)
+      .executeTakeFirstOrThrow();
+    expect(registro.tipo).toBe('ensaio_restauracao');
+    expect(registro.restauracao_id).toBe(r.restauracao_id);
+  }, 180_000);
+
+  it('B15.6 — janela agendada que nao fecha vira alerta', async () => {
+    const ontem = new Date(Date.now() - 26 * 3_600_000);
+    await abrirJanela(ontem);
+    await registrarTentativa(ontem, 'disco cheio');
+
+    const perdidas = await janelasPerdidas();
+    expect(perdidas).toHaveLength(1);
+    expect(perdidas[0]!.ultimo_erro).toBe('disco cheio');
+    expect(perdidas[0]!.horas_em_aberto).toBeGreaterThan(20);
+
+    const relatorio = await relatorioContinuidade();
+    expect(relatorio.alertas.join(' ')).toMatch(/Backup agendado de .* NAO concluiu/);
+
+    // Fechar a janela retira o alerta.
+    await semearDados();
+    const b = await executarBackup({ tipo: 'agendado', origem: 'agendador' }, CONTEXTO);
+    await fecharJanela(ontem, b.id);
+    expect(await janelasPerdidas()).toEqual([]);
+  }, 120_000);
 });
 
 // ═══════════════════════════════════════════════════════════════════════════

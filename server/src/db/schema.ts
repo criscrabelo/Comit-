@@ -360,6 +360,13 @@ export interface TabelaExecucoesImportacao {
   fontes_com_falha: Auto<string[]>;
   usuario_id: string | null;
   versao_regra: string | null;
+  /** Metricas da homologacao controlada (migracao 016). */
+  paginas: number | null;
+  ultimo_cursor: string | null;
+  normalizados: number | null;
+  data_referencia: Dia | null;
+  id_origem_escopo: string | null;
+  ultimo_dado_valido_em: Instante | null;
 }
 
 export interface TabelaRegistrosBrutos {
@@ -757,6 +764,12 @@ export interface TabelaRestauracoes {
   confirmacao: string | null;
   justificativa: string | null;
   backup_preventivo_id: string | null;
+  /** Restauracao isolada validada do mesmo backup. Requisito B15.1. */
+  ensaio_id: string | null;
+  plano_corte: string | null;
+  /** Schema com o estado anterior, preservado para rollback. Requisito B15.2. */
+  schema_preservado: string | null;
+  schema_descartado_em: Instante | null;
   checksum_conferido: Auto<boolean>;
   versao_conferida: Auto<boolean>;
   migracoes_conferidas: Auto<boolean>;
@@ -765,6 +778,33 @@ export interface TabelaRestauracoes {
   divergencias: Auto<unknown>;
   erro: string | null;
   detalhe: Auto<unknown>;
+}
+
+export interface TabelaVerificacoesBackup {
+  id: Auto<string>;
+  executada_em: Instante;
+  origem: string;
+  tipo: 'checksum' | 'ensaio_restauracao';
+  backups_avaliados: Auto<number>;
+  integros: Auto<number>;
+  corrompidos: Auto<number>;
+  ausentes: Auto<number>;
+  backup_id: string | null;
+  restauracao_id: string | null;
+  duracao_ms: number | null;
+  detalhe: Auto<unknown>;
+  erro: string | null;
+}
+
+export interface TabelaJanelasBackup {
+  dia: Dia;
+  ambiente: string;
+  esperada_para: Instante;
+  aberta_em: Instante;
+  concluida_em: Instante | null;
+  backup_id: string | null;
+  tentativas: Auto<number>;
+  ultimo_erro: string | null;
 }
 
 export interface TabelaPoliticaRetencao {
@@ -818,6 +858,8 @@ export interface Database {
   backups: TabelaBackups;
   restauracoes: TabelaRestauracoes;
   politica_retencao: TabelaPoliticaRetencao;
+  verificacoes_backup: TabelaVerificacoesBackup;
+  janelas_backup: TabelaJanelasBackup;
 
   migracoes_localstorage: TabelaMigracoesLocalstorage;
   migracoes_chaves: TabelaMigracoesChaves;

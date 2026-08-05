@@ -160,6 +160,9 @@ levá-lo para fora tem o mesmo poder de quem restaura.
 | `POST` | `/api/backup/:id/avaliar` | `sistema:ler` |
 | `POST` | `/api/backup/:id/restaurar` | `sistema:restaurar` + Administrador |
 | `GET` | `/api/backup/restauracoes` | `sistema:ler` |
+| `POST` | `/api/backup/verificar-tudo` | `sistema:backup` |
+| `POST` | `/api/backup/ensaiar` | `sistema:restaurar` + Administrador |
+| `GET` | `/api/backup/janelas` | `sistema:ler` |
 
 `avaliar` exige apenas `ler`: mostrar o impacto a quem acompanha não restaura
 nada, e esconder o impacto só tornaria a decisão pior informada.
@@ -427,6 +430,143 @@ restaurado e passa. Não é o backup que se prova funcionando — é o sistema.
 
 ---
 
+## 10b. REQUISITOS OBRIGATÓRIOS ANTES DA PRODUÇÃO
+
+Sete requisitos registrados na aprovação de B14. Quatro deles não são texto:
+são travas no código, porque registrar como "obrigatório" algo que o sistema
+continua permitindo não é registrar — é adiar.
+
+| # | Requisito | Estado |
+| --- | --- | --- |
+| 1 | Nunca `DROP SCHEMA` no banco vivo sem restauração isolada prévia, validação e plano de corte | **Implementado** — trava |
+| 2 | Banco anterior preservado para rollback | **Implementado** — trava |
+| 3 | `BACKUP_CHAVE` em cofre, com cópia de emergência, responsáveis e teste de recuperação | **Pendente — Coevo** |
+| 4 | Adaptador de armazenamento externo e redundante | **Backlog** |
+| 5 | Verificação automática periódica de checksum e teste amostral de restauração | **Implementado** |
+| 6 | Alerta quando um backup agendado não concluir | **Implementado** |
+| 7 | Contatos de emergência da Coevo preenchidos | **Pendente — Coevo** |
+
+### 1. Sem `DROP SCHEMA` direto no banco vivo
+
+O código **não faz mais** `DROP SCHEMA` em produção. Ele **renomeia**. E o corte
+só é aceito depois de três condições verificadas pelo servidor:
+
+- **ensaio isolado validado do mesmo backup**, com status `concluida` (não
+  `concluida_com_ressalvas`: se a conferência divergiu no banco isolado,
+  divergirá no de produção), nas últimas **72 horas**. Um ensaio de três meses
+  atrás não diz nada sobre o arquivo que está no disco hoje;
+- **plano de corte declarado** — quem para a aplicação, em que janela, quem
+  confere depois, como se volta atrás. Mínimo de 20 caracteres, gravado na
+  tabela;
+- as barreiras anteriores continuam: perfil Administrador,
+  `PERMITIR_RESTAURACAO_PRODUCAO`, frase literal e justificativa.
+
+A exigência é do banco também: o `CHECK restauracao_producao_confirmada` recusa
+gravar uma restauração em produção sem `ensaio_id` e sem `plano_corte`.
+
+### 2. Banco anterior preservado para rollback
+
+Em vez de destruir o estado atual, a restauração em produção faz:
+
+```sql
+ALTER SCHEMA public RENAME TO antes_<AAAAMMDDHHMMSS>;
+CREATE SCHEMA public;
+-- extensões trazidas de volta para public
+```
+
+O estado anterior continua **no mesmo banco**, íntegro e consultável. O rollback
+deixa de depender de restaurar arquivo:
+
+```sql
+ALTER SCHEMA public RENAME TO descartado_<id>;
+ALTER SCHEMA antes_<carimbo> RENAME TO public;
+```
+
+O relatório de restauração devolve esses comandos prontos, em `como_reverter`.
+
+Dois detalhes que custaram achar, e que estão no código com o motivo:
+
+- **as extensões acompanham o rename.** `citext` e `pgcrypto` moram em `public`;
+  renomear o schema as leva junto, e o `CREATE EXTENSION IF NOT EXISTS` do dump
+  vira no-op. Resultado: `type public.citext does not exist` no meio do restore.
+  As extensões são trazidas de volta logo após o rename;
+- **o registro do ensaio some com o restore.** `ensaio_id` é chave estrangeira
+  para uma linha de `restauracoes` que a própria restauração substitui. Sem
+  reinseri-la, a operação falharia *depois* de já ter trocado o banco.
+
+**Os schemas preservados não entram no backup seguinte**: `pg_dump` exclui
+`antes_*` e `descartado_*`. Por exclusão, e não por `--schema public` —
+restringir a um schema faz o `pg_dump` omitir `CREATE EXTENSION`, e o banco
+restaurado ficaria sem `gen_random_uuid()` em toda chave primária.
+
+**Descarte o schema preservado apenas depois de fechada a janela de corte.**
+Enquanto ele existir, ocupa espaço equivalente à base inteira.
+
+### 3. Chave em cofre — *pendente da Coevo*
+
+`BACKUP_CHAVE` só existe hoje como variável de ambiente. Antes da produção:
+
+- [ ] guardar no cofre de credenciais da Coevo, fora do servidor de backups;
+- [ ] cópia de emergência em envelope lacrado ou segundo cofre, com registro de
+      quem tem acesso;
+- [ ] dois responsáveis nomeados (titular e substituto);
+- [ ] **teste de recuperação**: recuperar a chave a partir do cofre e restaurar
+      um backup com ela, sem consultar o ambiente de produção. É o único teste
+      que prova que a cópia serve.
+
+Sem esse teste, a cópia de emergência é uma suposição. E perder a chave torna
+todos os backups irrecuperáveis.
+
+### 4. Armazenamento externo e redundante — *backlog*
+
+Hoje o destino é sistema de arquivos local, com cópia redundante opcional em
+outro caminho. A interface de armazenamento está isolada em `servico.ts`; falta
+o adaptador para S3/GCS/Azure, com credenciais por variável de ambiente ou
+cofre e ciclo de vida no lado do provedor.
+
+### 5. Verificação periódica e ensaio amostral
+
+Implementado em `src/backup/vigilancia.ts`, disparado pelo agendador logo após
+o backup do dia:
+
+| Rotina | Cadência | O que faz |
+| --- | --- | --- |
+| `verificarChecksums` | diária | confere o SHA-256 de **todos** os backups recuperáveis; o que divergir vira `corrompido` |
+| `ensaiarRestauracao` | semanal (domingo) | restaura de verdade um backup em banco isolado, confere e derruba o banco |
+
+O ensaio escolhe o backup **mais antigo ainda não testado** — o recente costuma
+estar bom; quem se degrada em repouso é o que está há mais tempo no disco. Se a
+conferência divergir, o banco do ensaio **permanece de pé** para investigação.
+
+Cada rodada grava uma linha em `verificacoes_backup`. O relatório de
+continuidade alerta quando a última verificação tem mais de 2 dias, quando o
+último ensaio tem mais de 10, e sempre que houver backup corrompido ou ausente.
+
+Sob demanda:
+
+```bash
+curl -X POST .../api/backup/verificar-tudo   # checksum de todos
+curl -X POST .../api/backup/ensaiar          # ensaio de restauração
+```
+
+### 6. Alerta de backup agendado não concluído
+
+A janela do dia é **aberta antes** da tentativa (`janelas_backup`) e só fecha
+quando o backup conclui. Uma janela aberta e vencida — mais de 2 horas depois da
+hora esperada — aparece como alerta no relatório de continuidade, com o dia, as
+horas em aberto, o número de tentativas e o último erro.
+
+Sem isso, um agendamento quebrado seria indistinguível de um dia em que ninguém
+olhou. O estado vive no banco: reiniciar o servidor não apaga a memória de que a
+janela de ontem ficou aberta.
+
+### 7. Contatos de emergência — *pendente da Coevo*
+
+A tabela da seção 12 está com três papéis a preencher. Enquanto estiverem
+vazios, o procedimento de emergência não tem a quem escalar.
+
+---
+
 ## 11. Limitações
 
 1. **Sem recuperação a ponto no tempo.** A perda máxima é o intervalo desde o
@@ -440,9 +580,11 @@ restaurado e passa. Não é o backup que se prova funcionando — é o sistema.
 5. **Armazenamento é local (sistema de arquivos).** Destino em nuvem
    (S3, GCS, Azure) exigiria um adaptador; a interface de armazenamento já está
    isolada em `servico.ts`, mas o adaptador não existe.
-6. **A verificação de checksum não é automática.** Existe o endpoint e o
-   comando; falta uma rotina periódica que percorra os backups e marque os
-   corrompidos sem alguém pedir.
+6. **O schema preservado dobra o espaço em disco** durante a janela de corte.
+   É o preço do rollback imediato; descarte-o assim que a janela fechar.
+7. **A chave de cifra ainda não está em cofre** (requisito 3) e os contatos de
+   emergência ainda não foram preenchidos (requisito 7). Os dois dependem da
+   Coevo e bloqueiam a ida para produção.
 
 ---
 
@@ -488,7 +630,8 @@ pare: restaurar mesmo assim é como o problema piora.
 
 ### Passo 3 — Ensaiar em banco isolado
 
-Sempre que houver tempo. Não toca no banco em uso.
+**Obrigatório.** Sem um ensaio bem-sucedido nas últimas 72 horas, o passo 4 é
+recusado pelo servidor. Não toca no banco em uso.
 
 ```bash
 npx tsx scripts/restaurar.ts --backup <rótulo>
@@ -514,7 +657,9 @@ npx tsx scripts/restaurar.ts \
   --backup <rótulo> \
   --destino producao \
   --confirmacao "SUBSTITUIR DADOS DE PRODUCAO" \
-  --justificativa "<o que aconteceu, chamado, quem autorizou>"
+  --justificativa "<o que aconteceu, chamado, quem autorizou>" \
+  --plano-corte "Janela 02h-03h. TI para a aplicação. <nome> confere depois. \
+                 Rollback pelo schema preservado."
 
 # 4. aplicar migrations pendentes, se a avaliação apontou ressalva
 ./scripts/migrar-com-backup.sh
@@ -525,6 +670,34 @@ unset PERMITIR_RESTAURACAO_PRODUCAO
 # 6. subir
 systemctl start patrono
 curl -sf http://127.0.0.1:3131/api/saude
+```
+
+O comando imprime o nome do **schema preservado** com o estado anterior. Anote-o:
+é o caminho de rollback imediato.
+
+### Passo 4b — Rollback, se a conferência reprovar
+
+Não precisa restaurar arquivo nenhum. O estado anterior está no mesmo banco:
+
+```sql
+ALTER SCHEMA public RENAME TO descartado_<qualquer>;
+ALTER SCHEMA antes_<carimbo> RENAME TO public;
+-- trazer as extensões de volta
+DO $$ DECLARE e record; BEGIN
+  FOR e IN SELECT x.extname FROM pg_extension x
+           JOIN pg_namespace n ON n.oid = x.extnamespace
+           WHERE n.nspname = 'descartado_<qualquer>'
+  LOOP EXECUTE format('ALTER EXTENSION %I SET SCHEMA public', e.extname); END LOOP;
+END $$;
+```
+
+### Passo 4c — Fechar a janela
+
+Depois de conferido e com a aplicação estável, **descarte o schema preservado**.
+Enquanto existir, ocupa espaço equivalente à base inteira.
+
+```sql
+DROP SCHEMA antes_<carimbo> CASCADE;
 ```
 
 ### Passo 5 — Conferir
@@ -575,13 +748,14 @@ backup novo com uma chave nova e registre a perda.
 
 ---
 
-## 13. Backlog registrado nesta entrega
+## 13. Backlog
 
-1. **Rotina periódica de verificação de checksum** — hoje é sob demanda.
-2. **Adaptador de armazenamento em nuvem** — a interface está isolada; falta o
-   adaptador S3/GCS/Azure.
-3. **WAL e recuperação a ponto no tempo** — configuração de servidor, seção 8.
-4. **Backup de anexos** — quando a plataforma passar a armazenar arquivos.
-5. **Teste de restauração agendado** — hoje a restauração é testada quando
-   alguém pede. Um ensaio mensal automático em banco isolado transformaria
-   "temos backup" em "sabemos que o backup funciona", sem depender de disciplina.
+1. **Adaptador de armazenamento em nuvem** — a interface está isolada; falta o
+   adaptador S3/GCS/Azure (requisito obrigatório 4).
+2. **WAL e recuperação a ponto no tempo** — configuração de servidor, seção 8.
+3. **Backup de anexos** — quando a plataforma passar a armazenar arquivos.
+4. **Descarte automático do schema preservado** — hoje é manual, e precisa ser:
+   apagar sozinho o único caminho de rollback seria pior que ocupar disco.
+
+Concluídos nesta rodada: verificação periódica de checksum e ensaio agendado de
+restauração (requisito obrigatório 5).
