@@ -40,6 +40,18 @@ export interface OpcoesSincronizacao {
   usuarioId: string | null;
   /** Le e transforma sem gravar, para conferir antes de aplicar. */
   simular?: boolean;
+  /**
+   * Recebe o mapa de colunas resolvido no quadro.
+   *
+   * A homologacao precisa dele para levantar os rotulos reais coluna a coluna,
+   * e resolve-lo de novo custaria uma segunda consulta ao Monday — que e
+   * exatamente o que nao se quer numa carga controlada.
+   */
+  aoResolverColunas?: (dados: {
+    porCampo: Map<string, string>;
+    titulosPorId: Map<string, { titulo: string; tipo: string }>;
+    ausentes: string[];
+  }) => void;
 }
 
 /** Resolve o empreendimento por identificador de origem, nunca por texto solto. */
@@ -285,6 +297,14 @@ export async function sincronizarQuadro(opcoes: OpcoesSincronizacao): Promise<Re
     // 1. Colunas, resolvidas por titulo.
     const colunas = await lerColunas(def.idPadrao);
     const mapa = resolverMapa(def, colunas);
+
+    if (opcoes.aoResolverColunas) {
+      opcoes.aoResolverColunas({
+        porCampo: mapa.porCampo,
+        titulosPorId: new Map(colunas.map((c) => [c.id, { titulo: c.title, tipo: c.type }])),
+        ausentes: mapa.ausentes,
+      });
+    }
 
     if (mapa.ausentes.length > 0) {
       logger.warn(

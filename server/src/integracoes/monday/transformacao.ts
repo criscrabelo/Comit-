@@ -308,7 +308,7 @@ const TERMOS_JUDICIAL_FORTES = ['judicial', 'ajuizad'];
  * para evitar. Trocar por "extraj" remove a colisao e ainda serve de marcador
  * de exclusao.
  */
-function prepararTexto(situacao: string | null | undefined): string {
+export function prepararTexto(situacao: string | null | undefined): string {
   return normalizarNome(situacao).toLowerCase().replace(/extrajudicial/g, 'extraj');
 }
 

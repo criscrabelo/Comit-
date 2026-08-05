@@ -17,7 +17,15 @@ import { config } from '../../config.js';
 import { logger } from '../../logging.js';
 import { ErroApi } from '../../errors.js';
 
-const ENDPOINT = 'https://api.monday.com/v2';
+/**
+ * Endereco da API.
+ *
+ * `MONDAY_ENDPOINT` existe apenas para o ensaio do runner de homologacao, que
+ * sobe um servidor local respondendo no formato da API. Em producao a variavel
+ * nao e definida e o valor e o oficial — nao ha caminho para redirecionar a
+ * integracao sem alterar o ambiente do servidor deliberadamente.
+ */
+const ENDPOINT = process.env.MONDAY_ENDPOINT?.trim() || 'https://api.monday.com/v2';
 
 /** Itens por pagina. O maximo aceito pela API e 500; 200 e mais estavel. */
 const ITENS_POR_PAGINA = 200;

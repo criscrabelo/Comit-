@@ -27,7 +27,13 @@ import { db, fecharBanco } from '../src/db/pool.js';
 import { config } from '../src/config.js';
 import { QUADROS } from '../src/integracoes/monday/quadros.js';
 import { sincronizarQuadro } from '../src/integracoes/monday/sincronizar.js';
-import { testarConexao } from '../src/integracoes/monday/cliente.js';
+import { recusarEscrita, testarConexao } from '../src/integracoes/monday/cliente.js';
+import {
+  analisarCoberturaJudicializacao,
+  COLUNAS_DE_CLASSIFICACAO,
+  levantarRotulos,
+  type LevantamentoRotulos,
+} from '../src/integracoes/monday/rotulos.js';
 import type { ResumoExecucao } from '../src/integracoes/execucoes.js';
 
 const QUADRO = 'processos' as const;
@@ -45,6 +51,133 @@ const escrever = (texto = '') => {
   linhas.push(texto);
   console.log(texto);
 };
+
+interface ItemConfirmacao {
+  rotulo: string;
+  ok: boolean;
+  detalhe: string;
+}
+
+/**
+ * Os quatro itens exigidos antes de sincronizar.
+ *
+ * Falha em qualquer um interrompe: a carga nao comeca. E deliberado que a
+ * verificacao do bloqueio de escrita rode ANTES da primeira consulta — provar
+ * depois nao prova que a carga foi segura, so que continua sendo.
+ */
+async function confirmarAntesDeSincronizar(): Promise<ItemConfirmacao[]> {
+  const itens: ItemConfirmacao[] = [];
+
+  // 1. token_configurado
+  const temToken = config.monday.habilitado;
+  itens.push({
+    rotulo: '`token_configurado: true`',
+    ok: temToken,
+    detalhe: temToken
+      ? 'MONDAY_TOKEN presente no ambiente (valor nunca exibido)'
+      : 'MONDAY_TOKEN AUSENTE',
+  });
+
+  // 2. somente leitura — provado ANTES de qualquer chamada
+  const escritas = [
+    'mutation { create_item(board_id: 1, item_name: "x") { id } }',
+    'subscription { events { id } }',
+    'query Q { boards { id } } mutation M { delete_item(item_id: 1) { id } }',
+  ];
+  const aceitas = escritas.filter((c) => {
+    try {
+      recusarEscrita(c);
+      return true;
+    } catch {
+      return false;
+    }
+  });
+  let leituraAceita = true;
+  try {
+    recusarEscrita('query { boards(ids: [1]) { items_page { items { id } } } }');
+  } catch {
+    leituraAceita = false;
+  }
+  itens.push({
+    rotulo: 'integração em modo somente leitura',
+    ok: aceitas.length === 0 && leituraAceita,
+    detalhe:
+      aceitas.length === 0
+        ? 'trava no transporte (`consultar`), antes de qualquer requisição'
+        : `ACEITOU escrita: ${aceitas.join('; ')}`,
+  });
+
+  // 3. quadro configurado
+  const quadroOk = String(QUADROS[QUADRO].idPadrao) === BOARD_ESPERADO;
+  itens.push({
+    rotulo: 'quadro configurado = 5959705266',
+    ok: quadroOk,
+    detalhe: quadroOk
+      ? `${QUADROS[QUADRO].nome} — \`${QUADROS[QUADRO].idPadrao}\``
+      : `configurado como ${QUADROS[QUADRO].idPadrao}`,
+  });
+
+  // 4. nenhuma mutation ou subscription permitida.
+  //
+  // Inspeciona as consultas que o pipeline realmente usa, submetendo cada uma
+  // a PROPRIA trava — e nao a um regex paralelo. Uma segunda implementacao da
+  // regra poderia divergir da primeira, e a divergencia passaria despercebida
+  // justamente aqui, onde ela importa.
+  //
+  // Comentarios sao removidos antes: o codigo da trava traz um exemplo de
+  // consulta comentado, e le-lo como consulta do pipeline seria falso positivo.
+  const { readFileSync } = await import('node:fs');
+  const fonteCliente = readFileSync(
+    new URL('../src/integracoes/monday/cliente.ts', import.meta.url).pathname,
+    'utf8',
+  );
+  const semComentarios = fonteCliente
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/^\s*\/\/.*$/gm, '');
+
+  const consultasDoPipeline = [...semComentarios.matchAll(/`([^`]*\{[^`]*)`/g)]
+    .map((m) => m[1]!)
+    .filter((c) => /\b(query|mutation|subscription)\b/i.test(c));
+
+  const suspeitas = consultasDoPipeline.filter((c) => {
+    try {
+      recusarEscrita(c);
+      return false;
+    } catch {
+      return true;
+    }
+  });
+
+  itens.push({
+    rotulo: 'nenhuma mutation ou subscription no pipeline',
+    ok: suspeitas.length === 0 && consultasDoPipeline.length > 0,
+    detalhe:
+      suspeitas.length === 0
+        ? `${consultasDoPipeline.length} consulta(s) do pipeline, todas aceitas pela trava`
+        : `${suspeitas.length} consulta(s) recusada(s) pela propria trava`,
+  });
+
+  const falhou = itens.filter((i) => !i.ok);
+  if (falhou.length) {
+    throw new Error(
+      'Pré-confirmação falhou; NADA foi sincronizado:\n' +
+        falhou.map((f) => `  ✗ ${f.rotulo}: ${f.detalhe}`).join('\n'),
+    );
+  }
+
+  // Só agora a credencial é exercitada de fato.
+  const conexao = await testarConexao();
+  if (!conexao.ok) {
+    throw new Error(`O token nao autenticou no Monday: ${conexao.erro ?? 'sem detalhe'}`);
+  }
+  itens.push({
+    rotulo: 'credencial autenticada',
+    ok: true,
+    detalhe: `conta: ${conexao.conta ?? '—'}`,
+  });
+
+  return itens;
+}
 
 /** Estado de uma tabela, para comparar entre as duas execucoes. */
 interface Fotografia {
@@ -151,25 +284,90 @@ async function amostraAnonimizada(): Promise<void> {
     return;
   }
 
-  escrever('Número do processo e valor da causa mascarados; `id_origem` reduzido.');
-  escrever('Nenhum nome de cliente aparece: o quadro de processos não traz coluna');
-  escrever('de cliente mapeada, e o que não é mapeado não é inventado.');
+  escrever('Sem CPF, CNPJ ou nome completo. Número do processo reduzido aos quatro');
+  escrever('últimos dígitos, valor da causa substituído, `id_origem` reduzido, e os');
+  escrever('campos de texto livre passam por uma varredura de documento — `MOTIVO` é');
+  escrever('digitado à mão e pode conter um CPF que ninguém previu.');
   escrever();
+  const mascaradas = linhasAmostra.rows.map((l) => ({
+    ...l,
+    id_origem: mascararId(String(l.id_origem ?? '')),
+    numero: mascararProcesso(l.numero as string | null),
+    valor_causa: l.valor_causa === null ? null : '***',
+    motivo: varrerTextoLivre(l.motivo as string | null),
+    tipo: varrerTextoLivre(l.tipo as string | null),
+    situacao: varrerTextoLivre(l.situacao as string | null),
+    situacao_comite: varrerTextoLivre(l.situacao_comite as string | null),
+    // ATUAÇÃO traz "EXTERNO <escritório>", que pode ser nome de pessoa.
+    atuacao: mascararAtuacao(l.atuacao as string | null),
+  }));
+
   escrever('```json');
-  escrever(
-    JSON.stringify(
-      linhasAmostra.rows.map((l) => ({
-        ...l,
-        id_origem: mascararId(String(l.id_origem ?? '')),
-        numero: mascararProcesso(l.numero as string | null),
-        valor_causa: l.valor_causa === null ? null : '***',
-      })),
-      null,
-      2,
-    ),
-  );
+  escrever(JSON.stringify(mascaradas, null, 2));
   escrever('```');
   escrever();
+
+  // A conferência é sobre o que SAI, não sobre o que entrou. Rodá-la na origem
+  // acusaria dado pessoal que a máscara já removeu — e o alerta perderia
+  // sentido justamente por ser sempre verdadeiro.
+  const naOrigem = varrerDocumentos(JSON.stringify(linhasAmostra.rows));
+  const naSaida = varrerDocumentos(JSON.stringify(mascaradas));
+
+  escrever(
+    naSaida.length === 0
+      ? '_Varredura da amostra publicada: nenhum CPF ou CNPJ presente._'
+      : `> ⚠️ **A amostra publicada ainda contém possível documento:** ${naSaida.join('; ')}`,
+  );
+  if (naOrigem.length) {
+    escrever();
+    escrever(
+      `> ${naOrigem.join('; ')} foram encontrados nos campos de texto livre da ORIGEM e ` +
+        'removidos da amostra. Vale avisar o jurídico: documento digitado em campo ' +
+        'livre não é protegido por nenhum mascaramento de coluna.',
+    );
+  }
+  escrever();
+}
+
+/**
+ * Remove sequencias com cara de documento de texto digitado a mao.
+ *
+ * `MOTIVO` e campo livre. Alguem pode ter escrito "cobranca do CPF 123.456.789-00"
+ * e nenhum mapeamento previu isso. A varredura e sobre o VALOR, nao sobre o nome
+ * do campo — e o que pega o caso nao previsto.
+ */
+function varrerTextoLivre(texto: string | null): string | null {
+  if (!texto) return texto;
+  return texto
+    .replace(/\b\d{3}\.?\d{3}\.?\d{3}-?\d{2}\b/g, '[documento removido]')
+    .replace(/\b\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}\b/g, '[documento removido]');
+}
+
+/** "EXTERNO Dra. Fulana de Tal" → "EXTERNO Dra. F." */
+function mascararAtuacao(valor: string | null): string | null {
+  if (!valor) return valor;
+  const externo = /^(EXTERNO)\s+(.+)$/i.exec(valor.trim());
+  if (!externo) return valor;
+
+  const termos = externo[2]!.split(/\s+/);
+  const tratamento = /^(dr|dra|sr|sra)\.?$/i.test(termos[0] ?? '') ? termos.shift() : null;
+  const inicial = termos[0] ? `${termos[0][0]}.` : '';
+  return [externo[1], tratamento, inicial].filter(Boolean).join(' ');
+}
+
+/** Procura sequencias com cara de CPF ou CNPJ num texto serializado. */
+function varrerDocumentos(texto: string): string[] {
+  const achados: string[] = [];
+  const padroes = [
+    ['CPF', /\b\d{3}\.?\d{3}\.?\d{3}-?\d{2}\b/g],
+    ['CNPJ', /\b\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}\b/g],
+  ] as const;
+
+  for (const [rotulo, padrao] of padroes) {
+    const encontrados = texto.match(padrao);
+    if (encontrados) achados.push(`${encontrados.length} ${rotulo}`);
+  }
+  return achados;
 }
 
 function mascararId(id: string): string {
@@ -181,6 +379,127 @@ function mascararProcesso(numero: string | null): string | null {
   if (!numero) return null;
   const digitos = numero.replace(/\D/g, '');
   return digitos.length > 4 ? `**********${digitos.slice(-4)}` : '****';
+}
+
+/**
+ * Relata os rotulos REAIS encontrados, coluna a coluna.
+ *
+ * Sai de `registros_brutos`, que tem todas as colunas — inclusive as que
+ * ninguem mapeou. E como `responsavel` aparece sem ter sido previsto.
+ */
+function relatarRotulos(l: LevantamentoRotulos, ausentes: string[]): void {
+  escrever('## Rótulos reais encontrados');
+  escrever();
+  escrever(`Levantados de ${l.itens} item(ns) da primeira leitura, a partir do payload`);
+  escrever('original — não do dado já interpretado.');
+  escrever();
+
+  if (ausentes.length) {
+    escrever(
+      `> **Colunas do mapa não encontradas no quadro:** ${ausentes.join(', ')}. ` +
+        'Gravadas como nulas, nunca presumidas.',
+    );
+    escrever();
+  }
+
+  // Grupos primeiro: a competência sai daqui, não de coluna de data.
+  escrever('### Grupos');
+  escrever();
+  escrever('| Grupo | Itens |');
+  escrever('| --- | --- |');
+  for (const g of l.grupos) escrever(`| ${g.valor} | ${g.ocorrencias} |`);
+  escrever();
+
+  escrever('### Colunas');
+  escrever();
+  for (const c of l.colunas) {
+    const consumo = c.campoPatrono ? `→ \`${c.campoPatrono}\`` : '_(não mapeada)_';
+    escrever(`#### ${c.titulo} ${consumo}`);
+    escrever();
+    escrever(
+      `\`${c.id}\` · tipo \`${c.tipo}\` · ` +
+        `${c.preenchidos} preenchido(s), ${c.vazios} vazio(s) · ` +
+        `${c.rotulos.length} valor(es) distinto(s)`,
+    );
+    escrever();
+
+    if (!c.rotulos.length) {
+      escrever('_Coluna vazia em todos os itens._');
+      escrever();
+      continue;
+    }
+
+    // Colunas de texto livre têm valor distinto por item; listar todos seria
+    // despejar a base. As de classificação são listadas inteiras.
+    const ehClassificacao = (COLUNAS_DE_CLASSIFICACAO as readonly string[]).includes(c.titulo);
+    const limite = ehClassificacao ? c.rotulos.length : 15;
+
+    escrever('| Valor | Ocorrências |');
+    escrever('| --- | --- |');
+    for (const r of c.rotulos.slice(0, limite)) {
+      escrever(`| ${r.valor} | ${r.ocorrencias} |`);
+    }
+    if (c.rotulos.length > limite) {
+      escrever(`| _… mais ${c.rotulos.length - limite} valor(es)_ | |`);
+    }
+    escrever();
+  }
+
+  // ── Cobertura das regras ────────────────────────────────────────────────
+  const situacao = l.colunas.find((c) => c.titulo === 'MEU TRABALHO');
+  if (!situacao) {
+    escrever('> **Coluna MEU TRABALHO não encontrada.** A classificação de');
+    escrever('> judicialização depende dela; sem a coluna, todos os processos');
+    escrever('> ficam em revisão necessária.');
+    escrever();
+    return;
+  }
+
+  const analise = analisarCoberturaJudicializacao(situacao.titulo, situacao.rotulos);
+
+  escrever('### Cobertura das regras de judicialização');
+  escrever();
+  escrever(
+    `${analise.cobertos} de ${analise.total} rótulo(s) cobertos pelas regras atuais. ` +
+      `${analise.emRevisao} rótulo(s) sem cobertura, afetando ` +
+      `**${analise.registrosEmRevisao} registro(s)**.`,
+  );
+  escrever();
+  escrever('| Rótulo | Ocorrências | Classificação |');
+  escrever('| --- | --- | --- |');
+  for (const r of analise.rotulos) {
+    const marca = {
+      judicializado: '⚖️ judicializado',
+      nao_judicializado: '— não judicializado',
+      revisao_necessaria: '⚠️ **revisão necessária**',
+    }[r.cobertura];
+    escrever(`| ${r.valor} | ${r.ocorrencias} | ${marca} |`);
+  }
+  escrever();
+
+  if (!analise.propostas.length) {
+    escrever('Todos os rótulos reais estão cobertos. Nenhuma regra precisa mudar.');
+    escrever();
+    return;
+  }
+
+  escrever('### Propostas de regra — AGUARDANDO APROVAÇÃO');
+  escrever();
+  escrever('> Nenhuma delas foi aplicada. Os registros afetados estão gravados com');
+  escrever('> `revisao_necessaria = true` e `judicializado = false`: o que não se');
+  escrever('> reconhece não é presumido. Alterar a metodologia muda a taxa de');
+  escrever('> judicialização, que é indicador de comitê.');
+  escrever();
+
+  for (const p of analise.propostas) {
+    escrever(`**\`${p.rotulo}\`** — ${p.registrosAfetados} registro(s)`);
+    escrever();
+    escrever(`- **Lista sugerida:** ${p.lista === 'indefinida' ? '_indefinida_' : `\`${p.lista}\``}`);
+    if (p.termoSugerido) escrever(`- **Termo sugerido:** \`${p.termoSugerido}\``);
+    escrever(`- **Justificativa:** ${p.justificativa}`);
+    escrever(`- **Exemplos (id de origem):** ${p.exemplos.join(', ')}`);
+    escrever();
+  }
 }
 
 /** As sete provas exigidas na segunda execução. */
@@ -408,6 +727,12 @@ async function principal(): Promise<void> {
 
   const competencia = argumento('competencia') ?? null;
 
+  // ── Pré-confirmação: quatro itens, antes de qualquer leitura ──────────────
+  //
+  // Nada é sincronizado enquanto os quatro não fecharem. Uma verificação que
+  // acontece depois da carga não é verificação: é constatação.
+  const preConfirmacao = await confirmarAntesDeSincronizar();
+
   escrever('# Homologação controlada do Monday');
   escrever();
   escrever(`**Quadro:** Processos Judiciais — board \`${BOARD_ESPERADO}\`  `);
@@ -420,12 +745,13 @@ async function principal(): Promise<void> {
   escrever('> `subscription` antes de qualquer chamada — ver prova 7.');
   escrever();
 
-  // Conexao: prova acesso antes de comecar, e ja mostra a conta usada.
-  const conexao = await testarConexao();
-  if (!conexao.ok) {
-    throw new Error(`O token nao autenticou no Monday: ${conexao.erro ?? 'sem detalhe'}`);
+  escrever('## Pré-confirmação');
+  escrever();
+  escrever('| Item | Resultado |');
+  escrever('| --- | --- |');
+  for (const item of preConfirmacao) {
+    escrever(`| ${item.rotulo} | ${item.ok ? '✅' : '❌'} ${item.detalhe} |`);
   }
-  escrever(`**Conta do token:** ${conexao.conta ?? '—'}`);
   escrever();
 
   if (temFlag('simular')) {
@@ -436,15 +762,34 @@ async function principal(): Promise<void> {
   // ── Primeira execução ─────────────────────────────────────────────────────
   escrever('## Primeira execução');
   escrever();
+  let mapaResolvido: {
+    porCampo: Map<string, string>;
+    titulosPorId: Map<string, { titulo: string; tipo: string }>;
+    ausentes: string[];
+  } | null = null;
+
   const primeira = await sincronizarQuadro({
     quadro: QUADRO,
     competenciaRef: competencia,
     comiteId: null,
     usuarioId: null,
     simular: temFlag('simular'),
+    aoResolverColunas: (dados) => {
+      mapaResolvido = dados;
+    },
   });
   const apos1 = await fotografar();
   formatarResumo('Resultado', primeira, apos1);
+
+  // ── Rótulos reais ─────────────────────────────────────────────────────────
+  if (mapaResolvido) {
+    const levantamento = await levantarRotulos(
+      primeira.id,
+      mapaResolvido.porCampo,
+      mapaResolvido.titulosPorId,
+    );
+    relatarRotulos(levantamento, mapaResolvido.ausentes);
+  }
 
   if (temFlag('simular')) {
     escrever('_Simulação encerrada. A segunda execução exige gravação._');
@@ -472,7 +817,7 @@ async function principal(): Promise<void> {
     .selectFrom('inconsistencias')
     .select(['tipo', 'gravidade', 'descricao', 'ocorrencias'])
     .where('fonte', '=', 'monday')
-    .orderBy('detectada_em', 'desc')
+    .orderBy('detectado_em', 'desc')
     .limit(30)
     .execute();
 

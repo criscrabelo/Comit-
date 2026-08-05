@@ -10,21 +10,29 @@
 
 | Item | Situação |
 | --- | --- |
+| Pré-confirmação dos 4 itens, antes de sincronizar | **pronta** |
 | Instrumentação das 14 métricas exigidas | **pronta** |
 | Runner das duas execuções consecutivas | **pronto** (`scripts/homologar-monday.ts`) |
+| Levantamento dos rótulos reais | **pronto** (`src/integracoes/monday/rotulos.ts`) |
+| Propostas de regra para rótulo não coberto | **prontas — nunca aplicadas** |
+| Amostra anonimizada, sem CPF/CNPJ/nome | **pronta**, com varredura de conferência |
 | Mapa de colunas Monday → Patrono | **pronto** (seção 4) |
-| As sete provas, contra PostgreSQL real | **19 testes passando** |
-| Bloqueio de `mutation` e `subscription` | **provado** |
+| As sete provas, contra PostgreSQL real | **30 testes passando** |
+| Ensaio ponta a ponta do runner | **7 de 7 provas** (`scripts/ensaiar-homologacao.ts`) |
 | **As duas execuções contra o board real** | **BLOQUEADO — falta `MONDAY_TOKEN`** |
 
-**O que falta, e por quê.** O `MONDAY_TOKEN` não está no ambiente e não deve ser
-enviado por mensagem. Sem ele não é possível ler o board 5959705266, e portanto
-não é possível preencher as métricas com números reais. Preencher com números
-de um dublê e apresentá-los como homologação seria exatamente o que a regra
-"nenhum dado demonstrativo apresentado como real" proíbe.
+**O que falta, e por quê.** Conferi o ambiente deste processo: `MONDAY_TOKEN`
+não está definido e não há arquivo `.env`. Sem ele não é possível ler o board
+5959705266, e portanto não é possível preencher as métricas com números reais.
+Preencher com números do dublê e apresentá-los como homologação seria
+exatamente o que a regra "nenhum dado demonstrativo apresentado como real"
+proíbe.
 
-Tudo o que não depende do token está feito e provado. Assim que a variável
-existir no ambiente, **um comando** produz o relatório completo:
+**Nota sobre o ambiente:** este processo herdou as variáveis no momento em que
+subiu. Uma variável configurada depois disso só será vista por uma **sessão
+nova** — reiniciar o backend não basta se o processo do agente continuar o
+mesmo. Quando a configuração estiver feita, abra uma sessão nova e peça a
+execução; o comando é um só:
 
 ```bash
 MONDAY_TOKEN=<token> \
@@ -32,12 +40,51 @@ DATABASE_URL=<url> \
 npx tsx scripts/homologar-monday.ts --saida docs/evidencias/homologacao-monday.md
 ```
 
-O script recusa rodar se o quadro configurado não for o 5959705266, e recusa
-rodar sem token — com a mensagem dizendo exatamente o que falta.
+O script recusa rodar se o quadro configurado não for o 5959705266, recusa rodar
+sem token, e **interrompe antes de qualquer leitura** se a pré-confirmação
+falhar.
+
+### Ensaio do runner — o que ele prova e o que não prova
+
+`scripts/ensaiar-homologacao.ts` sobe um servidor local que responde no formato
+da API do Monday, e roda o runner **inteiro** contra ele: pré-confirmação,
+duas execuções, rótulos, propostas, provas e amostra.
+
+Prova que o relatório sai íntegro e que as sete provas passam sobre PostgreSQL
+real. **Não prova** nada sobre o board da Coevo. O relatório de ensaio nasce com
+um aviso em destaque dizendo que os dados são simulados — sem ele, em duas
+semanas alguém chamaria aquilo de "o relatório da homologação".
+
+O dublê só conhece o board 5959705266: qualquer outro id recebe erro. Isso
+tornou o ensaio fiel em dois pontos — prova que a sincronização aponta para o
+quadro certo, e permite exercitar de verdade a prova 6, que simula falha da
+origem apontando para um quadro inexistente.
 
 ---
 
-## 2. O que o runner produz
+## 2. Pré-confirmação — os quatro itens
+
+Verificados **antes** de qualquer leitura. Falha em um só interrompe: a carga
+não começa. Uma verificação que acontece depois da carga não é verificação, é
+constatação.
+
+| Item | Como é verificado |
+| --- | --- |
+| `token_configurado: true` | presença de `MONDAY_TOKEN`; o valor nunca é exibido |
+| integração em modo somente leitura | três consultas de escrita submetidas à trava; uma de leitura confirmada como aceita |
+| quadro configurado = 5959705266 | comparação com a constante do runner |
+| nenhuma `mutation` ou `subscription` no pipeline | cada consulta do cliente é submetida à **própria trava** |
+
+O quarto item merece nota: ele não usa um regex paralelo, submete as consultas
+reais do pipeline à mesma função que protege o transporte. Uma segunda
+implementação da regra poderia divergir da primeira, e a divergência passaria
+despercebida justamente aqui, onde importa.
+
+Só depois dos quatro a credencial é exercitada, com `query { me }`.
+
+---
+
+## 2b. O que o runner produz
 
 ### Primeira execução — as métricas exigidas
 
@@ -206,6 +253,37 @@ direta da prova 4, e a contabilidade continua fechando.
 
 ---
 
+## 6b. Rótulos reais e cobertura das regras
+
+O runner levanta os valores distintos de **todas** as colunas, a partir de
+`registros_brutos` — o payload original. Não do dado já interpretado: levantar
+rótulo do que a transformação deixou passar mostraria apenas o que já se sabe.
+
+Isso cobre, sem precisar prever: situação (`MEU TRABALHO`), estágio, status
+(`STATUS (PARA COMITÊ)`), grupo, **responsável** e qualquer coluna que a equipe
+tenha criado e ninguém tenha mapeado. Colunas espelho e fórmula são lidas por
+`display_value` — pelo `text` elas apareceriam vazias.
+
+### O que acontece com rótulo não coberto
+
+Nada é alterado automaticamente. O registro é gravado com
+`judicializado = false` e `revisao_necessaria = true`, e o relatório traz:
+
+- a **quantidade de registros** afetados por cada rótulo — não a de rótulos;
+- até 5 **`id_origem`** de exemplo, para localizar os casos;
+- uma **proposta de regra**, com a lista sugerida e a justificativa.
+
+A proposta é texto para decisão humana. As palavras que a orientam
+(`INDICIOS_JUDICIAL`, `INDICIOS_NAO_JUDICIAL`) **não classificam nada** — servem
+só para montar a sugestão. Rótulo com indícios dos dois lados sai como
+`indefinida`, com a ambiguidade declarada; rótulo sem nenhum termo reconhecível
+sai pedindo que a equipe explique o que ele significa.
+
+Alterar a metodologia muda a taxa de judicialização, que é indicador de comitê.
+Isso depende de aprovação, nunca de inferência.
+
+---
+
 ## 7. Amostra anonimizada
 
 O runner emite a amostra automaticamente. Formato, com dados do dublê de teste:
@@ -238,10 +316,26 @@ O runner emite a amostra automaticamente. Formato, com dados do dublê de teste:
 > Os valores acima vêm do **dublê de teste**, não do board real. A amostra com
 > dados reais só existe depois da execução com token.
 
-Mascaramento: número do processo reduzido aos 4 últimos dígitos, valor da causa
-substituído, `id_origem` reduzido. **Nome de cliente não aparece** — o quadro de
-processos não tem coluna de cliente mapeada no destino, e o que não é mapeado
-não é inventado.
+### Mascaramento
+
+| Campo | Tratamento |
+| --- | --- |
+| `id_origem` | reduzido aos 4 últimos caracteres |
+| `numero` | 4 últimos dígitos do processo |
+| `valor_causa` | substituído por `***` |
+| `atuacao` | `EXTERNO Dra. Fulana de Tal` → `EXTERNO Dra. F.` |
+| `motivo`, `tipo`, `situacao`, `situacao_comite` | varredura de CPF/CNPJ no **valor** |
+| nome de cliente | não existe no destino de processos |
+
+A varredura dos campos livres é sobre o **valor**, não sobre o nome do campo.
+`MOTIVO` é digitado à mão; alguém pode ter escrito "cobrança do CPF
+123.456.789-00" e nenhum mapeamento previu isso. O ensaio inclui exatamente esse
+caso, e a máscara o remove.
+
+Ao fim, o runner varre a amostra **publicada** e declara se sobrou algum
+documento. Se a origem tinha documento em campo livre, ele avisa separadamente —
+é informação para o jurídico: documento digitado em campo livre não é protegido
+por nenhum mascaramento de coluna.
 
 ---
 
@@ -265,6 +359,13 @@ não é inventado.
 6. **O dublê de teste não prova o formato real da resposta do board.** Ele
    reproduz o formato documentado da API do Monday; divergências do board real
    só aparecem na execução com token.
+7. **A proposta de regra é heurística.** Ela sugere uma direção a partir de
+   palavras contidas no rótulo. Não substitui quem conhece o fluxo do jurídico,
+   e por isso a classificação permanece em revisão até a aprovação.
+8. **`MONDAY_ENDPOINT` existe como variável.** Ela só é usada pelo ensaio, que
+   sobe um servidor local. Em produção a variável não é definida e o endereço é
+   o oficial — mas vale saber que ela existe, porque quem controla o ambiente do
+   servidor pode redirecionar a integração.
 
 ---
 

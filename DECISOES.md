@@ -609,3 +609,83 @@ primeira execução, e qualquer ajuste depende de aprovação.
 `id_origem_escopo`, `ultimo_dado_valido_em` e `inalterados` — migrações 016 e
 017. `ultimo_cursor = null` significa "leu até o fim"; preenchido significa
 "parou no meio", e permite retomar sem reler.
+
+
+---
+
+## B16.1 — Rótulos reais, pré-confirmação e ensaio do runner
+
+Continuação da preparação da homologação. `MONDAY_TOKEN` continua ausente do
+ambiente deste processo; as duas execuções reais seguem pendentes.
+
+### Nota sobre variável de ambiente e sessão
+
+O processo do agente herda as variáveis no momento em que sobe. Uma variável
+configurada depois só é vista por uma **sessão nova** — reiniciar o backend não
+basta se o processo do agente continuar o mesmo. Registrado na documentação
+para que a próxima tentativa não esbarre nisso de novo.
+
+### Pré-confirmação antes de qualquer leitura
+
+Os quatro itens são verificados e, falhando um, a carga não começa. Uma
+verificação depois da carga não é verificação: é constatação.
+
+O quarto item — "nenhuma mutation ou subscription no pipeline" — submete as
+consultas reais do cliente à **própria trava**, em vez de usar um regex
+paralelo. Uma segunda implementação da regra poderia divergir da primeira, e a
+divergência passaria despercebida justamente ali.
+
+O primeiro rascunho desse check usava regex próprio e reprovou por ler um
+**comentário** como se fosse consulta: o código da trava traz um exemplo
+comentado. Trocar pelo reuso da função resolveu a causa, não o sintoma.
+
+### Rótulos reais: levantados do bruto, não do interpretado
+
+`src/integracoes/monday/rotulos.ts` levanta os valores distintos de **todas** as
+colunas a partir de `registros_brutos`. Levantar do dado já transformado
+mostraria apenas o que a interpretação deixou passar — e é justamente a coluna
+que ninguém mapeou (responsável, por exemplo) que precisa aparecer.
+
+Colunas espelho e fórmula são lidas por `display_value`: pelo `text` elas
+apareceriam vazias, e a conclusão seria "a equipe não preenche essa coluna".
+
+### Proposta de regra é proposta
+
+Rótulo não coberto vira `revisao_necessaria`, com quantidade de **registros**
+afetados e exemplos de `id_origem`. A proposta traz lista sugerida e
+justificativa; as palavras que a orientam **não classificam nada**.
+
+Rótulo com indício dos dois lados sai como `indefinida`, com a ambiguidade
+declarada — "AGUARDANDO SENTENÇA" é o caso: "aguardando" sugere etapa anterior,
+"sentença" sugere processo em curso. Inferir ali seria escolher no lugar de quem
+conhece o fluxo.
+
+### Amostra: varredura sobre o valor, não sobre o nome do campo
+
+`MOTIVO` é digitado à mão. A varredura procura CPF e CNPJ no **conteúdo**, e o
+ensaio inclui um caso com documento em campo livre para provar que a máscara o
+remove.
+
+A primeira versão conferia a amostra contra os dados de ORIGEM, e por isso
+acusava documento que a máscara já havia removido — um alerta sempre verdadeiro
+e, portanto, inútil. Agora confere o que **sai**, e informa separadamente
+quando a origem tinha documento em campo livre. Essa segunda informação é para
+o jurídico: documento digitado em campo livre não é protegido por mascaramento
+de coluna.
+
+### Ensaio do runner
+
+`scripts/ensaiar-homologacao.ts` sobe um servidor local no formato da API e roda
+o runner inteiro. As sete provas passam. O relatório de ensaio nasce com aviso
+em destaque de que os dados são simulados — sem ele, em duas semanas alguém
+chamaria aquilo de "o relatório da homologação".
+
+O dublê só conhece o board 5959705266; qualquer outro id recebe erro. Isso torna
+o ensaio fiel e permite exercitar de verdade a prova 6, que simula falha da
+origem apontando para quadro inexistente. Na primeira versão o dublê respondia a
+qualquer board, a falha não acontecia, e a prova 6 reprovava — por defeito do
+ensaio, não do produto.
+
+`MONDAY_ENDPOINT` foi acrescentada para o ensaio. Em produção não é definida e o
+endereço é o oficial, mas fica registrado que ela existe: quem controla o
+ambiente do servidor pode redirecionar a integração.
