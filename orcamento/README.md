@@ -5,19 +5,24 @@ construída a partir da ficha de orçamento (`ficha_CRIS`).
 
 **Arquivo:** `Orcamento_Planejado_x_Realizado_2026.xlsx`
 **Período:** maio a dezembro/2026 (8 meses)
-**Total orçado:** R$ 395.852,68 (revisado — inclui o reajuste da Thamar)
+**Total orçado:** R$ 398.352,68 (revisado — reajuste da Thamar e aumento do Vinicius)
 
 | Departamento | Equipe | Despesas | Total |
 |---|---:|---:|---:|
 | Jurídico | 160.104,12 | 41.936,36 | **202.040,48** |
-| TI | 131.852,20 | 61.960,00 | **193.812,20** |
-| **Total** | **291.956,32** | **103.896,36** | **395.852,68** |
+| TI | 134.352,20 | 61.960,00 | **196.312,20** |
+| **Total** | **294.456,32** | **103.896,36** | **398.352,68** |
 
 ### Realizado lançado
 
-Jurídico, mai–jul/26 (3 meses fechados): R$ 54.932,73 contra R$ 66.517,46 planejado.
-O TI ainda não foi lançado. A coluna **Linhas lançadas** do Painel mostra a cobertura
-(8 de 22) — desvio negativo em linha não lançada é ausência de dado, não economia.
+Mai–jul/26 (3 meses fechados): R$ 81.544,29 realizado contra R$ 136.572,03 planejado.
+Jurídico completo; do TI, só a equipe — as despesas ainda não foram lançadas.
+A coluna **Linhas lançadas** do Painel mostra a cobertura (11 de 23) — desvio negativo
+em linha não lançada é ausência de dado, não economia.
+
+Colaboradores CLT (Geovanna e Vinicius) estão divididos em duas linhas, salário bruto
+e encargos/benefícios, porque o orçamento foi feito em custo total mas o dado
+disponível é o bruto. As linhas de encargos aguardam preenchimento.
 
 ## Abas
 

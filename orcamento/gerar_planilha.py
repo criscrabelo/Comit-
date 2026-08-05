@@ -67,8 +67,16 @@ LINHAS = [
      "Participação em projetos e atingimento de resultados", "",
      "Prêmios", [0, 0, 0, 10293.60, 0, 0, 0, 12867.00]),
     # TI - EQUIPE
-    ("TI-E01", "TI", "Equipe", "Vinicius Di Franco", "Analista Administrativo", "CLT",
-     "Pessoal - CLT", [5416.525] * 8),
+    # Mesmo tratamento da Geovanna: o orcado (R$ 5.416,525) era custo total, mas o
+    # dado disponivel e o bruto. Aumento permanente de R$ 500 a partir de 05/08:
+    # bruto de R$ 2.570,52 para R$ 3.070,52. Encargos mantidos constantes — o valor
+    # real entra pelo lancamento manual.
+    ("TI-E01", "TI", "Equipe", "Vinicius Di Franco — salário bruto",
+     "Analista Administrativo — aumento de R$ 2.570,52 para R$ 3.070,52 a partir de 05/08/26",
+     "CLT", "Pessoal - CLT", [2570.52] * 3 + [3070.52] * 5),
+    ("TI-E01B", "TI", "Equipe", "Vinicius Di Franco — encargos e benefícios",
+     "INSS patronal, FGTS, provisões de 13º e férias, benefícios — PREENCHER",
+     "CLT", "Encargos e Benefícios - CLT", [5416.525 - 2570.52] * 8),
     ("TI-E02", "TI", "Equipe", "Elias Benedito", "Suporte Técnico Terceirizado", "PJ",
      "Pessoal - PJ", [1065.00] * 8),
     ("TI-E03", "TI", "Equipe", "Jonathan", "Consultor", "PJ",
@@ -120,6 +128,11 @@ REALIZADO = {
     "JUR-D04": (_r3(970.00), FONTE_JUR, ""),
     "JUR-D05": (_r3(0.00), FONTE_JUR, "Sem gasto no período"),
     "JUR-D06": ([None] * 8, "", "Bonificação de ago/26 a confirmar"),
+    # Equipe de TI — informado pela gestora em 05/08/26. Despesas ainda pendentes.
+    "TI-E01": (_r3(2570.52), FONTE_JUR, "Salário bruto vigente até jul; sobe para R$ 3.070,52 em ago"),
+    "TI-E01B": ([None] * 8, "", "PREENCHER — encargos e benefícios sobre o bruto"),
+    "TI-E02": (_r3(0.00), FONTE_JUR, "Sem acionamento no período — confirmar se o contrato segue ativo"),
+    "TI-E03": (_r3(6300.00), FONTE_JUR, "R$ 3.700/mês abaixo do contratado — confirmar escopo"),
 }
 
 PLANOS = [
@@ -805,13 +818,29 @@ PEND = [
      "Enquanto não for preenchida, a folha do Jurídico aparece R$ 1.938,61/mês "
      "abaixo do orçado — economia que não existe, é só encargo não lançado.",
      "Cristiane + RH", "PREENCHER"),
-    ("B", "Vinicius Di Franco tem o mesmo problema",
-     "O orçamento dele (R$ 5.416,53/mês) também é custo total com encargos. "
-     "Quando o realizado do TI for lançado, ou vem o custo total, ou a linha "
-     "precisa ser dividida em bruto + encargos como foi feito com a Geovanna.",
-     "Se lançarem o bruto contra o orçado de custo total, o TI vai mostrar uma "
-     "economia falsa da mesma natureza.",
-     "Cristiane + RH", "EM ABERTO"),
+    ("B", "Encargos do Vinicius — CAMPO A PREENCHER",
+     "A linha TI-E01B foi criada para receber os encargos e benefícios sobre o "
+     "salário bruto, mesmo tratamento dado à Geovanna. Hoje está em branco. "
+     "Aumento permanente de R$ 500 registrado a partir de 05/08/26 "
+     "(bruto de R$ 2.570,52 para R$ 3.070,52), o que eleva o orçamento em "
+     "R$ 2.500 no restante do ano.",
+     "Enquanto não for preenchida, a folha do TI aparece R$ 2.846,01/mês abaixo "
+     "do orçado — economia que não existe. Atenção: o orçado de custo total "
+     "(R$ 5.416,53) implica encargos de 111% sobre o bruto de R$ 2.570,52, bem "
+     "acima do usual (67% a 80%) — vale conferir se o orçamento dele está folgado.",
+     "Cristiane + RH", "PREENCHER"),
+    ("F", "Jonathan R$ 3.700/mês abaixo do contratado",
+     "Orçado R$ 10.000/mês, realizado R$ 6.300/mês em mai, jun e jul.",
+     "Maior desvio em reais de todo o orçamento: R$ 11.100 em três meses. "
+     "Se o valor menor for o novo padrão, o planejado de ago a dez deve ser "
+     "revisado para baixo — sobrariam R$ 18.500 no orçamento do TI.",
+     "Cristiane", "EM ABERTO"),
+    ("G", "Elias Benedito zerado nos três meses",
+     "Orçado R$ 1.065/mês como suporte técnico terceirizado, realizado R$ 0 "
+     "em mai, jun e jul.",
+     "Confirmar se o contrato segue ativo (acionamento sob demanda) ou se foi "
+     "encerrado. Se encerrado, são R$ 8.520 a liberar no orçamento do ano.",
+     "Cristiane", "EM ABERTO"),
     ("C", "Reajuste da Thamar — revisão orçamentária",
      "Reajuste permanente de R$ 5.000 para R$ 5.500/mês, já em vigor desde mai/26. "
      "O planejado foi mantido em R$ 5.000 em mai–set (para o desvio ficar visível) "
