@@ -19,7 +19,7 @@ import { config } from '../../config.js';
 import { db } from '../../db/pool.js';
 import { ErroApi, entradaInvalida, naoAutenticado } from '../../errors.js';
 import { auditar } from '../../audit/registrar.js';
-import { consultar, lerQuadro, testarConexao } from './cliente.js';
+import { consultar, lerQuadro, recusarEscrita, testarConexao } from './cliente.js';
 import { QUADROS, type ChaveQuadro } from './quadros.js';
 import { sincronizarQuadro } from './sincronizar.js';
 
@@ -39,31 +39,6 @@ const esquemaConsulta = z.object({
   query: z.string().min(1).max(20_000),
   variables: z.record(z.string(), z.unknown()).optional(),
 });
-
-/**
- * Recusa qualquer operacao de escrita.
- *
- * O proxy repassa GraphQL, e sem esta trava um usuario autenticado poderia
- * ALTERAR dados no Monday atraves do nosso token — que tem permissao de escrita
- * na conta. A integracao da Fase 1 e somente leitura, e isso precisa ser
- * imposto aqui, nao confiado ao cliente.
- */
-function recusarEscrita(consulta: string): void {
-  // Remove comentarios e literais de texto antes de procurar palavras-chave,
-  // para que `query { x(nome: "mutation") }` nao seja recusado por engano.
-  const limpo = consulta
-    .replace(/#[^\n]*/g, ' ')
-    .replace(/"""[\s\S]*?"""/g, '""')
-    .replace(/"(?:[^"\\]|\\.)*"/g, '""');
-
-  if (/\b(mutation|subscription)\b/i.test(limpo)) {
-    throw new ErroApi(
-      'nao_autorizado',
-      'A integracao com o Monday opera somente em leitura. Operacoes de escrita nao sao permitidas pelo proxy.',
-      { operacao_recusada: /\bmutation\b/i.test(limpo) ? 'mutation' : 'subscription' },
-    );
-  }
-}
 
 export async function rotasMonday(app: FastifyInstance): Promise<void> {
   // ── Estado da integracao ──────────────────────────────────────────────────

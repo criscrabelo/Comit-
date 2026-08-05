@@ -541,3 +541,71 @@ de ontem ficou aberta.
 
 Os requisitos 3 e 7 **bloqueiam a ida para produção** e não podem ser resolvidos
 deste lado.
+
+
+---
+
+## B16 — Preparação da homologação controlada do Monday
+
+Quadro autorizado: `(JUR) PROCESSOS JUDICIAIS`, board 5959705266. Demais quadros
+desligados. Detalhe em `docs/HOMOLOGACAO-MONDAY.md`.
+
+### As duas execuções reais não foram feitas
+
+`MONDAY_TOKEN` não está no ambiente, e não deve ser enviado por mensagem. Sem
+ele não há como ler o board, e portanto não há como preencher as métricas com
+números reais. Preencher com números do dublê e apresentá-los como homologação
+seria exatamente o que a regra "nenhum dado demonstrativo apresentado como real"
+proíbe.
+
+Tudo o que não depende do token está pronto e provado. O runner
+(`scripts/homologar-monday.ts`) recusa rodar sem token e recusa rodar se o
+quadro configurado não for o 5959705266.
+
+### A trava de escrita desceu para o transporte
+
+`recusarEscrita` saiu da rota do proxy e foi para `cliente.ts`, dentro de
+`consultar()` — a única função que fala com a API do Monday. Qualquer caminho
+que chegue ao Monday passa por ali, inclusive código interno futuro que não use
+a rota. A rota continua recusando também, antes de repassar.
+
+### Dois defeitos que a prova 4 encontrou
+
+**`versao` e `historico` inflavam a cada carga.** `extraido_em`, `execucao_id` e
+`versao_regra` mudam a cada sincronização, e o gatilho da trilha os via como
+alteração. Depois de trinta dias de carga diária, todo registro estaria na
+versão 31 com trinta entradas de histórico dizendo apenas que a hora de extração
+mudou — e o controle otimista de concorrência da interface passaria a recusar
+edições legítimas, porque a versão teria avançado durante a noite sem ninguém
+ter editado nada.
+
+Migração 017: `versao` e `historico` descrevem o **conteúdo**. Metadado de carga
+não conta. `valor_original` continua contando — se o payload da origem mudou, o
+registro de origem mudou de fato.
+
+**`atualizados` contava releitura como atualização.** O contador registrava toda
+linha que passasse pelo caminho de conflito do upsert, ou seja, o conjunto
+inteiro a cada re-sincronização. O relatório diria "31 atualizados" todo dia.
+Agora `atualizados` conta o que mudou, e **`inalterados`** conta o que foi
+reconhecido sem nada a alterar — que é a evidência direta da idempotência.
+
+### O que NÃO foi alterado
+
+A lista de termos de classificação de judicialização. O primeiro rascunho do
+teste usou `JUDICIALIZADO` como rótulo de status, ele caiu em
+`revisao_necessaria`, e a tentação seria acrescentar o termo à lista para o
+teste passar. Não há nenhuma referência do projeto dizendo que esse é um rótulo
+real do board — foi um valor que inventei.
+
+Mexer numa regra de classificação com base num palpite sobre os dados do cliente
+mudaria a taxa de judicialização, que é indicador de comitê. A amostra foi
+trocada por um valor documentado (`ACAO AJUIZADA`, que casa com `ajuizad`), e
+ficou registrado como limitação: os rótulos reais precisam ser conferidos na
+primeira execução, e qualquer ajuste depende de aprovação.
+
+### Métricas acrescentadas à execução
+
+`paginas`, `ultimo_cursor`, `normalizados`, `data_referencia`,
+`id_origem_escopo`, `ultimo_dado_valido_em` e `inalterados` — migrações 016 e
+017. `ultimo_cursor = null` significa "leu até o fim"; preenchido significa
+"parou no meio", e permite retomar sem reler.

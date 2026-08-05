@@ -76,10 +76,42 @@ const esperar = (ms: number) => new Promise((r) => setTimeout(r, ms));
  * 401/403 nem em erro de sintaxe da consulta — repetir nao resolveria e apenas
  * queimaria a cota.
  */
+/**
+ * Recusa qualquer operacao de escrita.
+ *
+ * O token do Monday tem permissao de escrita na conta. A integracao da Fase 1 e
+ * SOMENTE LEITURA, e a trava vive aqui — no transporte — e nao apenas na rota
+ * do proxy: qualquer caminho que fale com o Monday passa por `consultar`, e
+ * nenhum deles consegue escrever, inclusive codigo interno futuro.
+ *
+ * Exportada porque a homologacao precisa PROVAR a recusa, e uma funcao privada
+ * so poderia ser provada indiretamente.
+ */
+export function recusarEscrita(consulta: string): void {
+  // Remove comentarios e literais de texto antes de procurar palavras-chave,
+  // para que `query { x(nome: "mutation") }` nao seja recusado por engano.
+  const limpo = consulta
+    .replace(/#[^\n]*/g, ' ')
+    .replace(/"""[\s\S]*?"""/g, '""')
+    .replace(/"(?:[^"\\]|\\.)*"/g, '""');
+
+  if (/\b(mutation|subscription)\b/i.test(limpo)) {
+    throw new ErroApi(
+      'nao_autorizado',
+      'A integracao com o Monday opera somente em leitura. Operacoes de escrita nao sao permitidas pelo proxy.',
+      { operacao_recusada: /\bmutation\b/i.test(limpo) ? 'mutation' : 'subscription' },
+    );
+  }
+}
+
 export async function consultar<T>(
   consulta: string,
   variaveis: Record<string, unknown> = {},
 ): Promise<T> {
+  // Trava no transporte, e nao apenas na rota: nenhum caminho — inclusive
+  // codigo interno — consegue escrever no Monday por aqui.
+  recusarEscrita(consulta);
+
   const token = exigirToken();
   let ultimoErro: unknown;
 
@@ -218,6 +250,14 @@ export interface ResultadoLeitura {
   paginas: number;
   /** true quando a leitura parou pelo teto de paginas, nao pelo fim dos dados. */
   truncado: boolean;
+  /**
+   * Cursor devolvido pela ultima pagina.
+   *
+   * `null` significa que a leitura chegou ao FIM do quadro — e o que separa
+   * "li tudo" de "parei no meio". Preenchido quando truncado, para que a
+   * retomada seja possivel sem reler desde o inicio.
+   */
+  ultimoCursor: string | null;
 }
 
 /**
@@ -290,12 +330,12 @@ export async function lerTodosOsItens(
         { quadro: quadroId, paginas, itens: itens.length },
         'Teto de paginas atingido: leitura do quadro esta incompleta',
       );
-      return { itens, paginas, truncado: true };
+      return { itens, paginas, truncado: true, ultimoCursor: cursor };
     }
   } while (cursor);
 
   logger.info({ quadro: quadroId, paginas, itens: itens.length }, 'Quadro do Monday lido');
-  return { itens, paginas, truncado: false };
+  return { itens, paginas, truncado: false, ultimoCursor: null };
 }
 
 /** Metadados do quadro, para a tela de descoberta de quadros. */

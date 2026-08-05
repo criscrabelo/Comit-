@@ -271,6 +271,7 @@ export async function sincronizarQuadro(opcoes: OpcoesSincronizacao): Promise<Re
     comiteId: opcoes.comiteId,
     usuarioId: opcoes.usuarioId,
     versaoRegra: VERSAO_REGRA,
+    idOrigemEscopo: String(def.idPadrao),
   });
 
   if (!destino) {
@@ -295,6 +296,7 @@ export async function sincronizarQuadro(opcoes: OpcoesSincronizacao): Promise<Re
     // 2. Leitura paginada, ate o fim.
     const leitura = await lerTodosOsItens(def.idPadrao);
     execucao.registrarLidos(leitura.itens.length);
+    execucao.registrarLeitura({ paginas: leitura.paginas, ultimoCursor: leitura.ultimoCursor });
 
     if (leitura.truncado) {
       // Leitura incompleta nunca e apresentada como completa.
@@ -343,6 +345,17 @@ export async function sincronizarQuadro(opcoes: OpcoesSincronizacao): Promise<Re
         execucao.registrarErro(erro instanceof Error ? erro.message : String(erro), item.id);
       }
     }
+
+    execucao.registrarNormalizados(paraGravar.length);
+
+    // Data de referencia do CONJUNTO: a mais recente entre os registros lidos.
+    // E o que responde "ate quando este dado esta atualizado", que nao e a
+    // mesma pergunta que "quando foi extraido".
+    const datas = paraGravar
+      .map((r) => r.dataReferencia)
+      .filter((d): d is string => Boolean(d))
+      .sort();
+    execucao.registrarDataReferencia(datas.length ? datas[datas.length - 1]! : null);
 
     if (opcoes.simular) {
       return execucao.finalizar({

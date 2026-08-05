@@ -43,8 +43,10 @@ export interface RegistroParaUpsert {
 
 export interface ResultadoUpsert {
   incluidos: number;
+  /** Registros cujo CONTEUDO mudou. */
   atualizados: number;
-  semMudanca: number;
+  /** Reconhecidos pelo upsert e sem nada a alterar. Evidencia de idempotencia. */
+  inalterados: number;
   /** IDs internos dos registros gravados, na ordem de entrada. */
   ids: string[];
 }
@@ -68,7 +70,7 @@ export async function upsertLote(
     executor?: Executor;
   },
 ): Promise<ResultadoUpsert> {
-  const resultado: ResultadoUpsert = { incluidos: 0, atualizados: 0, semMudanca: 0, ids: [] };
+  const resultado: ResultadoUpsert = { incluidos: 0, atualizados: 0, inalterados: 0, ids: [] };
   if (registros.length === 0) return resultado;
 
   const executar = async (trx: Executor) => {
@@ -109,12 +111,18 @@ export async function upsertLote(
         .returning([
           'id',
           sql<boolean>`(xmax = 0)`.as('foi_insercao'),
+          // O gatilho so mexe em `atualizado_em` quando algum campo de conteudo
+          // muda. `now()` e o instante da TRANSACAO, entao igualdade aqui
+          // significa "alterado por esta instrucao" — e o que separa uma carga
+          // que corrigiu algo de uma que apenas releu o mesmo.
+          sql<boolean>`(atualizado_em = now())`.as('mudou'),
         ])
         .executeTakeFirstOrThrow();
 
       resultado.ids.push(linha.id as string);
       if (linha.foi_insercao) resultado.incluidos++;
-      else resultado.atualizados++;
+      else if (linha.mudou) resultado.atualizados++;
+      else resultado.inalterados++;
     }
   };
 
@@ -220,6 +228,7 @@ export async function persistirLote(
 
   for (let i = 0; i < resultado.incluidos; i++) execucao.registrarIncluido();
   for (let i = 0; i < resultado.atualizados; i++) execucao.registrarAtualizado();
+  for (let i = 0; i < resultado.inalterados; i++) execucao.registrarInalterado();
 
   return resultado;
 }

@@ -18,7 +18,16 @@ import type { EstadoIntegracao, FonteDado, StatusExecucao } from '../db/schema.j
 export interface Contadores {
   lidos: number;
   incluidos: number;
+  /** Conteudo mudou de fato. */
   atualizados: number;
+  /**
+   * Reconhecidos pelo upsert e sem nada a alterar.
+   *
+   * Separado de `atualizados` porque, sem essa distincao, toda
+   * re-sincronizacao reportaria o conjunto inteiro como atualizado — e a
+   * metrica nao diria nada sobre a carga ter mudado alguma coisa.
+   */
+  inalterados: number;
   ignorados: number;
   duplicados: number;
   comErro: number;
@@ -44,14 +53,25 @@ export class Execucao {
   private lidos = 0;
   private incluidos = 0;
   private atualizados = 0;
+  private inalterados = 0;
   private ignorados = 0;
   private duplicados = 0;
   private comErro = 0;
+
+  /** Metricas da leitura na origem, exigidas no relatorio de homologacao. */
+  private paginas: number | null = null;
+  private ultimoCursor: string | null = null;
+  private normalizados: number | null = null;
+  private dataReferencia: string | null = null;
+  /** `ultima_carga_valida_em` no INICIO desta execucao. Preservado se falhar. */
+  private ultimoDadoValidoEm: Date | null = null;
 
   private readonly motivosIgnorados = new Map<string, { quantidade: number; exemplos: string[] }>();
   private readonly erros: Array<{ id_origem?: string; mensagem: string }> = [];
   private readonly fontesComFalha = new Set<string>();
   private parcial = false;
+
+  readonly iniciadaEm = new Date();
 
   constructor(id: string, fonte: FonteDado, escopo: string | null) {
     this.id = id;
@@ -63,12 +83,45 @@ export class Execucao {
     this.lidos += quantidade;
   }
 
+  /**
+   * Registra como a leitura foi feita na origem.
+   *
+   * `paginas` e `ultimoCursor` sao o que permite dizer, depois, se a carga leu
+   * o quadro inteiro — e retomar de onde parou quando nao leu.
+   */
+  registrarLeitura(dados: { paginas: number; ultimoCursor: string | null }): void {
+    this.paginas = dados.paginas;
+    this.ultimoCursor = dados.ultimoCursor;
+  }
+
+  /** Itens que sobreviveram a transformacao e viraram registro gravavel. */
+  registrarNormalizados(quantidade: number): void {
+    this.normalizados = quantidade;
+  }
+
+  /** Data de referencia do conjunto lido. */
+  registrarDataReferencia(data: string | null): void {
+    this.dataReferencia = data;
+  }
+
+  definirUltimoDadoValido(quando: Date | null): void {
+    this.ultimoDadoValidoEm = quando;
+  }
+
+  get ultimoDadoValido(): Date | null {
+    return this.ultimoDadoValidoEm;
+  }
+
   registrarIncluido(): void {
     this.incluidos++;
   }
 
   registrarAtualizado(): void {
     this.atualizados++;
+  }
+
+  registrarInalterado(): void {
+    this.inalterados++;
   }
 
   registrarDuplicado(): void {
@@ -114,6 +167,7 @@ export class Execucao {
       lidos: this.lidos,
       incluidos: this.incluidos,
       atualizados: this.atualizados,
+      inalterados: this.inalterados,
       ignorados: this.ignorados,
       duplicados: this.duplicados,
       comErro: this.comErro,
@@ -127,13 +181,14 @@ export class Execucao {
   /**
    * Verifica se a contabilidade fecha.
    *
-   * incluidos + atualizados + ignorados + duplicados + comErro deve igualar
-   * lidos. Divergencia indica caminho de codigo que processou um item sem
+   * incluidos + atualizados + inalterados + ignorados + duplicados + comErro
+   * deve igualar lidos. Divergencia indica caminho de codigo que processou um item sem
    * contabilizar — e o tipo de erro que faz um painel mentir sem alarme.
    */
   conferir(): { fecha: boolean; diferenca: number } {
     const somados =
-      this.incluidos + this.atualizados + this.ignorados + this.duplicados + this.comErro;
+      this.incluidos + this.atualizados + this.inalterados +
+      this.ignorados + this.duplicados + this.comErro;
     return { fecha: somados === this.lidos, diferenca: this.lidos - somados };
   }
 
@@ -160,7 +215,7 @@ export class Execucao {
     const status: StatusExecucao =
       resultado.status ??
       (this.comErro > 0 || this.parcial
-        ? this.incluidos + this.atualizados > 0
+        ? this.incluidos + this.atualizados + this.inalterados > 0
           ? 'parcial'
           : 'erro'
         : 'sucesso');
@@ -173,6 +228,7 @@ export class Execucao {
         lidos: this.lidos,
         incluidos: this.incluidos,
         atualizados: this.atualizados,
+        inalterados: this.inalterados,
         ignorados: this.ignorados,
         duplicados: this.duplicados,
         com_erro: this.comErro,
@@ -185,6 +241,11 @@ export class Execucao {
         parcial: this.parcial,
         fontes_com_falha: [...this.fontesComFalha],
         mensagem: resultado.mensagem ?? null,
+        paginas: this.paginas,
+        ultimo_cursor: this.ultimoCursor,
+        normalizados: this.normalizados,
+        data_referencia: this.dataReferencia,
+        ultimo_dado_valido_em: this.ultimoDadoValidoEm,
       })
       .where('id', '=', this.id)
       .execute();
@@ -217,6 +278,16 @@ export class Execucao {
       motivos_ignorados: this.detalheIgnorados(),
       contabilidade_fecha: conferencia.fecha,
       mensagem: resultado.mensagem ?? null,
+      paginas: this.paginas,
+      ultimo_cursor: this.ultimoCursor,
+      normalizados: this.normalizados,
+      data_referencia: this.dataReferencia,
+      // Falha NAO apaga: este e o carimbo do ultimo conjunto completo, e
+      // continua valendo quando a carga de hoje nao fecha.
+      ultimo_dado_valido_em: this.ultimoDadoValidoEm,
+      iniciada_em: this.iniciadaEm,
+      finalizada_em: new Date(),
+      duracao_ms: Date.now() - this.iniciadaEm.getTime(),
     };
   }
 }
@@ -231,6 +302,14 @@ export interface ResumoExecucao extends Contadores {
   motivos_ignorados: MotivoIgnorado[];
   contabilidade_fecha: boolean;
   mensagem: string | null;
+  paginas: number | null;
+  ultimo_cursor: string | null;
+  normalizados: number | null;
+  data_referencia: string | null;
+  ultimo_dado_valido_em: Date | null;
+  iniciada_em: Date;
+  finalizada_em: Date;
+  duracao_ms: number;
 }
 
 export async function iniciarExecucao(dados: {
@@ -241,6 +320,8 @@ export async function iniciarExecucao(dados: {
   comiteId?: string | null;
   usuarioId?: string | null;
   versaoRegra?: string | null;
+  /** Identificador do quadro/endpoint na origem. */
+  idOrigemEscopo?: string | null;
 }): Promise<Execucao> {
   const linha = await db
     .insertInto('execucoes_importacao')
@@ -252,10 +333,20 @@ export async function iniciarExecucao(dados: {
       comite_id: dados.comiteId ?? null,
       usuario_id: dados.usuarioId ?? null,
       versao_regra: dados.versaoRegra ?? null,
+      id_origem_escopo: dados.idOrigemEscopo ?? null,
       status: 'em_andamento',
     })
     .returning('id')
     .executeTakeFirstOrThrow();
+
+  // Ultimo dado valido ANTES desta execucao. Guardado agora porque, se esta
+  // falhar, e este carimbo que a interface deve mostrar — e nao a hora da
+  // tentativa que nao deu certo.
+  const integracao = await db
+    .selectFrom('integracoes')
+    .select('ultima_carga_valida_em')
+    .where('sistema', '=', dados.fonte)
+    .executeTakeFirst();
 
   await db
     .updateTable('integracoes')
@@ -263,7 +354,11 @@ export async function iniciarExecucao(dados: {
     .where('sistema', '=', dados.fonte)
     .execute();
 
-  return new Execucao(linha.id, dados.fonte, dados.escopo ?? null);
+  const execucao = new Execucao(linha.id, dados.fonte, dados.escopo ?? null);
+  execucao.definirUltimoDadoValido(
+    integracao?.ultima_carga_valida_em ? new Date(integracao.ultima_carga_valida_em) : null,
+  );
+  return execucao;
 }
 
 /**

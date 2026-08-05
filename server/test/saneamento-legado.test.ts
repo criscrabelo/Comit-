@@ -232,10 +232,20 @@ describe('legado do servidor antigo — pendencia rastreada (B8)', () => {
 });
 
 describe('o proxy do backend recusa operacao de escrita', () => {
-  it('o codigo do proxy tem a trava de somente leitura', async () => {
+  it('a trava de somente leitura vive no TRANSPORTE, nao so na rota', () => {
+    // A trava foi movida da rota para o cliente. E uma garantia mais forte:
+    // qualquer caminho que fale com o Monday passa por `consultar`, inclusive
+    // codigo interno futuro que nao passe pela rota do proxy.
+    const cliente = readFileSync(join(RAIZ, 'server/src/integracoes/monday/cliente.ts'), 'utf8');
+    expect(cliente).toContain('export function recusarEscrita');
+    expect(cliente).toMatch(/\\b\(mutation\|subscription\)\\b/);
+    // E e chamada dentro de `consultar`, antes de qualquer requisicao.
+    const dentroDeConsultar = cliente.slice(cliente.indexOf('export async function consultar<T>('));
+    expect(dentroDeConsultar.slice(0, 600)).toContain('recusarEscrita(consulta)');
+  });
+
+  it('a rota do proxy continua recusando antes de repassar', () => {
     const rotas = readFileSync(join(RAIZ, 'server/src/integracoes/monday/rotas.ts'), 'utf8');
-    // A trava existe e e chamada na rota de consulta.
-    expect(rotas).toContain('function recusarEscrita');
     expect(rotas).toMatch(/recusarEscrita\(corpo\.data\.query\)/);
   });
 });

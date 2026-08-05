@@ -7,6 +7,7 @@
  *   - reprocessamento preserva o valor original
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { sql } from 'kysely';
 import { db, fecharBanco } from '../src/db/pool.js';
 import { iniciarExecucao } from '../src/integracoes/execucoes.js';
 import {
@@ -79,14 +80,28 @@ describe('upsert idempotente', () => {
     expect(primeira.atualizados).toBe(0);
     expect(await contar('notificacoes')).toBe(3);
 
-    // Mesma carga, execucao nova: atualiza, nao insere.
+    // Mesma carga, execucao nova: reconhece, nao insere e nao altera.
+    //
+    // `atualizados` conta o que MUDOU de fato. Antes contava toda linha que
+    // passasse pelo caminho de conflito, e uma releitura identica reportava o
+    // conjunto inteiro como atualizado — metrica que nao dizia nada.
     const execucao2 = await iniciarExecucao({ fonte: 'monday', escopo: 'notificacoes' });
     const segunda = await upsertLote('notificacoes', 'monday', lote, {
       execucaoId: execucao2.id,
     });
     expect(segunda.incluidos).toBe(0);
-    expect(segunda.atualizados).toBe(3);
+    expect(segunda.atualizados).toBe(0);
+    expect(segunda.inalterados).toBe(3);
     expect(await contar('notificacoes')).toBe(3);
+
+    // E nenhuma versao foi consumida: releitura identica nao gera versao.
+    const versoes = await sql<{ maxima: number; historico: number }>`
+      SELECT coalesce(max(versao), 0)::int AS maxima,
+             coalesce(sum(jsonb_array_length(historico)), 0)::int AS historico
+      FROM notificacoes
+    `.execute(db);
+    expect(versoes.rows[0]!.maxima).toBe(1);
+    expect(versoes.rows[0]!.historico).toBe(0);
   });
 
   it('preserva o valor original da fonte e registra a trilha ao mudar', async () => {

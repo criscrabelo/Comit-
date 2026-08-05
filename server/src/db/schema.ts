@@ -350,6 +350,7 @@ export interface TabelaExecucoesImportacao {
   lidos: Auto<number>;
   incluidos: Auto<number>;
   atualizados: Auto<number>;
+  inalterados: Auto<number>;
   ignorados: Auto<number>;
   duplicados: Auto<number>;
   com_erro: Auto<number>;
