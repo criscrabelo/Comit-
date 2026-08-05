@@ -16,6 +16,7 @@
  *   MONDAY_TOKEN=... DATABASE_URL=... npx tsx scripts/homologar-monday.ts
  *   ... --competencia 2026-07     recorta por competencia
  *   ... --simular                 le e transforma sem gravar
+ *   ... --pre-confirmacao         so os quatro itens locais; nao toca a rede
  *   ... --saida relatorio.md      grava o relatorio em arquivo
  *
  * O token vem SO de variavel de ambiente. Nunca por argumento: argumento
@@ -164,6 +165,16 @@ async function confirmarAntesDeSincronizar(): Promise<ItemConfirmacao[]> {
         falhou.map((f) => `  ✗ ${f.rotulo}: ${f.detalhe}`).join('\n'),
     );
   }
+
+  // `--pre-confirmacao` para aqui, ANTES de qualquer trafego de rede.
+  //
+  // Os quatro itens acima sao todos locais: presenca da variavel, comportamento
+  // da trava, id do quadro e as consultas do proprio pipeline. Poder audita-los
+  // sem alcancar a API separa duas coisas que sao facilmente confundidas quando
+  // a rede falha — "a pre-confirmacao nao passou" e "a pre-confirmacao passou,
+  // mas nao foi possivel chegar ao Monday". Sao diagnosticos diferentes, e o
+  // segundo nao e defeito do produto.
+  if (temFlag('pre-confirmacao')) return itens;
 
   // Só agora a credencial é exercitada de fato.
   const conexao = await testarConexao();
@@ -707,6 +718,13 @@ async function conferirBloqueio(): Promise<{ ok: boolean; evidencia: string }> {
 
 // ═══════════════════════════════════════════════════════════════════════════
 
+async function gravarSaida(): Promise<void> {
+  const saida = argumento('saida');
+  if (!saida) return;
+  await fs.writeFile(saida, linhas.join('\n') + '\n');
+  console.log(`\n→ relatório gravado em ${saida}`);
+}
+
 async function principal(): Promise<void> {
   const def = QUADROS[QUADRO];
 
@@ -742,7 +760,11 @@ async function principal(): Promise<void> {
   escrever(`**Versão da API do Monday:** ${config.monday.versaoApi}`);
   escrever();
   escrever('> Nenhum dado foi alterado no Monday. O proxy recusa `mutation` e');
-  escrever('> `subscription` antes de qualquer chamada — ver prova 7.');
+  escrever(
+    temFlag('pre-confirmacao')
+      ? '> `subscription` antes de qualquer chamada — ver item 2 da pré-confirmação.'
+      : '> `subscription` antes de qualquer chamada — ver prova 7.',
+  );
   escrever();
 
   escrever('## Pré-confirmação');
@@ -753,6 +775,15 @@ async function principal(): Promise<void> {
     escrever(`| ${item.rotulo} | ${item.ok ? '✅' : '❌'} ${item.detalhe} |`);
   }
   escrever();
+
+  if (temFlag('pre-confirmacao')) {
+    escrever(
+      '_Execução limitada à pré-confirmação: nenhuma leitura foi feita e nada foi gravado._',
+    );
+    escrever();
+    await gravarSaida();
+    return;
+  }
 
   if (temFlag('simular')) {
     escrever('_Execução em modo simulação: nada foi gravado._');
@@ -844,11 +875,7 @@ async function principal(): Promise<void> {
       : `**${falhas} prova(s) falharam.** A homologação NÃO deve ser aprovada nesta condição.`,
   );
 
-  const saida = argumento('saida');
-  if (saida) {
-    await fs.writeFile(saida, linhas.join('\n') + '\n');
-    console.log(`\n→ relatório gravado em ${saida}`);
-  }
+  await gravarSaida();
 
   if (falhas > 0) process.exitCode = 1;
 }

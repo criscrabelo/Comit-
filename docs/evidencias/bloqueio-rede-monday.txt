@@ -1,0 +1,26 @@
+Bloqueio de rede — api.monday.com
+Levantado em: 2026-08-05T01:45:37Z
+
+== 1. Endpoint efetivamente usado pelo cliente ==
+MONDAY_ENDPOINT=[nao definida]  -> cliente.ts usa https://api.monday.com/v2
+
+== 2. CONNECT direto, fora da aplicacao ==
+> CONNECT api.monday.com:443 HTTP/1.1
+< HTTP/1.1 403 Forbidden
+* CONNECT tunnel failed, response 403
+curl: (56) CONNECT tunnel failed, response 403
+
+== 3. Registro do proxy de egresso ==
+2026-08-05T01:41:07.561Z  api.monday.com:443  connect_rejected: gateway answered 403 to CONNECT (policy denial or upstream failure)
+2026-08-05T01:41:17.585Z  api.monday.com:443  connect_rejected: gateway answered 403 to CONNECT (policy denial or upstream failure)
+2026-08-05T01:41:33.075Z  api.monday.com:443  connect_rejected: gateway answered 403 to CONNECT (policy denial or upstream failure)
+2026-08-05T01:41:36.407Z  api.monday.com:443  connect_rejected: gateway answered 403 to CONNECT (policy denial or upstream failure)
+2026-08-05T01:41:39.780Z  api.monday.com:443  connect_rejected: gateway answered 403 to CONNECT (policy denial or upstream failure)
+2026-08-05T01:42:11.226Z  api.monday.com:443  connect_rejected: gateway answered 403 to CONNECT (policy denial or upstream failure)
+2026-08-05T01:42:13.551Z  api.monday.com:443  connect_rejected: gateway answered 403 to CONNECT (policy denial or upstream failure)
+2026-08-05T01:42:17.845Z  api.monday.com:443  connect_rejected: gateway answered 403 to CONNECT (policy denial or upstream failure)
+2026-08-05T01:42:26.166Z  api.monday.com:443  connect_rejected: gateway answered 403 to CONNECT (policy denial or upstream failure)
+2026-08-05T01:45:38.055Z  api.monday.com:443  connect_rejected: gateway answered 403 to CONNECT (policy denial or upstream failure)
+
+== 4. Controle: outro host HTTPS pelo mesmo proxy ==
+https://api.github.com -> HTTP 200

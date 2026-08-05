@@ -8,31 +8,61 @@
 
 ## 1. Estado desta entrega
 
+**Tentativa de execução real:** 2026-08-05, com `MONDAY_TOKEN` presente no
+ambiente. Resultado abaixo.
+
 | Item | Situação |
 | --- | --- |
-| Pré-confirmação dos 4 itens, antes de sincronizar | **pronta** |
+| **Pré-confirmação dos 4 itens** | ✅ **executada de verdade — os 4 passaram** (seção 2) |
 | Instrumentação das 14 métricas exigidas | **pronta** |
 | Runner das duas execuções consecutivas | **pronto** (`scripts/homologar-monday.ts`) |
 | Levantamento dos rótulos reais | **pronto** (`src/integracoes/monday/rotulos.ts`) |
 | Propostas de regra para rótulo não coberto | **prontas — nunca aplicadas** |
 | Amostra anonimizada, sem CPF/CNPJ/nome | **pronta**, com varredura de conferência |
 | Mapa de colunas Monday → Patrono | **pronto** (seção 4) |
-| As sete provas, contra PostgreSQL real | **30 testes passando** |
+| Suíte contra PostgreSQL real | **328 testes passando**, dos quais **31** de Monday |
 | Ensaio ponta a ponta do runner | **7 de 7 provas** (`scripts/ensaiar-homologacao.ts`) |
-| **As duas execuções contra o board real** | **BLOQUEADO — falta `MONDAY_TOKEN`** |
+| **As duas execuções contra o board real** | **BLOQUEADO — a rede recusa `api.monday.com`** |
+| Rótulos reais do board | **pendente** — dependem da leitura |
+| Amostra anonimizada com dados reais | **pendente** — depende da leitura |
 
-**O que falta, e por quê.** Conferi o ambiente deste processo: `MONDAY_TOKEN`
-não está definido e não há arquivo `.env`. Sem ele não é possível ler o board
-5959705266, e portanto não é possível preencher as métricas com números reais.
-Preencher com números do dublê e apresentá-los como homologação seria
+### O bloqueio mudou de causa
+
+O impedimento anterior era a ausência de `MONDAY_TOKEN`. **Esse impedimento
+acabou:** o token está no ambiente, e a pré-confirmação dos quatro itens rodou
+e passou. O que impede agora é outra coisa, e é externa ao produto: **a política
+de egresso desta sessão recusa o host `api.monday.com`.**
+
+```
+> CONNECT api.monday.com:443 HTTP/1.1
+< HTTP/1.1 403 Forbidden
+```
+
+O proxy registra a recusa como `connect_rejected — gateway answered 403 to
+CONNECT (policy denial or upstream failure)`, e repetiu a mesma resposta em
+todas as tentativas. **Não é falha intermitente e não é erro de credencial:** o
+403 vem do gateway antes de qualquer TLS com o Monday, ou seja, o token nunca
+chegou a ser apresentado. Um host de controle (`api.github.com`) responde `200`
+pelo mesmo proxy, o que isola o bloqueio a `api.monday.com` e não à saída de
+rede em geral. Evidência bruta em `docs/evidencias/bloqueio-rede-monday.txt`.
+
+Também foi conferido que `MONDAY_ENDPOINT` **não está definida**, isto é, o
+cliente aponta para `https://api.monday.com/v2` — o endereço oficial. O bloqueio
+não é consequência de redirecionamento da integração (ver limitação 8).
+
+Rota de saída: liberar `api.monday.com:443` na política de egresso do ambiente e
+repetir a execução. Nada precisa mudar no código.
+
+### O que continua não sendo preenchido, e por quê
+
+Métricas, rótulos reais e amostra com dados reais seguem **em branco**. Há
+números disponíveis — os do dublê de teste, e o ensaio ponta a ponta produz um
+relatório completo com eles. Apresentá-los como resultado da homologação é
 exatamente o que a regra "nenhum dado demonstrativo apresentado como real"
-proíbe.
+proíbe, e por isso o relatório de homologação real não existe: existe o do
+ensaio, e ele nasce marcado como simulado.
 
-**Nota sobre o ambiente:** este processo herdou as variáveis no momento em que
-subiu. Uma variável configurada depois disso só será vista por uma **sessão
-nova** — reiniciar o backend não basta se o processo do agente continuar o
-mesmo. Quando a configuração estiver feita, abra uma sessão nova e peça a
-execução; o comando é um só:
+Quando `api.monday.com` estiver liberado, o comando é um só:
 
 ```bash
 MONDAY_TOKEN=<token> \
@@ -43,6 +73,11 @@ npx tsx scripts/homologar-monday.ts --saida docs/evidencias/homologacao-monday.m
 O script recusa rodar se o quadro configurado não for o 5959705266, recusa rodar
 sem token, e **interrompe antes de qualquer leitura** se a pré-confirmação
 falhar.
+
+**Nota sobre o ambiente:** o processo herda as variáveis no momento em que sobe.
+Uma variável configurada depois só será vista por uma **sessão nova** —
+reiniciar o backend não basta se o processo do agente continuar o mesmo. Foi o
+que destravou o token nesta tentativa, e vale para a liberação da rede também.
 
 ### Ensaio do runner — o que ele prova e o que não prova
 
@@ -81,6 +116,39 @@ implementação da regra poderia divergir da primeira, e a divergência passaria
 despercebida justamente aqui, onde importa.
 
 Só depois dos quatro a credencial é exercitada, com `query { me }`.
+
+### Resultado real — 2026-08-05T01:45:22Z
+
+Os quatro itens são **locais**: presença da variável, comportamento da trava, id
+do quadro e as consultas do próprio pipeline. Nenhum depende de alcançar a API,
+e por isso puderam ser verificados de verdade mesmo com a rede recusando o host.
+
+| Item | Resultado |
+| --- | --- |
+| `token_configurado: true` | ✅ MONDAY_TOKEN presente no ambiente (valor nunca exibido) |
+| integração em modo somente leitura | ✅ trava no transporte (`consultar`), antes de qualquer requisição |
+| quadro configurado = 5959705266 | ✅ (JUR) PROCESSOS JUDICIAIS — `5959705266` |
+| nenhuma `mutation` ou `subscription` no pipeline | ✅ 4 consultas do pipeline, todas aceitas pela trava |
+
+Relatório em `docs/evidencias/preconfirmacao-monday.md`, gerado por:
+
+```bash
+npx tsx scripts/homologar-monday.ts --pre-confirmacao \
+  --saida docs/evidencias/preconfirmacao-monday.md
+```
+
+**Sobre `--pre-confirmacao`.** A opção foi acrescentada nesta tentativa e para o
+runner logo depois dos quatro itens, **antes de qualquer tráfego de rede**. Ela
+separa dois diagnósticos que a falha de rede confunde com facilidade: "a
+pré-confirmação não passou" e "a pré-confirmação passou, mas não foi possível
+chegar ao Monday". O segundo não é defeito do produto, e sem essa separação a
+distinção depende de ler log de erro. Ela **não** substitui a homologação: não
+lê, não grava e não emite prova nenhuma.
+
+Rodando o runner completo, os quatro passam e a execução para no exercício da
+credencial, com `O token nao autenticou no Monday: Nao foi possivel consultar o
+Monday` — após três tentativas com espera progressiva. É a rede, não o token:
+o 403 do gateway acontece antes de a credencial ser apresentada.
 
 ---
 
@@ -341,7 +409,10 @@ por nenhum mascaramento de coluna.
 
 ## 8. Limitações
 
-1. **As duas execuções reais não foram feitas** — falta `MONDAY_TOKEN`.
+1. **As duas execuções reais não foram feitas** — a política de egresso do
+   ambiente recusa `api.monday.com:443` com `403` no `CONNECT`. O token está
+   presente e a pré-confirmação passou; o bloqueio é de rede, não de credencial
+   nem de código. Ver seção 1.
 2. **Os rótulos reais de `MEU TRABALHO` não são conhecidos.** As listas de
    classificação vieram das regras do projeto. A primeira execução mostrará
    quantos caem em revisão; ajuste só com aprovação.

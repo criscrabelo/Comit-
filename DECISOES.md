@@ -689,3 +689,60 @@ ensaio, não do produto.
 `MONDAY_ENDPOINT` foi acrescentada para o ensaio. Em produção não é definida e o
 endereço é o oficial, mas fica registrado que ela existe: quem controla o
 ambiente do servidor pode redirecionar a integração.
+
+
+---
+
+## B16.2 — Tentativa de homologação real: o bloqueio mudou de causa
+
+Tentativa de executar a homologação controlada do board 5959705266 com
+`MONDAY_TOKEN` presente no ambiente. Detalhe em `docs/HOMOLOGACAO-MONDAY.md`.
+
+### O que passou a ser possível
+
+`MONDAY_TOKEN` está no ambiente — o impedimento de B16 e B16.1 acabou. A
+**pré-confirmação dos quatro itens rodou e passou**, o que até aqui nunca havia
+sido verificado fora de teste. Os quatro são locais (variável, trava, id do
+quadro, consultas do pipeline) e não dependem de alcançar a API.
+
+Também foram executados contra PostgreSQL real: a suíte inteira, 328 testes,
+dos quais 31 de Monday; e o ensaio ponta a ponta, 7 de 7 provas.
+
+### O que continua impedindo, e é outra coisa
+
+A política de egresso do ambiente **recusa o host `api.monday.com`**: `403` no
+`CONNECT`, antes de qualquer TLS com o Monday. O token nunca chega a ser
+apresentado. Repetiu em todas as tentativas — não é intermitência.
+
+O que separa "rede bloqueada" de "credencial inválida" é o momento da recusa: o
+gateway responde antes do handshake. E o que separa "bloqueio geral de saída" de
+"bloqueio deste host" é o controle: `api.github.com` responde `200` pelo mesmo
+proxy. Sem esses dois recortes, o sintoma — `fetch failed`, três vezes — seria
+lido como token errado, e a próxima sessão rodaria atrás do problema errado.
+Evidência em `docs/evidencias/bloqueio-rede-monday.txt`.
+
+Conferido também que `MONDAY_ENDPOINT` não está definida: o cliente aponta para
+o endereço oficial, e o bloqueio não é efeito de redirecionamento (B16.1).
+
+Rota de saída: liberar `api.monday.com:443` na política de egresso. Nenhuma
+alteração de código é necessária.
+
+### O que NÃO foi feito
+
+Métricas, rótulos reais e amostra com dados reais continuam **em branco**. O
+ensaio produz um relatório completo, com números plausíveis, e a tentação é
+usá-lo — o relatório existe, está pronto, e a diferença é uma linha de aviso.
+Apresentá-lo como homologação seria a regra "nenhum dado demonstrativo
+apresentado como real" violada da forma mais direta possível. O relatório de
+homologação real não existe porque não pode existir ainda.
+
+### `--pre-confirmacao`
+
+Opção acrescentada ao runner: roda os quatro itens e para **antes de qualquer
+tráfego de rede**. Separa dois diagnósticos que a falha de rede confunde — "a
+pré-confirmação não passou" e "a pré-confirmação passou, mas não se chegou ao
+Monday". O segundo não é defeito do produto, e sem a separação a distinção
+depende de ler log de erro.
+
+Ela não afrouxa nada: para mais cedo, não mais tarde. Não lê, não grava e não
+emite prova. O runner completo continua exigindo os quatro antes de sincronizar.
