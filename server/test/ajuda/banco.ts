@@ -17,6 +17,8 @@ const executar = promisify(execFile);
 
 /** Tabelas limpas entre testes, na ordem que respeita as chaves estrangeiras. */
 const TABELAS_LIMPAVEIS = [
+  'restauracoes',
+  'backups',
   'migracoes_chaves',
   'migracoes_localstorage',
   'vinculos_eventos',
@@ -77,6 +79,15 @@ export async function limparDados(): Promise<void> {
       usuarios
     RESTART IDENTITY CASCADE
   `.execute(db);
+
+  // O CASCADE alcanca tambem `politica_retencao`, que referencia `usuarios` em
+  // atualizada_por. Sem a linha unica, todo o servico de backup falha com "no
+  // result" — a politica e pressuposto, nao dado de teste.
+  await db
+    .insertInto('politica_retencao')
+    .values({ id: 1 })
+    .onConflict((oc) => oc.column('id').doNothing())
+    .execute();
 
   // O CASCADE alcanca `integracoes`, que referencia `usuarios` em
   // ambiente_verificado_por. Ressemeia as tres linhas de configuracao criadas

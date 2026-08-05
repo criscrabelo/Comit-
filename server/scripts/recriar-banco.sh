@@ -37,6 +37,17 @@ for arquivo in "$RAIZ"/migrations/*.sql; do
   echo ' ok'
 done
 
+# Registra as migracoes aplicadas com o checksum do arquivo. E a versao do
+# esquema que o backup grava e a restauracao compara — sem isso, restaurar sobre
+# um esquema diferente passaria despercebido.
+for arquivo in "$RAIZ"/migrations/*.sql; do
+  nome="$(basename "$arquivo")"
+  soma="$(sha256sum "$arquivo" | cut -d' ' -f1)"
+  executar -d "$PGDATABASE" -v ON_ERROR_STOP=1 -q -c \
+    "INSERT INTO migracoes_aplicadas (nome, checksum) VALUES ('$nome', '$soma')
+     ON CONFLICT (nome) DO UPDATE SET checksum = EXCLUDED.checksum;" >/dev/null
+done
+
 tabelas=$(executar -d "$PGDATABASE" -Atc \
   "SELECT count(*) FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE';")
 negocio=$(executar -d "$PGDATABASE" -Atc "SELECT count(*) FROM tabelas_de_negocio;")

@@ -8,3 +8,12 @@ URL_PUBLICA.txt
 dist/
 server/dist/
 *.tsbuildinfo
+
+# Backups. Nunca no repositorio: um arquivo destes e a base inteira, com CPF,
+# contrato e situacao juridica de clientes reais. O destino oficial fica fora
+# da arvore do projeto (BACKUP_DIRETORIO), mas um backup gerado por engano no
+# diretorio de trabalho nao pode escapar num `git add -A`.
+*.dump
+*.dump.enc
+*.sql.gz
+backups/

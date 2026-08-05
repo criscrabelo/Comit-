@@ -15,7 +15,7 @@ VERIFICAÇÃO DA INVERSÃO DA FONTE DA VERDADE
   OK    o registro existe no PostgreSQL
           encontrados: 1
   OK    o id do registro é o do banco, não o provisório
-          b6b38254-82ce-4e1d-8930-a5f04c245857
+          deccf840-1b7c-414a-a868-ff2a74c5b105
   OK    localStorage só contém preferências de interface
           preferências: nenhuma
   OK    sessionStorage vazio
@@ -27,7 +27,7 @@ VERIFICAÇÃO DA INVERSÃO DA FONTE DA VERDADE
   OK    o registro excluído sai da tela
   OK    o registro excluído permanece no banco
   OK    criar comitê pelo formulário funciona
-          {"id":"7494930a-a26e-4f13-9629-59016f91e672","ref":"2026-08","provisorio":false}
+          {"id":"9aea57ed-8dc4-46ba-891a-bb92f96e41d3","ref":"2026-08","provisorio":false}
   OK    tela "fatos": cadastro pelo formulário grava
           {"nome":"salvo","detalhe":"","pendentes":0}
   OK    tela "notificacoes": cadastro pelo formulário grava
@@ -59,7 +59,7 @@ VERIFICAÇÃO DA INVERSÃO DA FONTE DA VERDADE
   OK    rota "unidades" renderiza
           475 caracteres
   OK    rota "backup" renderiza
-          710 caracteres
+          1693 caracteres
   OK    após usar todas as telas, nenhum dado de negócio no navegador
   OK    dado de versão anterior detectado no navegador
           jur_comite_active_comite, jur_comite_empreendimentos, jur_comite_comites

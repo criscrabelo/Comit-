@@ -336,12 +336,135 @@ mais a base inteira para serializar: o dump vem do servidor, com autorização
 aplicada e exportação registrada na trilha. A restauração passa pelo fluxo de
 migração, que classifica, versiona e audita.
 
+### Backlog acrescentado — aprovado em 04/08/2026
+
+Cinco pendências registradas na aprovação da inversão. Nenhuma bloqueia B14.
+
+1. **Retirar o toast otimista.** `views.js` anuncia "salvo!" antes da resposta
+   da API. O adaptador desfaz a alteração e mostra o erro por cima, mas a
+   mensagem prematura aparece primeiro. Exibir sucesso somente após a
+   confirmação exige tornar as funções `save*` assíncronas — 10 pontos em
+   `views.js`.
+2. **Indicação visual de sincronização parcial.** A carga inicial já informa
+   quais entidades foram truncadas em 500 registros e o estado
+   `sincronizacao_parcial` existe no adaptador; nenhuma tela o desenha.
+3. **Índice para o filtro por responsável.** Nenhuma tabela da Fase 1 tem
+   coluna de responsável: a informação vive no Monday e chega em
+   `valor_original`. A busca por texto no dado bruto é correta, mas não usa
+   índice. Rever quando houver coluna própria — ou criar índice GIN sobre o
+   jsonb, se o filtro se tornar frequente antes disso.
+4. **Empacotar Chart.js localmente.** Hoje vem de CDN; onde a rede externa está
+   bloqueada os gráficos não desenham (13 ocorrências registradas na evidência
+   da inversão).
+5. **`CORS_ORIGINS` e `sslmode=require` na implantação.** A configuração já
+   recusa `*` fora de development e exige a lista em produção; falta preencher
+   com o domínio real e exigir TLS no `DATABASE_URL`.
+
+
+---
+
+## B14 — Backup e restauração
+
+### 1. Módulo `sistema`, e não `administracao`
+
+Backup e restauração não cabem em `administracao`. Administrar a base é uma
+coisa; poder levar a base inteira embora num arquivo, ou substituí-la por outra,
+é outra. Separar permite conceder uma sem a outra — e permite que a Gestora
+consulte o estado da continuidade sem poder restaurar nada.
+
+Restaurar e baixar exigem **perfil Administrador além da permissão**. Permissão
+é concedível por exceção de usuário; o perfil é uma segunda barreira,
+deliberada: substituir a base não deve depender de uma única linha numa tabela.
+
+### 2. Dump lógico, não físico
+
+`pg_dump -Fc` é restaurável em outra versão do PostgreSQL e em outra máquina, e
+permite restaurar num banco isolado ao lado do vivo — que é o que o procedimento
+exige antes de tocar em produção. O backup físico (`pg_basebackup` + WAL) é mais
+rápido em bases grandes e permite recuperação a ponto no tempo, mas amarra a
+restauração à mesma versão maior e exige acesso ao sistema de arquivos do
+servidor.
+
+**WAL não foi implementado**, e a razão é honesta: o arquivamento de WAL é
+configuração do *servidor* PostgreSQL, não da aplicação. Ligá-lo pelo código
+daria a impressão de um recurso que só funciona se a infraestrutura cooperar.
+O caminho está documentado em `docs/BACKUP-RESTAURACAO.md`, seção 8, e o
+relatório de continuidade alerta quando o intervalo entre backups passa de 48h.
+
+### 3. AES-256-GCM, e sem backup em claro
+
+O GCM autentica além de cifrar: um arquivo adulterado não decifra, ele **falha**.
+Com um modo sem autenticação, bytes trocados produziriam lixo plausível e a
+restauração seguiria adiante com dado corrompido.
+
+Sem `BACKUP_CHAVE` **nenhum backup é gerado**. Gravar a base em claro seria pior
+do que não gravar: o dump contém CPF, contrato, valor e situação jurídica de
+clientes reais, sem nenhum controle de acesso próprio.
+
+Contrapartida registrada: perder a chave torna todos os backups irrecuperáveis.
+
+### 4. Dois checksums
+
+`checksum` é do arquivo cifrado — verificável **sem a chave**, detecta corrupção
+em repouso. `checksum_claro` é do dump antes de cifrar — só verificável na
+restauração, prova que a decifragem devolveu byte a byte o que o `pg_dump`
+gerou.
+
+### 5. A restauração recria o schema, e não usa `--clean`
+
+`pg_restore --clean` derruba objeto por objeto e **esbarra em tabela
+particionada**: `fotografias_diarias` e `registros_brutos` têm restrição herdada
+pelas partições, e o PostgreSQL recusa derrubá-la isoladamente
+(`cannot drop inherited constraint`). A restauração morria no meio — descoberto
+pelo teste, não em produção.
+
+Solução: `DROP SCHEMA public CASCADE; CREATE SCHEMA public;` seguido do SQL do
+dump, numa **única transação do `psql`**. Mais fiel (não sobra objeto do estado
+anterior) e atômico: uma restauração interrompida não deixa a base pela metade.
+
+### 6. O catálogo sobrevive à restauração que ele descreve
+
+Restaurar sobre o banco em uso substitui **também** a tabela `backups`. Sem
+tratamento, o registro do backup preventivo — a única volta possível —
+desapareceria junto, e a restauração não deixaria rastro de si mesma.
+
+As linhas do backup restaurado, do preventivo e da própria restauração são
+reinseridas depois do restore, capturadas **antes** dele. A primeira versão lia
+o catálogo depois e encontrava vazio.
+
+### 7. Três travas contra exclusão acidental
+
+Aplicadas nesta ordem: backup protegido nunca sai; nada é expurgado antes da
+retenção mínima; o expurgo para antes de deixar menos que o mínimo de
+recuperáveis. Backups `preventivo` e `pre_migracao` nascem protegidos.
+
+**Backup corrompido não é expurgado automaticamente**: é a evidência de um
+problema de armazenamento que alguém precisa olhar. **O metadado sobrevive ao
+expurgo**: saber que existiu um backup daquele dia, e que foi removido pela
+política, faz parte da trilha.
+
+### 8. Retenção operacional ≠ retenção histórica
+
+A política de retenção (14 diários, 8 semanais, 12 mensais, mínimo de 30 dias)
+existe para **recuperação e continuidade**. Não é o mecanismo de guarda dos 20
+anos: o dado histórico permanece no banco — `fotografias_diarias` particionada,
+`registros_brutos`, `historico` append-only, `logs_auditoria` imutável — e nos
+arquivos oficiais de cada competência.
+
+### 9. Milissegundos no rótulo do backup
+
+Dois backups podem nascer no mesmo segundo: uma restauração gera o preventivo e,
+logo em seguida, outro backup. Sem milissegundos, o índice único do rótulo
+derrubava a operação inteira.
+
 ### Backlog acrescentado
 
-- **Filtro por responsável.** Nenhuma tabela da Fase 1 tem coluna de
-  responsável: no modelo atual essa informação vive no Monday e chega em
-  `valor_original`. O filtro busca ali. Quando houver coluna própria, trocar —
-  a busca por texto no dado bruto é correta, mas não usa índice.
-- **Aviso de sincronização parcial na tela.** A carga inicial informa quais
-  entidades foram truncadas em 500 registros e o estado existe no adaptador,
-  mas nenhuma tela ainda desenha esse aviso.
+1. **Rotina periódica de verificação de checksum** — hoje é sob demanda.
+2. **Adaptador de armazenamento em nuvem** (S3/GCS/Azure) — a interface está
+   isolada em `servico.ts`; falta o adaptador.
+3. **WAL e recuperação a ponto no tempo** — configuração de servidor.
+4. **Backup de anexos** — quando a plataforma passar a armazenar arquivos.
+   Hoje nenhuma tela faz upload e nenhuma tabela guarda caminho de arquivo.
+5. **Teste de restauração agendado** — um ensaio mensal automático em banco
+   isolado transformaria "temos backup" em "sabemos que o backup funciona", sem
+   depender de disciplina.

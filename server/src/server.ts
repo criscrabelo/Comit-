@@ -41,12 +41,19 @@ async function principal(): Promise<void> {
   await app.listen({ port: config.porta, host: '0.0.0.0' });
   logger.info({ porta: config.porta, ambiente: config.ambiente }, 'Patrono backend no ar');
 
+  // Backup agendado. Silencioso quando BACKUP_HORA_DIARIA nao esta definida —
+  // mas o relatorio de continuidade denuncia a ausencia de agendamento, para
+  // que "sem backup" nunca seja um estado despercebido.
+  const { iniciarAgendador, pararAgendador } = await import('./backup/agendador.js');
+  iniciarAgendador();
+
   let encerrando = false;
   const encerrar = async (sinal: string) => {
     if (encerrando) return;
     encerrando = true;
     logger.info({ sinal }, 'Encerrando');
     try {
+      pararAgendador();
       await app.close();
       await fecharBanco();
       process.exit(0);

@@ -1,0 +1,40 @@
+→ preparando banco de origem (patrono_restaura_origem)
+→ 1. criando dados de teste
+→ 2. gerando backup
+→ 3. removendo os dados
+→ 4. restaurando em banco isolado
+→ 9. subindo a aplicacao sobre o banco restaurado
+ 21151→ 10. rodando a suite contra o banco restaurado
+
+VERIFICACAO DA RESTAURACAO REAL
+======================================================================
+  OK    1. dados de teste criados
+          notificacoes=1 usuarios=1 versao=2
+  OK    2. backup gerado
+          patrono-development-completo-20260805-000658-111
+  OK       arquivo cifrado no disco
+          -rw------- 288841 bytes
+  OK    3. dados removidos
+  OK    4. restauracao concluida
+            banco destino  patrono_restaurado_1785888418   duracao        0.8s 
+  OK    5. dados voltaram
+          notificacoes=1 cliente='MARIA APARECIDA SILVA'
+  OK       o banco de origem NAO foi tocado
+  OK    6. usuarios e permissoes
+          usuarios=1 permissoes_usuario=1 permissoes_perfil=78 hash=scrypt escopo_total=t
+  OK    7. proveniencia e historico
+          fonte=manual versao=2 historico=1 valor_original.origem=verificacao
+  OK       trilha de auditoria preservada
+          registros=1
+  OK    8. vinculos e inconsistencias
+          vinculos=1 inconsistencias=1
+  OK       regras do banco voltaram (gatilhos e funcoes)
+          gatilhos=36 agregar_indicador=1
+  OK    9. aplicacao inicia sobre o banco restaurado
+          {"estado":"ok","ambiente":"development","banco":{"ok":true},"integracoes":{"monday":"desligada","sienge":"desligada"}}
+  OK       interface responde
+          HTTP 200
+  OK    10. suite de testes passa apos a restauracao
+          Tests 289 passed (289)
+======================================================================
+TODAS AS VERIFICACOES PASSARAM

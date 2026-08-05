@@ -53,7 +53,10 @@ export type ModuloPlataforma =
   | 'juridico'
   | 'empreendimentos'
   | 'inteligencia'
-  | 'administracao';
+  | 'administracao'
+  /** Continuidade: backup e restauracao. Separado de `administracao` porque
+   *  levar a base inteira num arquivo e outra coisa que administrar a base. */
+  | 'sistema';
 
 export type TipoInformacao =
   | 'dado_pessoal'
@@ -62,7 +65,9 @@ export type TipoInformacao =
   | 'documento'
   | 'desempenho_individual';
 
-export type AcaoPermissao = 'ler' | 'criar' | 'editar' | 'remover' | 'exportar' | 'executar';
+export type AcaoPermissao =
+  | 'ler' | 'criar' | 'editar' | 'remover' | 'exportar' | 'executar'
+  | 'backup' | 'restaurar';
 
 export type EstadoIntegracao =
   | 'conectada'
@@ -683,6 +688,96 @@ export interface TabelaPreferenciasPermitidas {
   criado_em: Instante;
 }
 
+// ── Backup e restauracao ────────────────────────────────────────────────────
+
+export type TipoBackup = 'completo' | 'preventivo' | 'pre_migracao' | 'agendado';
+export type StatusBackup = 'em_andamento' | 'concluido' | 'erro' | 'corrompido' | 'expurgado';
+export type ClasseRetencao = 'diario' | 'semanal' | 'mensal' | 'permanente';
+export type DestinoRestauracao = 'isolado' | 'producao';
+export type StatusRestauracao =
+  | 'em_andamento' | 'concluida' | 'concluida_com_ressalvas'
+  | 'recusada' | 'erro' | 'interrompida';
+
+export interface TabelaMigracoesAplicadas {
+  nome: string;
+  checksum: string;
+  aplicada_em: Instante;
+}
+
+export interface TabelaBackups {
+  id: Auto<string>;
+  rotulo: string;
+  ambiente: string;
+  tipo: TipoBackup;
+  status: Auto<StatusBackup>;
+  iniciado_em: Instante;
+  concluido_em: Instante | null;
+  duracao_ms: number | null;
+  versao_aplicacao: string;
+  versao_banco: string;
+  versao_esquema: string;
+  migracoes: Auto<unknown>;
+  arquivo: string | null;
+  local_armazenamento: string | null;
+  copia_redundante: string | null;
+  tamanho_bytes: ColumnType<number, bigint | number | undefined, bigint | number>  | null;
+  tamanho_claro_bytes: ColumnType<number, bigint | number | undefined, bigint | number> | null;
+  checksum: string | null;
+  checksum_claro: string | null;
+  algoritmo_cifra: Auto<string>;
+  contagens: Auto<Record<string, number>>;
+  total_registros: ColumnType<number, bigint | number | undefined, bigint | number> | null;
+  iniciado_por: string | null;
+  iniciado_por_nome: string;
+  origem: string;
+  classe_retencao: Auto<ClasseRetencao>;
+  reter_ate: Instante | null;
+  protegido: Auto<boolean>;
+  expurgado_em: Instante | null;
+  expurgado_por: string | null;
+  verificado_em: Instante | null;
+  restauracao_testada_em: Instante | null;
+  erro: string | null;
+  detalhe: Auto<unknown>;
+}
+
+export interface TabelaRestauracoes {
+  id: Auto<string>;
+  backup_id: string;
+  destino: DestinoRestauracao;
+  banco_destino: string;
+  ambiente_destino: string;
+  ambiente_origem: string;
+  status: Auto<StatusRestauracao>;
+  iniciada_em: Instante;
+  concluida_em: Instante | null;
+  duracao_ms: number | null;
+  solicitada_por: string | null;
+  solicitada_por_nome: string;
+  confirmacao: string | null;
+  justificativa: string | null;
+  backup_preventivo_id: string | null;
+  checksum_conferido: Auto<boolean>;
+  versao_conferida: Auto<boolean>;
+  migracoes_conferidas: Auto<boolean>;
+  ambiente_conferido: Auto<boolean>;
+  integridade: Auto<unknown>;
+  divergencias: Auto<unknown>;
+  erro: string | null;
+  detalhe: Auto<unknown>;
+}
+
+export interface TabelaPoliticaRetencao {
+  id: Auto<number>;
+  diarios_manter: Auto<number>;
+  semanais_manter: Auto<number>;
+  mensais_manter: Auto<number>;
+  retencao_minima_dias: Auto<number>;
+  minimo_recuperaveis: Auto<number>;
+  atualizada_em: Instante;
+  atualizada_por: string | null;
+}
+
 export interface Database {
   usuarios: TabelaUsuarios;
   permissoes_perfil: TabelaPermissoesPerfil;
@@ -718,6 +813,11 @@ export interface Database {
   regulatorios: TabelaRegulatorios;
 
   fotografias_diarias: TabelaFotografiasDiarias;
+
+  migracoes_aplicadas: TabelaMigracoesAplicadas;
+  backups: TabelaBackups;
+  restauracoes: TabelaRestauracoes;
+  politica_retencao: TabelaPoliticaRetencao;
 
   migracoes_localstorage: TabelaMigracoesLocalstorage;
   migracoes_chaves: TabelaMigracoesChaves;

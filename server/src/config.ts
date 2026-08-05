@@ -39,6 +39,26 @@ const esquema = z.object({
     .default('false')
     .transform((v) => v === 'true'),
   SIENGE_REQUISICOES_POR_MINUTO: z.coerce.number().int().positive().default(60),
+
+  // ── Backup e restauracao ──────────────────────────────────────────────────
+  // Diretorio FORA do repositorio. Backup dentro do repositorio acaba num
+  // `git add -A` e vaza a base inteira para o controle de versao.
+  BACKUP_DIRETORIO: z.string().default('/var/backups/patrono'),
+  // Segundo destino, para a copia redundante. Vazio = so a copia primaria.
+  BACKUP_DIRETORIO_REDUNDANTE: z.string().optional(),
+  // Chave de cifra em repouso. Nunca no codigo, nunca no repositorio. Sem ela
+  // o backup e recusado: gravar a base em claro seria pior que nao gravar.
+  BACKUP_CHAVE: z.string().optional(),
+  // Hora do backup diario (0-23), no fuso do servidor. Vazio = sem agendamento.
+  BACKUP_HORA_DIARIA: z.coerce.number().int().min(0).max(23).optional(),
+  // Trava adicional para restaurar sobre o banco em uso. Mesmo com perfil e
+  // permissao, sem esta variavel a restauracao em producao e recusada.
+  PERMITIR_RESTAURACAO_PRODUCAO: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((v) => v === 'true'),
+  // Caminho do pg_dump/pg_restore, quando nao estiverem no PATH.
+  PG_BIN: z.string().optional(),
 });
 
 const bruto = esquema.safeParse(process.env);
@@ -116,6 +136,22 @@ export const config = {
         env.SIENGE_SUBDOMAIN?.trim() && env.SIENGE_USER?.trim() && env.SIENGE_PASSWORD,
       );
     },
+  },
+
+  backup: {
+    diretorio: env.BACKUP_DIRETORIO,
+    diretorioRedundante: env.BACKUP_DIRETORIO_REDUNDANTE?.trim() || null,
+    /** Nunca logada, nunca devolvida por endpoint, nunca gravada em metadado. */
+    chave: env.BACKUP_CHAVE || null,
+    // Le a propria propriedade, e nao a variavel de ambiente: assim continua
+    // coerente se a chave for trocada em execucao (ambiente de teste), em vez
+    // de responder sobre um valor que ninguem mais esta usando.
+    get cifraConfigurada(): boolean {
+      return Boolean(this.chave && this.chave.length >= 16);
+    },
+    horaDiaria: env.BACKUP_HORA_DIARIA ?? null,
+    permitirRestauracaoProducao: env.PERMITIR_RESTAURACAO_PRODUCAO,
+    binarios: env.PG_BIN?.trim() || null,
   },
 } as const;
 

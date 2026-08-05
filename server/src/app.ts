@@ -25,6 +25,7 @@ import { rotasMonday } from './integracoes/monday/rotas.js';
 import { rotasSienge } from './integracoes/sienge/rotas.js';
 import { rotasMigracao } from './migracao/rotas.js';
 import { rotasDados } from './dados/rotas.js';
+import { rotasBackup } from './backup/rotas.js';
 
 /** 1 MiB cobre com folga qualquer carga legitima da API. */
 const TAMANHO_MAXIMO_CORPO = 1_048_576;
@@ -110,6 +111,7 @@ export async function criarApp(): Promise<FastifyInstance> {
   await app.register(rotasSienge);
   await app.register(rotasMigracao);
   await app.register(rotasDados);
+  await app.register(rotasBackup);
 
   // ── Interface, na mesma origem ────────────────────────────────────────────
   //

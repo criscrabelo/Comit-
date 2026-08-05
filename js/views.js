@@ -1350,102 +1350,12 @@ function deleteReg(id) {
 // ============================================================
 // BACKUP / RESTAURAR
 // ============================================================
+// A tela de continuidade vive em js/backup.js: e uma tela inteira, com
+// historico, verificacao de checksum, avaliacao de impacto e relatorio de
+// restauracao. Aqui fica so o encaminhamento, para o roteador nao precisar
+// saber onde ela mora.
 function renderBackup() {
-  setView(`
-    <div class="page-header">
-      <div><div class="page-title">💾 Backup / Restaurar</div><div class="page-sub">Exportar e importar todos os dados</div></div>
-    </div>
-    <div class="content">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
-        <div class="section-card">
-          <div class="section-card-head"><div class="section-card-title">⬇️ Exportar Dados</div></div>
-          <div class="section-card-body">
-            <p style="font-size:13px;color:var(--gray-500);margin-bottom:16px;">
-              Baixa todos os dados da plataforma em formato JSON. Salve o arquivo como backup periódico.
-            </p>
-            <button class="btn btn-primary" onclick="exportarDados()">⬇️ Baixar Backup JSON</button>
-          </div>
-        </div>
-        <div class="section-card">
-          <div class="section-card-head"><div class="section-card-title">⬆️ Restaurar Dados</div></div>
-          <div class="section-card-body">
-            <div class="alert alert-danger">⚠️ <strong>Atenção:</strong> Restaurar substituirá TODOS os dados atuais.</div>
-            <label class="upload-zone" for="jsonImport" style="margin-top:10px;">
-              <div>📁 Clique para selecionar o arquivo JSON de backup</div>
-              <input type="file" id="jsonImport" accept=".json" onchange="restaurarDados(this)" />
-            </label>
-          </div>
-        </div>
-      </div>
-      <div class="section-card" style="margin-top:20px;">
-        <div class="section-card-head"><div class="section-card-title">🗑️ Zona de Perigo</div></div>
-        <div class="section-card-body">
-          <p style="font-size:13px;color:var(--gray-500);margin-bottom:16px;">Limpa completamente todos os dados da plataforma (irreversível).</p>
-          <button class="btn btn-danger" onclick="limparTudo()">🗑️ Limpar Todos os Dados</button>
-        </div>
-      </div>
-    </div>
-  `);
-}
-
-// O dump vem do servidor, com autorizacao aplicada e exportacao registrada na
-// trilha. Por isso a funcao passou a ser assincrona: o navegador nao tem mais a
-// base inteira para serializar.
-async function exportarDados() {
-  toast('Gerando backup no servidor…', 'info');
-  try {
-    const json = await DB.exportAll();
-    const blob = new Blob([json], {type: 'application/json'});
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
-    a.href = url;
-    a.download = `comite_backup_${new Date().toISOString().slice(0,10)}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    toast('Backup exportado!', 'success');
-  } catch (erro) {
-    toast(erro.semPermissao
-      ? 'Seu perfil nao permite exportar.'
-      : 'Falha ao exportar: ' + erro.message, 'error');
-  }
-}
-
-function restaurarDados(input) {
-  const file = input.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = async e => {
-    try {
-      // Passa pelo fluxo de migracao: classifica, versiona, audita e nao
-      // duplica se repetido. O toast so aparece depois da confirmacao.
-      const r = await DB.importAll(e.target.result);
-      toast(`Restaurado: ${r.incluidos} incluido(s), ${r.atualizados} atualizado(s).`,
-        r.status === 'concluida' ? 'success' : 'warning');
-      populateMonthSelector();
-      Router.navigate('dashboard');
-    } catch(err) {
-      toast('Erro ao importar: ' + err.message, 'error');
-    }
-  };
-  reader.readAsText(file);
-}
-
-// Apagar a base inteira deixou de ser operacao de tela.
-//
-// Antes, este botao removia as chaves do localStorage — o que hoje nao apagaria
-// nada de verdade, ja que os dados vivem no PostgreSQL, e daria a impressao de
-// ter apagado. Uma exclusao em massa e irreversivel, precisa de trilha e de
-// autorizacao propria, e sera tratada com backup e restauracao.
-function limparTudo() {
-  openModal('Limpar todos os dados',
-    `<div class="alert alert-warning">
-       Esta operacao nao e feita pela interface.
-       <br><br>
-       Os dados agora vivem no PostgreSQL. Uma exclusao em massa e irreversivel
-       e exige registro de quem pediu, quando e por que — com backup verificado
-       antes. Fale com a administracao da plataforma.
-     </div>`,
-    `<button class="btn btn-outline" onclick="closeModal()">Entendi</button>`);
+  Backup.render();
 }
 
 // ============================================================

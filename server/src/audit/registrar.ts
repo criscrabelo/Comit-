@@ -32,6 +32,12 @@ export type AcaoAuditada =
   | 'registro_removido'
   | 'inconsistencia_tratada'
   | 'reprocessamento'
+  | 'backup_criado'
+  | 'backup_baixado'
+  | 'backup_protegido'
+  | 'backup_expurgado'
+  | 'restauracao_solicitada'
+  | 'restauracao_recusada'
   | 'backup_restaurado';
 
 export interface EntradaAuditoria {
