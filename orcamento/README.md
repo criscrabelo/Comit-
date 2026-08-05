@@ -5,13 +5,13 @@ construída a partir da ficha de orçamento (`ficha_CRIS`).
 
 **Arquivo:** `Orcamento_Planejado_x_Realizado_2026.xlsx`
 **Período:** maio a dezembro/2026 (8 meses)
-**Total orçado:** R$ 398.352,68 (revisado — reajuste da Thamar e aumento do Vinicius)
+**Total orçado:** R$ 395.852,68 (revisado — inclui o reajuste da Thamar)
 
 | Departamento | Equipe | Despesas | Total |
 |---|---:|---:|---:|
 | Jurídico | 160.104,12 | 41.936,36 | **202.040,48** |
-| TI | 134.352,20 | 61.960,00 | **196.312,20** |
-| **Total** | **294.456,32** | **103.896,36** | **398.352,68** |
+| TI | 131.852,20 | 61.960,00 | **193.812,20** |
+| **Total** | **291.956,32** | **103.896,36** | **395.852,68** |
 
 ### Realizado lançado
 
@@ -23,6 +23,14 @@ em linha não lançada é ausência de dado, não economia.
 Colaboradores CLT (Geovanna e Vinicius) estão divididos em duas linhas, salário bruto
 e encargos/benefícios, porque o orçamento foi feito em custo total mas o dado
 disponível é o bruto. As linhas de encargos aguardam preenchimento.
+
+Dois aumentos foram tratados de formas diferentes, e a distinção importa:
+
+- **Thamar** (PJ, R$ 5.000 para R$ 5.500): o reajuste estourou o orçado, então o
+  planejado foi revisado para cima de out a dez. Orçamento total sobe R$ 1.500.
+- **Vinicius** (CLT, bruto de R$ 2.570,52 para R$ 3.070,52 em 05/08): o envelope de
+  custo total dele já tinha folga provisionada para um aumento, então o reajuste é
+  absorvido e o orçado permanece em R$ 5.416,525/mês. O orçamento não muda.
 
 ## Abas
 

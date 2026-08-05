@@ -72,13 +72,19 @@ LINHAS = [
     # bruto de R$ 2.570,52 para R$ 3.070,52. Encargos mantidos constantes — o valor
     # real entra pelo lancamento manual.
     ("TI-E01", "TI", "Equipe", "Vinicius Di Franco — salário bruto",
-     "Analista Administrativo — aumento de R$ 2.570,52 para R$ 3.070,52 a partir de 05/08/26",
+     "Analista Administrativo — aumento de R$ 2.570,52 para R$ 3.070,52 a partir de "
+     "05/08/26, absorvido pela folga do envelope orçado (custo total segue R$ 5.416,525/mês)",
      "CLT", "Pessoal - CLT", [2570.52] * 3 + [3070.52] * 5),
+    # O envelope orcado do Vinicius e fixo em R$ 5.416,525/mes: a folga ja previa
+    # o aumento, entao ele e absorvido, nao somado (ao contrario da Thamar, cujo
+    # reajuste estourou o orcado). Por isso o planejado de encargos e o residuo do
+    # envelope — cai R$ 500 em ago, exatamente o que o bruto subiu.
     ("TI-E01B", "TI", "Equipe", "Vinicius Di Franco — encargos e benefícios",
      "INSS patronal, FGTS, provisões de 13º e férias, benefícios — PREENCHER. "
-     "O orçado de custo total (R$ 5.416,53) foi dimensionado com folga para um "
-     "aumento futuro ainda não concedido — a folga não é economia estrutural.",
-     "CLT", "Encargos e Benefícios - CLT", [5416.525 - 2570.52] * 8),
+     "Planejado = resíduo do envelope de R$ 5.416,525/mês, que já previa o aumento. "
+     "A folga não é economia estrutural: com o bruto de agosto ela quase se esgota.",
+     "CLT", "Encargos e Benefícios - CLT",
+     [5416.525 - 2570.52] * 3 + [5416.525 - 3070.52] * 5),
     ("TI-E02", "TI", "Equipe", "Elias Benedito", "Suporte Técnico Terceirizado", "PJ",
      "Pessoal - PJ", [1065.00] * 8),
     ("TI-E03", "TI", "Equipe", "Jonathan", "Consultor", "PJ",
