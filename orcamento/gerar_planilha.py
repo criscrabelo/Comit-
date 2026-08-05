@@ -75,7 +75,9 @@ LINHAS = [
      "Analista Administrativo — aumento de R$ 2.570,52 para R$ 3.070,52 a partir de 05/08/26",
      "CLT", "Pessoal - CLT", [2570.52] * 3 + [3070.52] * 5),
     ("TI-E01B", "TI", "Equipe", "Vinicius Di Franco — encargos e benefícios",
-     "INSS patronal, FGTS, provisões de 13º e férias, benefícios — PREENCHER",
+     "INSS patronal, FGTS, provisões de 13º e férias, benefícios — PREENCHER. "
+     "O orçado de custo total (R$ 5.416,53) foi dimensionado com folga para um "
+     "aumento futuro ainda não concedido — a folga não é economia estrutural.",
      "CLT", "Encargos e Benefícios - CLT", [5416.525 - 2570.52] * 8),
     ("TI-E02", "TI", "Equipe", "Elias Benedito", "Suporte Técnico Terceirizado", "PJ",
      "Pessoal - PJ", [1065.00] * 8),
@@ -819,15 +821,14 @@ PEND = [
      "abaixo do orçado — economia que não existe, é só encargo não lançado.",
      "Cristiane + RH", "PREENCHER"),
     ("B", "Encargos do Vinicius — CAMPO A PREENCHER",
-     "A linha TI-E01B foi criada para receber os encargos e benefícios sobre o "
-     "salário bruto, mesmo tratamento dado à Geovanna. Hoje está em branco. "
-     "Aumento permanente de R$ 500 registrado a partir de 05/08/26 "
-     "(bruto de R$ 2.570,52 para R$ 3.070,52), o que eleva o orçamento em "
-     "R$ 2.500 no restante do ano.",
-     "Enquanto não for preenchida, a folha do TI aparece R$ 2.846,01/mês abaixo "
-     "do orçado — economia que não existe. Atenção: o orçado de custo total "
-     "(R$ 5.416,53) implica encargos de 111% sobre o bruto de R$ 2.570,52, bem "
-     "acima do usual (67% a 80%) — vale conferir se o orçamento dele está folgado.",
+     "A linha TI-E01B recebe os encargos e benefícios sobre o salário bruto, "
+     "mesmo tratamento dado à Geovanna. Hoje está em branco. Brutos confirmados "
+     "pela gestora: R$ 2.570,52 até jul/26 e R$ 3.070,52 a partir de 05/08/26.",
+     "A folga do orçado NÃO é economia estrutural: o custo total de R$ 5.416,53 "
+     "foi dimensionado prevendo um aumento maior, ainda não concedido. Com o bruto "
+     "de agosto, a folga praticamente se esgota — a encargos de 67% o custo vai a "
+     "R$ 5.127,77 (sobram R$ 288,76/mês) e a 80% passa a estourar o orçado. "
+     "Preencher os encargos reais é o que define se ainda há margem.",
      "Cristiane + RH", "PREENCHER"),
     ("F", "Jonathan R$ 3.700/mês abaixo do contratado",
      "Orçado R$ 10.000/mês, realizado R$ 6.300/mês em mai, jun e jul.",
