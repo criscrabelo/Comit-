@@ -36,10 +36,19 @@ LINHAS = [
     # JURIDICO - EQUIPE
     ("JUR-E01", "Jurídico", "Equipe", "Miguel Clepf", "Advogado Júnior", "PJ",
      "Pessoal - PJ", [10000.00] * 8),
-    ("JUR-E02", "Jurídico", "Equipe", "Geovanna", "Analista Administrativo", "CLT",
-     "Pessoal - CLT", [V] * 8),
-    ("JUR-E03", "Jurídico", "Equipe", "Thamar Victória", "Advogada", "PJ",
-     "Pessoal - PJ", [5000.00] * 8),
+    # A linha da Geovanna foi dividida em duas: o orçamento original (R$ 4.825,515)
+    # era custo total, mas o realizado que o RH fornece é o salário bruto. Separar
+    # mantém o total idêntico e deixa os encargos num campo próprio para lançamento.
+    ("JUR-E02", "Jurídico", "Equipe", "Geovanna — salário bruto",
+     "Analista Administrativo", "CLT", "Pessoal - CLT", [2886.91] * 8),
+    ("JUR-E02B", "Jurídico", "Equipe", "Geovanna — encargos e benefícios",
+     "INSS patronal, FGTS, provisões de 13º e férias, benefícios — PREENCHER",
+     "CLT", "Encargos e Benefícios - CLT", [V - 2886.91] * 8),
+    # Reajuste permanente de R$ 500 confirmado pela gestora. Mantido em R$ 5.000
+    # nos meses já realizados para o desvio ficar visível; revisado de out em diante.
+    ("JUR-E03", "Jurídico", "Equipe", "Thamar Victória",
+     "Advogada — reajuste permanente de R$ 5.000 para R$ 5.500 (revisado a partir de out/26)",
+     "PJ", "Pessoal - PJ", [5000.00] * 5 + [5500.00] * 3),
     # JURIDICO - DESPESAS
     ("JUR-D01", "Jurídico", "Despesas", "JUSFY",
      "Fase de teste com objetivo de eliminar o Astrea", "",
@@ -92,8 +101,30 @@ LINHAS = [
      "Prêmios", [0, 0, 0, 2400.00, 0, 0, 0, 3600.00]),
 ]
 
+# ---------------------------------------------------------------------------
+# Realizado do Juridico informado pela gestora (05/08/2026).
+# Lancado apenas em mai, jun e jul/26 — os tres meses efetivamente fechados.
+# Ago em diante fica em branco ate o mes fechar. None = sem lancamento.
+# ---------------------------------------------------------------------------
+FONTE_JUR = "Gestora, 05/08/26"
+_r3 = lambda v: [v] * 3 + [None] * 5
+
+REALIZADO = {
+    "JUR-E01": (_r3(8818.00), FONTE_JUR, "Valor cheio da nota — R$ 1.182/mês abaixo do contratado"),
+    "JUR-E02": (_r3(2886.91), FONTE_JUR, "Salário bruto"),
+    "JUR-E02B": ([None] * 8, "", "PREENCHER — encargos e benefícios sobre o bruto"),
+    "JUR-E03": (_r3(5500.00), FONTE_JUR, "Reajuste permanente aplicado desde mai/26"),
+    "JUR-D01": (_r3(0.00), FONTE_JUR, "Ainda não iniciado — sem cobrança"),
+    "JUR-D02": (_r3(136.00), FONTE_JUR, "Acima do orçado (R$ 104,90) — conferir contrato"),
+    "JUR-D03": (_r3(0.00), FONTE_JUR, "Cancelado — sem cobrança"),
+    "JUR-D04": (_r3(970.00), FONTE_JUR, ""),
+    "JUR-D05": (_r3(0.00), FONTE_JUR, "Sem gasto no período"),
+    "JUR-D06": ([None] * 8, "", "Bonificação de ago/26 a confirmar"),
+}
+
 PLANOS = [
     "Pessoal - CLT",
+    "Encargos e Benefícios - CLT",
     "Pessoal - PJ",
     "Licenças de Softwares",
     "Custeio de Treinamento",
@@ -228,8 +259,10 @@ for i in range(len(LINHAS)):
         c.border = BORDA
         c.alignment = Alignment(vertical="center",
                                 wrap_text=(col in (4, 5)), horizontal="left")
+    lid = LINHAS[i][0]
+    vals, fonte, obs = REALIZADO.get(lid, ([None] * 8, "", ""))
     for j in range(8):
-        c = wr.cell(row=r, column=8 + j)
+        c = wr.cell(row=r, column=8 + j, value=vals[j])
         c.number_format = MOEDA
         c.font = Font(size=9)
         c.fill = PatternFill("solid", fgColor=INPUT_BG)
@@ -239,9 +272,9 @@ for i in range(len(LINHAS)):
     t.font = Font(size=9, bold=True)
     t.fill = PatternFill("solid", fgColor=CINZA_H)
     t.border = BORDA
-    for col in (17, 18):
-        c = wr.cell(row=r, column=col)
-        c.font = Font(size=9)
+    for col, txt in ((17, fonte), (18, obs)):
+        c = wr.cell(row=r, column=col, value=txt or None)
+        c.font = Font(size=8)
         c.fill = PatternFill("solid", fgColor=INPUT_BG)
         c.border = BORDA
         c.alignment = Alignment(vertical="center", wrap_text=True)
@@ -280,7 +313,7 @@ titulo(wc, "PLANEJADO x REALIZADO  —  linha a linha",
        NCOL_C)
 
 wc.cell(row=3, column=1, value="Mês de referência:").font = Font(bold=True, size=10)
-sel = wc.cell(row=3, column=2, value="Ago/26")
+sel = wc.cell(row=3, column=2, value="Jul/26")
 sel.font = Font(bold=True, size=11, color=AZUL)
 sel.fill = PatternFill("solid", fgColor=INPUT_BG)
 sel.alignment = Alignment(horizontal="center")
@@ -328,11 +361,15 @@ for i in range(len(LINHAS)):
         11: "=J{0}-I{0}".format(rc),
         12: '=IFERROR(K{0}/I{0},"")'.format(rc),
         13: '=IFERROR(J{0}/I{0},"")'.format(rc),
-        14: ('=IF(AND(I{0}=0,J{0}=0),"—",'
-             'IF(J{0}=0,"Sem lançamento",'
+        # P conta MESES PREENCHIDOS, nao valor > 0: um item legitimamente zerado
+        # (Astrea cancelado, curso nao realizado) e um lancamento valido.
+        14: ('=IF(P{0}=0,"Sem lançamento",'
+             'IF(AND(I{0}=0,J{0}=0),"—",'
              'IF(I{0}=0,"Não orçado",'
              'IF(K{0}>0.05*I{0},"Acima do orçado",'
              'IF(K{0}<-0.05*I{0},"Abaixo do orçado","Dentro do orçado")))))').format(rc),
+        16: ('=SUMPRODUCT((COLUMN(Realizado!$H$4:$O$4)-COLUMN(Realizado!$H$4)'
+             '+1<=$D$3)*(Realizado!$H{0}:$O{0}<>""))').format(rp),
     }
     for col, f in formulas.items():
         c = wc.cell(row=rc, column=col, value=f)
@@ -343,6 +380,9 @@ for i in range(len(LINHAS)):
         if col == 14:
             c.number_format = "General"
             c.alignment = Alignment(horizontal="center", vertical="center")
+        if col == 16:
+            c.number_format = "General"
+            c.font = Font(size=8, color="BFBFBF")
     # Coluna O (oculta): chave de ordenacao do ranking de estouros.
     # Piso de R$ 1,00 para o ranking nao ser poluido por centavos de
     # arredondamento (o rateio mensal da folha CLT tem meio centavo).
@@ -391,7 +431,9 @@ widths(wc, {"A": 10, "B": 13, "C": 11, "D": 36, "E": 26, "F": 15, "G": 15,
             "H": 16, "I": 15, "J": 15, "K": 16, "L": 14, "M": 12, "N": 17,
             "O": 10})
 wc.column_dimensions["O"].hidden = True
+wc.column_dimensions["P"].hidden = True
 wc.cell(row=CH, column=15, value="(aux ranking)").font = Font(size=8, color="BFBFBF")
+wc.cell(row=CH, column=16, value="(aux meses lançados)").font = Font(size=8, color="BFBFBF")
 wc.freeze_panes = "F6"
 wc.auto_filter.ref = "A{0}:N{1}".format(CH, CF + len(LINHAS) - 1)
 
@@ -401,7 +443,9 @@ wc.auto_filter.ref = "A{0}:N{1}".format(CH, CF + len(LINHAS) - 1)
 wp = wb.create_sheet("Painel", 0)
 titulo(wp, "PAINEL EXECUTIVO  —  Orçamento 2026 Jurídico e TI",
        "Acompanha o mês selecionado na aba Comparativo (célula B3). "
-       "Desvio positivo = gastou acima do orçado.", 8)
+       "Desvio positivo = gastou acima do orçado. ATENÇÃO: confira a coluna "
+       "'Linhas lançadas' — desvio negativo em linha não lançada é ausência de "
+       "dado, não economia.", 9)
 
 wp.cell(row=3, column=1, value="Mês de referência:").font = Font(bold=True, size=10)
 m = wp.cell(row=3, column=2, value="=Comparativo!$B$3")
@@ -412,7 +456,28 @@ wp.cell(row=3, column=3, value="(altere na aba Comparativo)").font = Font(size=9
 PH = 5
 header(wp, PH, ["Departamento", "Bloco", "Orçado 8 meses",
                 "Planejado acum.", "Realizado acum.", "Desvio (R$)",
-                "Desvio (%)", "% Executado do ano"])
+                "Desvio (%)", "% Executado do ano", "Linhas lançadas"])
+
+
+def cobertura(dep, bloco):
+    """'x de y' linhas com lançamento — impede ler falta de lançamento como economia.
+
+    Um desvio negativo só significa economia se a linha foi de fato lançada;
+    sem esta coluna, um departamento ainda não lançado aparece no Painel com
+    desvio de milhares de reais a menor.
+    """
+    filtros = ""
+    if dep:
+        filtros += ',Comparativo!$B${0}:$B${1},"{2}"'.format(CF, CF_END, dep)
+    if bloco:
+        filtros += ',Comparativo!$C${0}:$C${1},"{2}"'.format(CF, CF_END, bloco)
+    lanc = 'COUNTIFS(Comparativo!$P${0}:$P${1},">0"{2})'.format(CF, CF_END, filtros)
+    if filtros:
+        # o primeiro par ja restringe o grupo; o "<>" apenas exige celula preenchida
+        tot = 'COUNTIFS(Comparativo!$A${0}:$A${1},"?*"{2})'.format(CF, CF_END, filtros)
+    else:
+        tot = 'COUNTA(Comparativo!$A${0}:$A${1})'.format(CF, CF_END)
+    return '{0}&" de "&{1}'.format(lanc, tot)
 
 CF_END = CF + len(LINHAS) - 1
 CREF = "Comparativo!"
@@ -466,6 +531,7 @@ for dep, bloco, is_tot in painel_rows:
     wp.cell(row=r, column=6, value="=E{0}-D{0}".format(r))
     wp.cell(row=r, column=7, value='=IFERROR(F{0}/D{0},"")'.format(r))
     wp.cell(row=r, column=8, value='=IFERROR(E{0}/C{0},"")'.format(r))
+    wp.cell(row=r, column=9, value="=" + cobertura(dep, bloco))
 
     if dep is None:
         fill, fcolor, bold = AZUL, BRANCO, True
@@ -473,7 +539,7 @@ for dep, bloco, is_tot in painel_rows:
         fill, fcolor, bold = CINZA_H, "000000", True
     else:
         fill, fcolor, bold = BRANCO, "000000", False
-    for col in range(1, 9):
+    for col in range(1, 10):
         c = wp.cell(row=r, column=col)
         c.font = Font(size=10, bold=bold, color=fcolor)
         c.fill = PatternFill("solid", fgColor=fill)
@@ -482,6 +548,8 @@ for dep, bloco, is_tot in painel_rows:
             c.number_format = MOEDA
         if col in (7, 8):
             c.number_format = PCT
+            c.alignment = Alignment(horizontal="center")
+        if col == 9:
             c.alignment = Alignment(horizontal="center")
     wp.row_dimensions[r].height = 22
     r += 1
@@ -531,7 +599,8 @@ for k in range(1, 6):
         if col == 1:
             c.alignment = Alignment(horizontal="center")
 
-widths(wp, {"A": 16, "B": 34, "C": 17, "D": 17, "E": 17, "F": 16, "G": 14, "H": 20})
+widths(wp, {"A": 16, "B": 34, "C": 17, "D": 17, "E": 17, "F": 16, "G": 14,
+            "H": 20, "I": 16})
 
 # ===========================================================================
 # ABA 5 - POR PLANO DE CONTAS
@@ -729,6 +798,38 @@ header(wn, NH, ["#", "Tema", "O que está em aberto", "Impacto no comparativo",
                 "Responsável", "Status"])
 
 PEND = [
+    ("A", "Encargos da Geovanna — CAMPO A PREENCHER",
+     "A linha JUR-E02B foi criada para receber os encargos e benefícios sobre o "
+     "salário bruto (INSS patronal, FGTS, provisões de 13º e férias, VT/VR, plano "
+     "de saúde). Hoje está em branco em mai, jun e jul.",
+     "Enquanto não for preenchida, a folha do Jurídico aparece R$ 1.938,61/mês "
+     "abaixo do orçado — economia que não existe, é só encargo não lançado.",
+     "Cristiane + RH", "PREENCHER"),
+    ("B", "Vinicius Di Franco tem o mesmo problema",
+     "O orçamento dele (R$ 5.416,53/mês) também é custo total com encargos. "
+     "Quando o realizado do TI for lançado, ou vem o custo total, ou a linha "
+     "precisa ser dividida em bruto + encargos como foi feito com a Geovanna.",
+     "Se lançarem o bruto contra o orçado de custo total, o TI vai mostrar uma "
+     "economia falsa da mesma natureza.",
+     "Cristiane + RH", "EM ABERTO"),
+    ("C", "Reajuste da Thamar — revisão orçamentária",
+     "Reajuste permanente de R$ 5.000 para R$ 5.500/mês, já em vigor desde mai/26. "
+     "O planejado foi mantido em R$ 5.000 em mai–set (para o desvio ficar visível) "
+     "e revisado para R$ 5.500 de out a dez.",
+     "Desvio já incorrido de R$ 500/mês. Impacto de +R$ 1.500 no orçamento do "
+     "restante do ano; o orçamento total sobe para R$ 395.852,68.",
+     "Cristiane", "APLICADO"),
+    ("D", "Jusbrasil 30% acima do orçado",
+     "Orçado R$ 104,90/mês, realizado R$ 136,00/mês nos três meses.",
+     "Menor desvio em reais (R$ 31,10/mês), mas o maior em percentual. "
+     "Vale conferir se houve reajuste contratual ou mudança de plano.",
+     "Cristiane", "EM ABERTO"),
+    ("E", "Bonificação de ago/26 do Jurídico",
+     "Estão orçados R$ 10.293,60 em agosto e R$ 12.867,00 em dezembro. "
+     "O realizado de agosto ainda não foi informado.",
+     "É a maior despesa isolada do Jurídico no segundo semestre. Sem confirmação, "
+     "o acumulado de agosto fica distorcido.",
+     "Cristiane", "EM ABERTO"),
     ("1", "Base de meses do time de TI",
      "A ficha original trazia a coluna TOTAL do TI em bases diferentes por pessoa "
      "(Vinicius e Elias em 12 meses, Jonathan em 9), enquanto o grid mensal tem 8 (mai–dez). "
@@ -742,12 +843,13 @@ PEND = [
      "Sem fonte definida o realizado pode divergir da contabilidade e o comparativo "
      "perde valor na apresentação à diretoria.",
      "Cristiane + Financeiro", "EM ABERTO"),
-    ("3", "Jusfy x Astrea rodando em paralelo",
-     "O Jusfy é teste para eliminar o Astrea, mas ambos estão orçados os 8 meses. "
-     "Falta definir o mês de corte do Astrea.",
-     "Se o Astrea sair antes de dezembro, o planejado precisa ser ajustado; "
-     "senão o Jurídico vai aparecer 'economizando' o que na verdade era duplicidade.",
-     "Cristiane", "EM ABERTO"),
+    ("3", "Jusfy x Astrea",
+     "O risco era pagar os dois em paralelo. O realizado de mai–jul mostra "
+     "Astrea em R$ 0 (cancelado) e Jusfy em R$ 0 (ainda não iniciado) — "
+     "no momento não há custo de nenhum dos dois.",
+     "Economia de R$ 212,07/mês enquanto durar. Falta decidir se o Jusfy entra "
+     "e quando, para ajustar o planejado de ago a dez.",
+     "Cristiane", "RESOLVIDO"),
     ("4", "Rateio dos softwares corporativos de TI",
      "Backup (R$ 6.600), Adapta/IA (R$ 12.200), Antivírus (R$ 1.920) e Office 365 "
      "(R$ 3.000) estão marcados na ficha como 'não sei se seria administrativo'. "
@@ -783,7 +885,8 @@ for i, row in enumerate(PEND):
         c.alignment = Alignment(vertical="top", wrap_text=True,
                                 horizontal="center" if col in (1, 6) else "left")
         if col == 6:
-            c.fill = PatternFill("solid", fgColor=VERDE if val == "RESOLVIDO" else LARANJA)
+            cores = {"RESOLVIDO": VERDE, "APLICADO": VERDE, "PREENCHER": "F8CBAD"}
+            c.fill = PatternFill("solid", fgColor=cores.get(val, LARANJA))
         else:
             c.fill = PatternFill("solid", fgColor=BRANCO if i % 2 == 0 else CINZA_L)
     wn.row_dimensions[rr].height = 58

@@ -5,13 +5,19 @@ construída a partir da ficha de orçamento (`ficha_CRIS`).
 
 **Arquivo:** `Orcamento_Planejado_x_Realizado_2026.xlsx`
 **Período:** maio a dezembro/2026 (8 meses)
-**Total orçado:** R$ 394.352,68
+**Total orçado:** R$ 395.852,68 (revisado — inclui o reajuste da Thamar)
 
 | Departamento | Equipe | Despesas | Total |
 |---|---:|---:|---:|
-| Jurídico | 158.604,12 | 41.936,36 | **200.540,48** |
+| Jurídico | 160.104,12 | 41.936,36 | **202.040,48** |
 | TI | 131.852,20 | 61.960,00 | **193.812,20** |
-| **Total** | **290.456,32** | **103.896,36** | **394.352,68** |
+| **Total** | **291.956,32** | **103.896,36** | **395.852,68** |
+
+### Realizado lançado
+
+Jurídico, mai–jul/26 (3 meses fechados): R$ 54.932,73 contra R$ 66.517,46 planejado.
+O TI ainda não foi lançado. A coluna **Linhas lançadas** do Painel mostra a cobertura
+(8 de 22) — desvio negativo em linha não lançada é ausência de dado, não economia.
 
 ## Abas
 
