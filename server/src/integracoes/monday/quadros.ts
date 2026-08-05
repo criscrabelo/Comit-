@@ -203,6 +203,45 @@ export const QUADROS: Record<ChaveQuadro, DefinicaoQuadro> = {
   },
 };
 
+/** Titulo em maiusculas, sem espaco nas pontas. Forma canonica de comparacao. */
+function chaveTitulo(titulo: string): string {
+  return (titulo || '').toUpperCase().trim();
+}
+
+/**
+ * Remove aspas e apostrofos que envolvam o titulo inteiro.
+ *
+ * O quadro real de processos tem uma coluna chamada `'MEU TRABALHO'` — com os
+ * apostrofos dentro do titulo, digitados por quem criou a coluna. A comparacao
+ * exata nao a encontrava, `situacao` ficava nula em TODOS os registros e, por
+ * consequencia, 100% dos processos caiam em `revisao_necessaria`: a taxa de
+ * judicializacao ficava indisponivel sem nenhum erro aparente. Descoberto na
+ * homologacao do board 5959705266 (B16.3).
+ *
+ * Aspas em volta de um titulo sao decoracao de quem digitou, nao identidade da
+ * coluna. Retorna string vazia quando nada sobra depois de remover.
+ */
+function chaveSemAspas(titulo: string): string {
+  return chaveTitulo(titulo).replace(/^['"«”“]+|['"»”“]+$/g, '').trim();
+}
+
+/**
+ * Forma canonica para comparar titulo de coluna: maiusculas, sem espaco nas
+ * pontas e sem aspas em volta.
+ *
+ * Existe para que quem compara titulo fora deste modulo — o relatorio de
+ * homologacao, por exemplo — nao volte a usar `===` cru. Foi assim que
+ * `'MEU TRABALHO'` e `STATUS (para comitê)` deixaram de ser reconhecidos.
+ */
+export function chaveDeColuna(titulo: string): string {
+  return chaveSemAspas(titulo);
+}
+
+/** Dois titulos designam a mesma coluna, ignorando caixa e aspas em volta. */
+export function mesmoTitulo(a: string, b: string): boolean {
+  return chaveDeColuna(a) === chaveDeColuna(b);
+}
+
 /**
  * Resolve o mapa titulo -> id de coluna.
  *
@@ -210,19 +249,36 @@ export const QUADROS: Record<ChaveQuadro, DefinicaoQuadro> = {
  * coluna de status e uma espelhada), prefere a que NAO e mirror — a espelhada
  * costuma vir vazia em `text`, e so traz valor em `display_value`.
  * Regra herdada de js/monday-sync.js:106-112, onde foi descoberta na pratica.
+ *
+ * O titulo sem aspas entra como ALIAS, e so quando ninguem ocupa a chave. Uma
+ * coluna com titulo exato sempre vence a que so casa depois de remover aspas —
+ * do contrario, criar `'STATUS'` ao lado de `STATUS` mudaria silenciosamente
+ * qual das duas alimenta o campo.
  */
 export function montarMapaColunas(
   colunas: Array<{ id: string; title: string; type: string }>,
 ): Map<string, { id: string; type: string }> {
   const mapa = new Map<string, { id: string; type: string }>();
+  const exatos = new Set<string>();
 
   for (const coluna of colunas) {
-    const chave = (coluna.title || '').toUpperCase().trim();
+    const chave = chaveTitulo(coluna.title);
     if (!chave) continue;
 
+    exatos.add(chave);
     const anterior = mapa.get(chave);
     if (!anterior || anterior.type === 'mirror') {
       mapa.set(chave, { id: coluna.id, type: coluna.type });
+    }
+  }
+
+  for (const coluna of colunas) {
+    const alias = chaveSemAspas(coluna.title);
+    if (!alias || exatos.has(alias)) continue;
+
+    const anterior = mapa.get(alias);
+    if (!anterior || anterior.type === 'mirror') {
+      mapa.set(alias, { id: coluna.id, type: coluna.type });
     }
   }
 
@@ -235,7 +291,7 @@ export function resolverColuna(
   titulos: string[],
 ): { id: string; type: string } | null {
   for (const titulo of titulos) {
-    const achado = mapa.get(titulo.toUpperCase().trim());
+    const achado = mapa.get(chaveTitulo(titulo)) ?? mapa.get(chaveSemAspas(titulo));
     if (achado) return achado;
   }
   return null;

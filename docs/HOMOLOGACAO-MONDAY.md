@@ -8,61 +8,78 @@
 
 ## 1. Estado desta entrega
 
-**Tentativa de execução real:** 2026-08-05, com `MONDAY_TOKEN` presente no
-ambiente. Resultado abaixo.
+**Execução real: 2026-08-05, contra o board `5959705266` da conta
+Coevoconstrutora.** A rede foi liberada, o token autenticou, e as duas
+execuções consecutivas rodaram até o fim. **Relatório completo, com os números
+reais, em `docs/evidencias/homologacao-monday.md`.**
 
 | Item | Situação |
 | --- | --- |
-| **Pré-confirmação dos 4 itens** | ✅ **executada de verdade — os 4 passaram** (seção 2) |
-| Instrumentação das 14 métricas exigidas | **pronta** |
-| Runner das duas execuções consecutivas | **pronto** (`scripts/homologar-monday.ts`) |
-| Levantamento dos rótulos reais | **pronto** (`src/integracoes/monday/rotulos.ts`) |
-| Propostas de regra para rótulo não coberto | **prontas — nunca aplicadas** |
-| Amostra anonimizada, sem CPF/CNPJ/nome | **pronta**, com varredura de conferência |
-| Mapa de colunas Monday → Patrono | **pronto** (seção 4) |
-| Suíte contra PostgreSQL real | **328 testes passando**, dos quais **31** de Monday |
+| Conectividade com `api.monday.com` | ✅ **liberada** — `HTTP 200` no endpoint oficial |
+| **Pré-confirmação dos 4 itens** | ✅ **os 4 passaram** antes de qualquer leitura (seção 2) |
+| Credencial autenticada (`query { me }`) | ✅ conta Coevoconstrutora |
+| **Primeira execução** — 14 métricas | ✅ **273 lidos, 250 incluídos, 23 ignorados com motivo, 0 erros** |
+| **Segunda execução** — 7 provas | ✅ **7 de 7** — idempotência provada sobre o board real |
+| Rótulos reais do board | ✅ **levantados** — 31 colunas, todos os valores distintos |
+| Cobertura das regras de judicialização | ⚠️ **0 de 6 rótulos cobertos** — decisão da equipe pendente (seção 5) |
+| Propostas de regra | ✅ emitidas — **nenhuma aplicada**, aguardando aprovação |
+| Amostra anonimizada com dados reais | ✅ emitida; varredura final: **nenhum CPF/CNPJ presente** |
+| Suíte contra PostgreSQL real | **336 testes passando**, dos quais **39** de Monday |
 | Ensaio ponta a ponta do runner | **7 de 7 provas** (`scripts/ensaiar-homologacao.ts`) |
-| **As duas execuções contra o board real** | **BLOQUEADO — a rede recusa `api.monday.com`** |
-| Rótulos reais do board | **pendente** — dependem da leitura |
-| Amostra anonimizada com dados reais | **pendente** — depende da leitura |
 
-### O bloqueio mudou de causa
+### Resumo da primeira execução (dados reais)
 
-O impedimento anterior era a ausência de `MONDAY_TOKEN`. **Esse impedimento
-acabou:** o token está no ambiente, e a pré-confirmação dos quatro itens rodou
-e passou. O que impede agora é outra coisa, e é externa ao produto: **a política
-de egresso desta sessão recusa o host `api.monday.com`.**
+| Métrica | Valor |
+| --- | --- |
+| Quantidade recebida (lidos da origem) | 273 |
+| Páginas consultadas | 2 |
+| Último cursor | `null` — leitura chegou ao fim |
+| Quantidade normalizada | 250 |
+| Incluída | 250 |
+| Atualizada / Inalterada | 0 / 0 (primeira carga) |
+| Ignorada | 23 — todas por grupo excluído do comitê, com motivo |
+| Duplicada / Com erro | 0 / 0 |
+| Duração | 5,6 s |
+| Contabilidade fecha | sim |
 
-```
-> CONNECT api.monday.com:443 HTTP/1.1
-< HTTP/1.1 403 Forbidden
-```
+Na segunda execução, os mesmos 273 lidos saem como **0 incluídos,
+0 atualizados, 250 inalterados** — a prova direta de que rodar de novo não
+duplica nem reescreve. As sete provas, com evidência por prova, estão no
+relatório.
 
-O proxy registra a recusa como `connect_rejected — gateway answered 403 to
-CONNECT (policy denial or upstream failure)`, e repetiu a mesma resposta em
-todas as tentativas. **Não é falha intermitente e não é erro de credencial:** o
-403 vem do gateway antes de qualquer TLS com o Monday, ou seja, o token nunca
-chegou a ser apresentado. Um host de controle (`api.github.com`) responde `200`
-pelo mesmo proxy, o que isola o bloqueio a `api.monday.com` e não à saída de
-rede em geral. Evidência bruta em `docs/evidencias/bloqueio-rede-monday.txt`.
+**Nota de leitura do relatório:** a inconsistência `falha_importacao` que
+aparece ao final é a **falha simulada da prova 6** (sincronização apontada de
+propósito para um quadro inexistente, para provar que o último dado válido
+sobrevive). Não é falha da carga real — as duas execuções reais terminaram com
+status `sucesso`.
 
-Também foi conferido que `MONDAY_ENDPOINT` **não está definida**, isto é, o
-cliente aponta para `https://api.monday.com/v2` — o endereço oficial. O bloqueio
-não é consequência de redirecionamento da integração (ver limitação 8).
+### O defeito que só a execução real revelou
 
-Rota de saída: liberar `api.monday.com:443` na política de egresso do ambiente e
-repetir a execução. Nada precisa mudar no código.
+O título real da coluna de situação no board é **`'MEU TRABALHO'` — com os
+apóstrofos digitados dentro do título**. A resolução por comparação exata não a
+encontrava: `situacao` ficou nula nos 250 registros na primeira rodada, e 100%
+dos processos caíram em `revisao_necessaria` sem nenhum erro aparente. O ensaio
+nunca pegaria isso — o dublê usava o título sem aspas, como toda a documentação.
 
-### O que continua não sendo preenchido, e por quê
+Correção em `montarMapaColunas`/`resolverColuna`: aspas em volta do título são
+tratadas como decoração de quem digitou, não como identidade da coluna — e
+título exato continua vencendo o que só casa depois de remover aspas. O mesmo
+defeito escondia `STATUS (para comitê)` (caixa mista) da lista de colunas de
+classificação do relatório. Oito testes novos fixam o caso
+(`test/monday-titulo-coluna.test.ts`), e a homologação foi **reexecutada do
+zero** — banco recriado — após a correção. O relatório da primeira rodada, com
+o defeito visível, está preservado em
+`docs/evidencias/homologacao-monday-antes-da-correcao.md`.
 
-Métricas, rótulos reais e amostra com dados reais seguem **em branco**. Há
-números disponíveis — os do dublê de teste, e o ensaio ponta a ponta produz um
-relatório completo com eles. Apresentá-los como resultado da homologação é
-exatamente o que a regra "nenhum dado demonstrativo apresentado como real"
-proíbe, e por isso o relatório de homologação real não existe: existe o do
-ensaio, e ele nasce marcado como simulado.
+### O bloqueio de rede anterior
 
-Quando `api.monday.com` estiver liberado, o comando é um só:
+A tentativa de 2026-08-05T01:45Z (mesma data, horas antes) encontrou a política
+de egresso recusando `api.monday.com:443` com `403` no `CONNECT` — evidência em
+`docs/evidencias/bloqueio-rede-monday.txt`, mantida como histórico. A liberação
+do host resolveu, como previsto: **nenhuma alteração de código foi necessária
+para a rede**.
+
+Para repetir a homologação:
 
 ```bash
 MONDAY_TOKEN=<token> \
@@ -76,8 +93,8 @@ falhar.
 
 **Nota sobre o ambiente:** o processo herda as variáveis no momento em que sobe.
 Uma variável configurada depois só será vista por uma **sessão nova** —
-reiniciar o backend não basta se o processo do agente continuar o mesmo. Foi o
-que destravou o token nesta tentativa, e vale para a liberação da rede também.
+reiniciar o backend não basta se o processo do agente continuar o mesmo. Valeu
+para o token e valeu para a liberação da rede.
 
 ### Ensaio do runner — o que ele prova e o que não prova
 
@@ -94,6 +111,11 @@ O dublê só conhece o board 5959705266: qualquer outro id recebe erro. Isso
 tornou o ensaio fiel em dois pontos — prova que a sincronização aponta para o
 quadro certo, e permite exercitar de verdade a prova 6, que simula falha da
 origem apontando para um quadro inexistente.
+
+A execução real confirmou o limite do ensaio: o defeito do título com
+apóstrofos (seção 1) passou ileso pelo dublê, porque o dublê usava o título
+como a documentação o descrevia — sem aspas. O que só o dado real tem é
+exatamente o que o ensaio não consegue prever.
 
 ---
 
@@ -117,11 +139,12 @@ despercebida justamente aqui, onde importa.
 
 Só depois dos quatro a credencial é exercitada, com `query { me }`.
 
-### Resultado real — 2026-08-05T01:45:22Z
+### Resultado real — 2026-08-05T02:05Z
 
 Os quatro itens são **locais**: presença da variável, comportamento da trava, id
-do quadro e as consultas do próprio pipeline. Nenhum depende de alcançar a API,
-e por isso puderam ser verificados de verdade mesmo com a rede recusando o host.
+do quadro e as consultas do próprio pipeline. Os quatro passaram, e desta vez a
+execução **seguiu adiante**: a credencial foi exercitada com `query { me }`,
+autenticou na conta Coevoconstrutora, e as duas execuções rodaram.
 
 | Item | Resultado |
 | --- | --- |
@@ -129,26 +152,21 @@ e por isso puderam ser verificados de verdade mesmo com a rede recusando o host.
 | integração em modo somente leitura | ✅ trava no transporte (`consultar`), antes de qualquer requisição |
 | quadro configurado = 5959705266 | ✅ (JUR) PROCESSOS JUDICIAIS — `5959705266` |
 | nenhuma `mutation` ou `subscription` no pipeline | ✅ 4 consultas do pipeline, todas aceitas pela trava |
+| credencial autenticada | ✅ conta Coevoconstrutora |
 
-Relatório em `docs/evidencias/preconfirmacao-monday.md`, gerado por:
+Relatório da pré-confirmação isolada em
+`docs/evidencias/preconfirmacao-monday.md`, gerado por:
 
 ```bash
 npx tsx scripts/homologar-monday.ts --pre-confirmacao \
   --saida docs/evidencias/preconfirmacao-monday.md
 ```
 
-**Sobre `--pre-confirmacao`.** A opção foi acrescentada nesta tentativa e para o
-runner logo depois dos quatro itens, **antes de qualquer tráfego de rede**. Ela
-separa dois diagnósticos que a falha de rede confunde com facilidade: "a
-pré-confirmação não passou" e "a pré-confirmação passou, mas não foi possível
-chegar ao Monday". O segundo não é defeito do produto, e sem essa separação a
-distinção depende de ler log de erro. Ela **não** substitui a homologação: não
-lê, não grava e não emite prova nenhuma.
-
-Rodando o runner completo, os quatro passam e a execução para no exercício da
-credencial, com `O token nao autenticou no Monday: Nao foi possivel consultar o
-Monday` — após três tentativas com espera progressiva. É a rede, não o token:
-o 403 do gateway acontece antes de a credencial ser apresentada.
+**Sobre `--pre-confirmacao`.** A opção roda os quatro itens e para **antes de
+qualquer tráfego de rede**. Ela separa dois diagnósticos que a falha de rede
+confunde com facilidade: "a pré-confirmação não passou" e "a pré-confirmação
+passou, mas não foi possível chegar ao Monday". Ela **não** substitui a
+homologação: não lê, não grava e não emite prova nenhuma.
 
 ---
 
@@ -223,13 +241,25 @@ As colunas são resolvidas por **TÍTULO**, não por id. Ids mudam quando algué
 recria a coluna no Monday; o título é o que a equipe reconhece e mantém. Quando
 há mais de um título aceito, o primeiro encontrado vence.
 
+A comparação ignora caixa, espaços nas pontas e **aspas em volta do título** —
+o board real tem a coluna `'MEU TRABALHO'` com apóstrofos digitados no título,
+e a comparação exata não a encontrava (seção 1). Título exato continua vencendo
+o que só casa depois de remover aspas.
+
+**Conferido contra o board real (2026-08-05):** das colunas do mapa, o quadro
+tem `situacao`, `situacao_comite`, `tipo`, `atuacao`, `comarca`,
+`empreendimento`, `unidade`, `valor_causa`, `data_citacao`, `data_finalizacao`,
+`honorarios_efetivados`, `motivo` e `posicao`. **Não existem no quadro:**
+`cliente`, `cpf_cnpj`, `contrato` e `numero` — gravados como nulos, nunca
+presumidos (`numero` cai para o nome do item, e por isso vem preenchido).
+
 | Campo no Patrono | Coluna no Monday (títulos aceitos) | Coluna no banco | Observação |
 | --- | --- | --- | --- |
 | `situacao` | **MEU TRABALHO** | `processos_judiciais.situacao` | **Não** vem de STATUS (PARA COMITÊ) |
 | `situacao_comite` | STATUS (PARA COMITÊ) · STATUS PARA COMITÊ · STATUS COMITÊ | `situacao_comite` | preservado para conferência |
 | `tipo` | TIPO DE AÇÃO · TIPO DE ACAO · NATUREZA | `tipo` | natureza da ação |
 | `atuacao` | LOCAL · ATUAÇÃO · ATUACAO | `atuacao` + `interno` | **não é comarca** — ver abaixo |
-| `comarca` | COMARCA | `comarca` | só se existir coluna própria; hoje não existe |
+| `comarca` | COMARCA | `comarca` | **existe no board real** — 13 valores distintos, 257 preenchidos |
 | `empreendimento` | EMPREENDIMENTO · OBRA · PROJETO | `empreendimento_id` | resolvido por nome normalizado |
 | `cliente` | CLIENTE · NOME DO CLIENTE · NOME | — | usado para inconsistência de documento |
 | `cpf_cnpj` | CPF/CNPJ · CPF-CNPJ · CPF · CNPJ · DOCUMENTO | — | validado por dígito verificador |
@@ -248,9 +278,12 @@ há mais de um título aceito, o primeiro encontrado vence.
 ### Campos que não são o que parecem
 
 **`LOCAL` é ATUAÇÃO, não comarca.** A coluna contém `INTERNO` ou
-`EXTERNO <nome do escritório>`. Reaproveitá-la como comarca produziria um
-indicador geográfico inteiramente falso. Ela alimenta `atuacao` e o booleano
-`interno`; `comarca` fica **nulo** enquanto não houver coluna própria mapeada.
+`EXTERNO <nome do escritório>` — confirmado no board real: `INTERNO` (134),
+`EXTERNO MICHELE` (131), `EXTERNO GABRIEL` (6), `EXTERNO EMANUELLE` (1).
+Reaproveitá-la como comarca produziria um indicador geográfico inteiramente
+falso. Ela alimenta `atuacao` e o booleano `interno`. A execução real mostrou
+que o quadro **tem** coluna `COMARCA` própria (TAUBATÉ, JACAREÍ, PINDA, SJC…),
+e ela alimenta `comarca` — 244 dos 250 registros vieram preenchidos.
 
 **Campo ausente vira nulo, nunca valor presumido.** Se um título não for
 encontrado no quadro, o log avisa e a coluna fica nula. O item original inteiro
@@ -280,11 +313,28 @@ presumido.**
 extrajudicial entraria na taxa de judicialização. O texto é preparado trocando
 `extrajudicial` por `extraj` antes de classificar — e há teste para isso.
 
-**Limitação a confirmar na homologação:** as listas de termos foram derivadas
-das regras de classificação do projeto, não dos rótulos reais do board. A
-primeira execução vai mostrar quantos processos caem em `revisao_necessaria`;
-se esse número for alto, os rótulos reais precisam ser conferidos e as listas
-ajustadas — com aprovação, não por inferência.
+**Limitação confirmada pela execução real — e é o principal item aberto:** os
+rótulos reais de `'MEU TRABALHO'` são seis, e **nenhum casa com as listas
+atuais**. Resultado: os **250 processos** estão gravados com
+`judicializado = false` e `revisao_necessaria = true`. A taxa de judicialização
+fica **indisponível** até a equipe do jurídico aprovar as regras.
+
+| Rótulo real | Registros | Proposta emitida |
+| --- | --- | --- |
+| ACOMPANHANDO | 150 | indefinida — a equipe precisa dizer o que significa |
+| FINALIZADO | 69 | `finalizad` → `TERMOS_NAO_JUDICIAL`, se confirmado |
+| ACORDO | 47 | `acordo` → `TERMOS_NAO_JUDICIAL`, se confirmado |
+| BAIXA DEFINITIVA | 3 | `baixa` → `TERMOS_NAO_JUDICIAL`, se confirmado |
+| RECOMPRA/ACORDO | 3 | `acordo` → `TERMOS_NAO_JUDICIAL`, se confirmado |
+| ARQUIVADO PROVISORIAMENTE | 1 | `arquivad` → `TERMOS_NAO_JUDICIAL`, se confirmado |
+
+Nenhuma proposta foi aplicada. Duas observações para a decisão: (1) o rótulo
+mais frequente, `ACOMPANHANDO`, não diz por si só se o processo está
+judicializado — todos os 250 itens são do quadro de **processos judiciais**, e
+talvez a resposta certa seja outra coluna (`DECISÃO` tem `AGUARDANDO
+JUDICIARIO / DECISÃO`, `AGUARDANDO CITAÇÃO`…) ou a premissa de que tudo neste
+quadro é judicializado; (2) essa é exatamente a decisão que muda indicador de
+comitê, e por isso fica com quem conhece o fluxo, não com a heurística.
 
 ---
 
@@ -354,35 +404,35 @@ Isso depende de aprovação, nunca de inferência.
 
 ## 7. Amostra anonimizada
 
-O runner emite a amostra automaticamente. Formato, com dados do dublê de teste:
+O runner emitiu a amostra com **dados reais do board**, já mascarados. A
+varredura final sobre a amostra publicada não encontrou CPF nem CNPJ. Um dos
+itens, como saiu no relatório:
 
 ```json
-[
-  {
-    "id_origem": "***9001",
-    "numero": "**********0100",
-    "ano": null,
-    "tipo": "Cível",
-    "motivo": "Rescisão contratual",
-    "posicao": "Réu",
-    "situacao": "EM ANDAMENTO",
-    "situacao_comite": "ACOMPANHANDO",
-    "atuacao": "EXTERNO Dra. Ana",
-    "interno": false,
-    "comarca": null,
-    "valor_causa": "***",
-    "data_citacao": "2024-03-10",
-    "judicializado": false,
-    "revisao_necessaria": true,
-    "fonte": "monday",
-    "versao": 1,
-    "data_referencia": "2024-03-10"
-  }
-]
+{
+  "id_origem": "***6533",
+  "numero": "**********0292",
+  "ano": null,
+  "tipo": "ISENÇÃO ITBI",
+  "motivo": "TRIBUTO",
+  "posicao": "REQUERENTE",
+  "situacao": "ACOMPANHANDO",
+  "situacao_comite": "EM ANDAMENTO",
+  "atuacao": "INTERNO",
+  "interno": true,
+  "comarca": "JACAREÍ",
+  "valor_causa": "***",
+  "data_citacao": "2025-06-11",
+  "judicializado": false,
+  "revisao_necessaria": true,
+  "fonte": "monday",
+  "versao": 1,
+  "data_referencia": "2025-06-11"
+}
 ```
 
-> Os valores acima vêm do **dublê de teste**, não do board real. A amostra com
-> dados reais só existe depois da execução com token.
+A amostra completa está no relatório
+(`docs/evidencias/homologacao-monday.md`).
 
 ### Mascaramento
 
@@ -409,34 +459,35 @@ por nenhum mascaramento de coluna.
 
 ## 8. Limitações
 
-1. **As duas execuções reais não foram feitas** — a política de egresso do
-   ambiente recusa `api.monday.com:443` com `403` no `CONNECT`. O token está
-   presente e a pré-confirmação passou; o bloqueio é de rede, não de credencial
-   nem de código. Ver seção 1.
-2. **Os rótulos reais de `MEU TRABALHO` não são conhecidos.** As listas de
-   classificação vieram das regras do projeto. A primeira execução mostrará
-   quantos caem em revisão; ajuste só com aprovação.
-3. **`comarca` fica nulo.** Não há coluna de comarca no quadro. Qualquer
-   indicador geográfico de processos está indisponível, e isso é melhor do que
-   preenchê-lo com a atuação.
-4. **Teto de 200 páginas** na leitura. Acima disso a carga é marcada
+1. **A taxa de judicialização está indisponível até aprovação das regras.**
+   Nenhum dos 6 rótulos reais de `'MEU TRABALHO'` é coberto pelas listas
+   atuais; os 250 processos estão em `revisao_necessaria`. As propostas estão
+   emitidas (seção 5) e **nada foi aplicado** — a decisão é da equipe do
+   jurídico.
+2. **Colunas que o quadro não tem:** `cliente`, `cpf_cnpj` e `contrato` não
+   existem no board — as inconsistências de documento inválido dependem delas e
+   não são geradas para processos. `numero` também não existe como coluna e cai
+   para o nome do item. O vínculo com cliente depende do motor de
+   relacionamento.
+3. **Teto de 200 páginas** na leitura. Acima disso a carga é marcada
    **truncada**, o cursor é preservado, e **nenhum registro é marcado ausente** —
    marcar ausência com base em leitura incompleta apagaria da tela o que apenas
-   não foi lido.
-5. **Sem cliente e sem CPF/CNPJ no destino de processos.** As colunas existem no
-   mapa e são lidas para gerar inconsistência de documento inválido, mas
-   `processos_judiciais` não tem `cliente_nome`. O vínculo com cliente depende
-   do motor de relacionamento.
-6. **O dublê de teste não prova o formato real da resposta do board.** Ele
-   reproduz o formato documentado da API do Monday; divergências do board real
-   só aparecem na execução com token.
-7. **A proposta de regra é heurística.** Ela sugere uma direção a partir de
+   não foi lido. O board real tem 273 itens em 2 páginas — folga ampla.
+4. **A proposta de regra é heurística.** Ela sugere uma direção a partir de
    palavras contidas no rótulo. Não substitui quem conhece o fluxo do jurídico,
    e por isso a classificação permanece em revisão até a aprovação.
-8. **`MONDAY_ENDPOINT` existe como variável.** Ela só é usada pelo ensaio, que
+5. **`MONDAY_ENDPOINT` existe como variável.** Ela só é usada pelo ensaio, que
    sobe um servidor local. Em produção a variável não é definida e o endereço é
    o oficial — mas vale saber que ela existe, porque quem controla o ambiente do
    servidor pode redirecionar a integração.
+6. **A execução real rodou em banco local de homologação**, recriado do zero
+   pelas 17 migrações (`patrono_homolog`), não no banco de produção. As provas
+   valem para o esquema — que é o mesmo —, e a primeira carga em produção
+   repete o mesmo runner.
+7. **O board é vivo.** Os números deste relatório valem para 2026-08-05. Os 23
+   ignorados, os 6 rótulos e as contagens por coluna mudam conforme a equipe
+   trabalha no quadro — o runner pode ser reexecutado a qualquer momento, e a
+   idempotência provada garante que reexecutar não duplica nada.
 
 ---
 

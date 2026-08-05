@@ -3,7 +3,7 @@
 **Quadro:** Processos Judiciais — board `5959705266`  
 **Ambiente:** development  
 **Competência:** todas  
-**Executado em:** 2026-08-05T01:45:22.421Z  
+**Executado em:** 2026-08-05T02:05:13.535Z  
 **Versão da API do Monday:** 2024-10
 
 > Nenhum dado foi alterado no Monday. O proxy recusa `mutation` e

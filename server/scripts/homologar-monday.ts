@@ -26,7 +26,7 @@ import { promises as fs } from 'node:fs';
 import { sql } from 'kysely';
 import { db, fecharBanco } from '../src/db/pool.js';
 import { config } from '../src/config.js';
-import { QUADROS } from '../src/integracoes/monday/quadros.js';
+import { QUADROS, mesmoTitulo } from '../src/integracoes/monday/quadros.js';
 import { sincronizarQuadro } from '../src/integracoes/monday/sincronizar.js';
 import { recusarEscrita, testarConexao } from '../src/integracoes/monday/cliente.js';
 import {
@@ -440,9 +440,28 @@ function relatarRotulos(l: LevantamentoRotulos, ausentes: string[]): void {
       continue;
     }
 
-    // Colunas de texto livre têm valor distinto por item; listar todos seria
-    // despejar a base. As de classificação são listadas inteiras.
-    const ehClassificacao = (COLUNAS_DE_CLASSIFICACAO as readonly string[]).includes(c.titulo);
+    // Coluna de texto livre e digitada a mao e pode conter nome de parte ou
+    // documento — a NOME DA PARTE / REFERENCIA do board real contem exatamente
+    // isso. Este relatorio e evidencia versionada: os valores NAO sao
+    // listados, so a contagem. A regra da amostra ("sem CPF/CNPJ/nome
+    // completo") vale para o relatorio inteiro, nao so para a secao da
+    // amostra.
+    if (c.tipo === 'text') {
+      escrever('_Valores não listados: texto livre pode conter nome ou documento');
+      escrever('digitado à mão, e este relatório é evidência versionada._');
+      escrever();
+      continue;
+    }
+
+    // Demais colunas de muitos valores (data, numero) tem valor quase distinto
+    // por item; listar todos seria despejar a base. As de classificação são
+    // listadas inteiras.
+    // Comparacao pela forma canonica: o quadro real tem `'MEU TRABALHO'` com
+    // aspas e `STATUS (para comitê)` em caixa mista. Com `includes` cru as duas
+    // deixavam de ser reconhecidas como colunas de classificacao.
+    const ehClassificacao = (COLUNAS_DE_CLASSIFICACAO as readonly string[]).some((t) =>
+      mesmoTitulo(t, c.titulo),
+    );
     const limite = ehClassificacao ? c.rotulos.length : 15;
 
     escrever('| Valor | Ocorrências |');
@@ -457,7 +476,7 @@ function relatarRotulos(l: LevantamentoRotulos, ausentes: string[]): void {
   }
 
   // ── Cobertura das regras ────────────────────────────────────────────────
-  const situacao = l.colunas.find((c) => c.titulo === 'MEU TRABALHO');
+  const situacao = l.colunas.find((c) => mesmoTitulo(c.titulo, 'MEU TRABALHO'));
   if (!situacao) {
     escrever('> **Coluna MEU TRABALHO não encontrada.** A classificação de');
     escrever('> judicialização depende dela; sem a coluna, todos os processos');

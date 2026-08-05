@@ -746,3 +746,72 @@ depende de ler log de erro.
 
 Ela não afrouxa nada: para mais cedo, não mais tarde. Não lê, não grava e não
 emite prova. O runner completo continua exigindo os quatro antes de sincronizar.
+
+
+---
+
+## B16.3 — Homologação real executada: rede liberada, e o defeito que só o dado real mostrou
+
+A política de egresso passou a aceitar `api.monday.com`. A homologação
+controlada do board 5959705266 **rodou de ponta a ponta com dados reais**:
+pré-confirmação, credencial autenticada na conta Coevoconstrutora, duas
+execuções consecutivas, rótulos, propostas e amostra. Relatório em
+`docs/evidencias/homologacao-monday.md`; resultado em
+`docs/HOMOLOGACAO-MONDAY.md`.
+
+### Os números da primeira leitura real
+
+273 itens, 2 páginas, cursor no fim. 250 incluídos, 23 ignorados — todos por
+grupo excluído do comitê, com motivo — 0 erros, contabilidade fechando. Na
+segunda execução: 0 incluídos, 0 atualizados, **250 inalterados**, e as sete
+provas passaram sobre o board real.
+
+### `'MEU TRABALHO'` — o defeito que o ensaio não podia pegar
+
+O título real da coluna de situação tem **apóstrofos dentro do título**,
+digitados por quem a criou. A comparação exata não a encontrava: na primeira
+rodada real, `situacao` saiu nula nos 250 registros e 100% caíram em
+`revisao_necessaria` — sem erro, sem aviso, com a taxa de judicialização
+silenciosamente indisponível. O relatório dessa rodada está preservado em
+`docs/evidencias/homologacao-monday-antes-da-correcao.md`.
+
+A correção trata aspas em volta do título como decoração, não identidade —
+e título exato **continua vencendo** o que só casa depois de remover aspas,
+para que criar `'STATUS'` ao lado de `STATUS` não troque em silêncio a coluna
+que alimenta o campo. O mesmo defeito escondia `STATUS (para comitê)` (caixa
+mista) da lista de colunas de classificação do relatório: a comparação agora
+tem uma forma canônica única (`chaveDeColuna`/`mesmoTitulo`), em vez de um
+`===` em cada lugar. Oito testes novos fixam o caso
+(`test/monday-titulo-coluna.test.ts`); a suíte foi a 336.
+
+Depois da correção, a homologação foi **reexecutada do zero** — banco
+recriado, não aproveitado — para que o relatório final não fosse uma emenda
+sobre a carga defeituosa.
+
+### O que o board real corrigiu na documentação
+
+- **`COMARCA` existe** (13 valores; TAUBATÉ 91, JACAREÍ 89, PINDA 50…) — a
+  documentação anterior dizia que não havia coluna própria e que `comarca`
+  ficaria nula. Ficou preenchida em 244 de 250.
+- **`cliente`, `cpf_cnpj`, `contrato` e `numero` não existem** como colunas.
+  `numero` cai para o nome do item; as inconsistências de documento inválido
+  não são geradas para processos.
+- **Os 6 rótulos reais de situação** (ACOMPANHANDO 150, FINALIZADO 69, ACORDO
+  47, BAIXA DEFINITIVA 3, RECOMPRA/ACORDO 3, ARQUIVADO PROVISORIAMENTE 1) não
+  casam com **nenhuma** lista de termos: 0 de 6 cobertos. A limitação prevista
+  em B16 se confirmou no pior grau.
+
+### O que NÃO foi feito
+
+As listas de classificação **não foram alteradas**. As propostas estão
+emitidas no relatório — `finalizad`, `acordo`, `baixa`, `arquivad` como
+candidatos a `TERMOS_NAO_JUDICIAL`; `ACOMPANHANDO` como indefinida — e os 250
+registros seguem em `revisao_necessaria`. A tentação era óbvia: com os rótulos
+reais na mão, aplicar as regras e entregar a taxa de judicialização
+preenchida. Mas todos os itens vêm de um quadro chamado PROCESSOS JUDICIAIS, e
+talvez a resposta certa seja outra coluna (`DECISÃO`) ou a premissa de que
+tudo ali é judicializado — decisão de quem conhece o fluxo, que muda indicador
+de comitê. Heurística não aprova regra.
+
+A execução rodou em banco local de homologação (`patrono_homolog`), recriado
+pelas 17 migrações — o esquema é o de produção; o banco, não.
