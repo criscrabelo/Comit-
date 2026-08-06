@@ -1898,3 +1898,45 @@ A tabela `honorarios` **não tem coluna de unidade**, e o quadro tem `UNIDADE`
 preenchida — o dado é lido e não tem onde ser gravado. Fica registrado.
 
 Suíte em **421 testes**.
+
+## B18 — A política de judicialização não está mais pendente da Cristiane
+
+**Data:** 2026-08-06
+
+Três relatórios seguidos listaram "aprovar a política de judicialização" como
+pendência dela. **É engano nosso, e vale corrigir de vez.**
+
+A decisão **já foi tomada**, em 06/08/2026, com estas palavras:
+
+> Neste momento, considerar judicializado todo registro que esteja no quadro
+> "Processos Judiciais" do Monday, pois hoje essa é a fonte oficial da
+> informação jurídica.
+
+O que falta não é decisão: é o **ato registrado no banco**, que exige duas
+coisas que ainda não existem — um banco de produção e um usuário nomeado para
+constar como autor. Aprovar no banco efêmero de uma sessão não vale nada: ele é
+descartado quando o contêiner é reciclado.
+
+Pedir a mesma aprovação de novo, em cada relatório, transfere para ela uma
+tarefa que **não é executável hoje** — e enche a lista dela de um item que ela
+não consegue resolver.
+
+### Encaminhamento
+
+A aprovação passa a ser um **passo do roteiro de instalação em produção**, não
+uma pendência de conversa:
+
+```bash
+# depois de criar o usuário nomeado que vai constar como autor
+npx tsx scripts/politica-judicializacao.ts simular
+npx tsx scripts/politica-judicializacao.ts aprovar --politica <id> --usuario <login>
+npx tsx scripts/politica-judicializacao.ts reapurar --escopo processos
+```
+
+A autorização da Cristiane está registrada acima e em B16.4. O `--usuario` do
+comando é quem executa o ato, e fica gravado com data.
+
+**Até a instalação, o comportamento correto é o atual:** os 250 processos em
+`revisao_necessaria`, taxa de judicialização indisponível com motivo declarado.
+Não é pendência esquecida — é o estado correto de um sistema que ainda não foi
+instalado.
