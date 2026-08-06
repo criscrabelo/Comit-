@@ -16,8 +16,28 @@
 import { promises as fs } from 'node:fs';
 import { spawn } from 'node:child_process';
 
-/** Quadro simulado: rotulos escolhidos para exercitar os tres casos de cobertura. */
-const BOARD = '5959705266';
+/**
+ * Quadro simulado.
+ *
+ * O ensaio acompanha o runner: `--quadro <chave>` exercita o mesmo caminho para
+ * qualquer quadro com perfil. O dublê responde SO ao board daquele quadro, o
+ * que mantém a prova 6 (falha da origem) exercitavel de verdade.
+ */
+const QUADRO = (() => {
+  const i = process.argv.indexOf('--quadro');
+  return i >= 0 ? (process.argv[i + 1] ?? 'processos') : 'processos';
+})();
+
+const BOARDS: Record<string, string> = {
+  processos: '5959705266',
+  notificacoes: '5630368737',
+  distratos: '18404493605',
+  retomadas: '18413057491',
+  honorarios: '7231876117',
+  entregas: '18410779605',
+};
+
+const BOARD = BOARDS[QUADRO] ?? '5959705266';
 
 const COLUNAS = [
   { id: 'status5', title: 'MEU TRABALHO', type: 'status' },
@@ -154,12 +174,12 @@ async function subirDuble(porta: number): Promise<() => void> {
 async function principal(): Promise<void> {
   const porta = 3399;
   const parar = await subirDuble(porta);
-  const saida = '/tmp/ensaio-homologacao.md';
+  const saida = `/tmp/ensaio-homologacao-${QUADRO}.md`;
 
   try {
     const processo = spawn(
       'npx',
-      ['tsx', 'scripts/homologar-monday.ts', '--saida', saida],
+      ['tsx', 'scripts/homologar-monday.ts', '--quadro', QUADRO, '--saida', saida],
       {
         env: {
           ...process.env,
@@ -177,7 +197,7 @@ async function principal(): Promise<void> {
     const aviso =
       '> ⚠️ **ENSAIO COM DADOS SIMULADOS.** Este relatório NÃO é a homologação.\n' +
       '> Os números vieram de um quadro falso, servido localmente. A homologação\n' +
-      '> real exige `MONDAY_TOKEN` e o board 5959705266.\n\n';
+      `> real exige \`MONDAY_TOKEN\` e o board ${BOARD}.\n\n`;
 
     await fs.writeFile(saida, aviso + relatorio.replace(/^# /m, '# [ENSAIO] '));
 

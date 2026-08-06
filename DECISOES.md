@@ -899,3 +899,66 @@ final do indicador fica para a etapa "indicadores com dados reais".
 - `reapurar` não registra o operador que o disparou.
 - Remoção de aspas tipográficas simples ('') na normalização de título de
   coluna (B16.3 cobre retas e duplas curvas).
+
+## B17 — Homologação aprovada e runner generalizado para os demais quadros
+
+**Data:** 2026-08-06
+
+### A aprovação
+
+A Cristiane aprovou a homologação do quadro **Processos Judiciais**
+(board `5959705266`). O portão que ela mesma tinha colocado — *"não ative os
+demais quadros até que essa entrega seja revisada e aprovada"* — está aberto.
+
+Segue pendente, e é decisão separada, a aprovação da **política de
+judicialização**: os 250 registros continuam em `revisao_necessaria`.
+
+### Por que o runner precisava mudar
+
+`scripts/homologar-monday.ts` estava travado em três constantes:
+`QUADRO = 'processos'`, `BOARD_ESPERADO = '5959705266'` e
+`TABELA = 'processos_judiciais'`. Homologar Notificações copiando o arquivo
+produziria dois runners divergindo com o tempo — e a divergência apareceria
+justamente nas provas, que é onde ela não pode aparecer.
+
+### O desenho: perfil por quadro
+
+Cada quadro ganhou um `PerfilHomologacao` com board, rótulo, colunas da amostra
+anonimizada, campos de texto livre a varrer, campo usado na prova 5 e — só para
+processos — a coluna que alimenta a classificação de judicialização.
+
+Três decisões dentro disso:
+
+1. **O board fica no perfil E em `quadros.ts`, e os dois são comparados.**
+   Alterar o id num lugar só não redireciona a carga: precisaria de duas
+   alterações deliberadas, em arquivos diferentes.
+2. **A amostra publica as colunas do perfil, não `SELECT *`.** Uma coluna nova
+   no esquema não passa a ser publicada por omissão — e a amostra é o único
+   lugar do relatório com dado real. `cliente_nome` é mascarado sempre.
+3. **A cobertura de judicialização só roda onde faz sentido.** Sem
+   `colunaClassificacao`, a seção declara que não se aplica. Rodá-la sobre
+   Notificações produziria uma "taxa de judicialização de notificações" —
+   número sem significado.
+
+`--quadro` é opcional e o padrão continua `processos`: o comando registrado na
+documentação não muda de significado por causa da generalização.
+
+### Verificação
+
+Ensaio com dublê local, sem rede, nos dois quadros:
+
+- `processos` — **7/7 provas**, sem regressão em relação a B16.3
+- `notificacoes` — **7/7 provas**, exercitando tabela, colunas e campo de teste
+  diferentes
+
+O ensaio de `notificacoes` roda contra colunas simuladas no formato de
+processos, então `situacao` volta `null`. Isso é fiel ao que o ensaio é: prova
+que o caminho inteiro funciona, não que o mapa de colunas está certo. O mapa
+real só se confirma contra o quadro real.
+
+### Limitação registrada
+
+A sessão em que esta generalização foi escrita **não alcança `api.monday.com`**:
+ela nasceu antes da liberação do domínio na política de rede do ambiente, e a
+política é aplicada quando a sessão é criada. As duas sincronizações reais de
+Notificações rodam numa sessão nova, com o comando já pronto.

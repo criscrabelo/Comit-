@@ -1,5 +1,5 @@
 /**
- * Homologacao controlada do Monday — quadro Processos Judiciais (5959705266).
+ * Homologacao controlada de um quadro do Monday.
  *
  * Executa DUAS sincronizacoes consecutivas do mesmo quadro e produz o relatorio
  * exigido: metricas completas da primeira, e as sete provas da segunda.
@@ -9,11 +9,13 @@
  * Uma execucao sozinha nao distingue "upsert idempotente" de "insert que ainda
  * nao colidiu".
  *
- * Escopo travado neste script: SO o quadro de processos. Os demais quadros
- * ficam de fora ate a aprovacao desta homologacao.
+ * Escopo travado por PERFIL: o script so aceita quadros com perfil declarado
+ * abaixo, e recusa a execucao se o board do perfil divergir do configurado em
+ * `quadros.ts`. Sem `--quadro`, homologa `processos`.
  *
  * Uso:
  *   MONDAY_TOKEN=... DATABASE_URL=... npx tsx scripts/homologar-monday.ts
+ *   ... --quadro notificacoes     homologa outro quadro (padrao: processos)
  *   ... --competencia 2026-07     recorta por competencia
  *   ... --simular                 le e transforma sem gravar
  *   ... --pre-confirmacao         so os quatro itens locais; nao toca a rede
@@ -26,7 +28,7 @@ import { promises as fs } from 'node:fs';
 import { sql } from 'kysely';
 import { db, fecharBanco } from '../src/db/pool.js';
 import { config } from '../src/config.js';
-import { QUADROS, mesmoTitulo } from '../src/integracoes/monday/quadros.js';
+import { QUADROS, mesmoTitulo, type ChaveQuadro } from '../src/integracoes/monday/quadros.js';
 import { sincronizarQuadro } from '../src/integracoes/monday/sincronizar.js';
 import { recusarEscrita, testarConexao } from '../src/integracoes/monday/cliente.js';
 import {
@@ -37,15 +39,129 @@ import {
 } from '../src/integracoes/monday/rotulos.js';
 import type { ResumoExecucao } from '../src/integracoes/execucoes.js';
 
-const QUADRO = 'processos' as const;
-const BOARD_ESPERADO = '5959705266';
-const TABELA = 'processos_judiciais';
+/**
+ * Perfil de homologacao de um quadro.
+ *
+ * O board fica AQUI, e nao so em `quadros.ts`, de proposito: a homologacao
+ * compara os dois e recusa a execucao se divergirem. Alterar o id em um lugar
+ * so nao consegue redirecionar a carga — precisaria de duas alteracoes
+ * deliberadas, em arquivos diferentes.
+ */
+interface PerfilHomologacao {
+  board: string;
+  rotulo: string;
+  /** Colunas publicadas na amostra anonimizada. */
+  colunasAmostra: string[];
+  /** Colunas digitadas a mao: varridas em busca de CPF/CNPJ. */
+  textoLivre: string[];
+  /** Coluna alterada na prova 5 para simular mudanca na origem. */
+  campoDeTeste: string;
+  /**
+   * Titulo da coluna que alimenta classificacao de judicializacao.
+   *
+   * So processos tem. Nos demais quadros a secao de cobertura nao se aplica —
+   * e forcar uma analise de judicializacao sobre um quadro de notificacoes
+   * produziria numero sem significado.
+   */
+  colunaClassificacao?: string;
+}
+
+const PERFIS: Record<string, PerfilHomologacao> = {
+  processos: {
+    board: '5959705266',
+    rotulo: 'Processos Judiciais',
+    colunasAmostra: [
+      'id_origem', 'numero', 'ano', 'tipo', 'motivo', 'posicao', 'situacao',
+      'situacao_comite', 'atuacao', 'interno', 'comarca', 'valor_causa',
+      'data_citacao', 'judicializado', 'revisao_necessaria',
+      'fonte', 'versao', 'data_referencia', 'extraido_em',
+    ],
+    textoLivre: ['motivo', 'tipo', 'situacao', 'situacao_comite'],
+    campoDeTeste: 'situacao',
+    colunaClassificacao: 'MEU TRABALHO',
+  },
+  notificacoes: {
+    board: '5630368737',
+    rotulo: 'Notificações a Clientes',
+    colunasAmostra: [
+      'id_origem', 'cliente_nome', 'torre', 'unidade', 'grupo', 'modelo',
+      'estagio', 'estagio_detalhe', 'situacao', 'data_notificacao',
+      'data_solucao', 'total_dias',
+      'fonte', 'versao', 'data_referencia', 'extraido_em',
+    ],
+    textoLivre: ['situacao', 'estagio_detalhe', 'modelo'],
+    campoDeTeste: 'situacao',
+  },
+  distratos: {
+    board: '18404493605',
+    rotulo: 'Distratos e Desistências',
+    colunasAmostra: [
+      'id_origem', 'categoria', 'motivo', 'situacao', 'torre', 'unidade',
+      'grupo', 'data_solicitacao', 'data_conclusao', 'total_dias',
+      'fonte', 'versao', 'data_referencia', 'extraido_em',
+    ],
+    textoLivre: ['motivo', 'situacao'],
+    campoDeTeste: 'situacao',
+  },
+  retomadas: {
+    board: '18413057491',
+    rotulo: 'Retomadas',
+    colunasAmostra: [
+      'id_origem', 'categoria', 'motivo', 'situacao', 'torre', 'unidade',
+      'grupo', 'data_solicitacao', 'data_conclusao', 'total_dias',
+      'fonte', 'versao', 'data_referencia', 'extraido_em',
+    ],
+    textoLivre: ['motivo', 'situacao'],
+    campoDeTeste: 'situacao',
+  },
+  honorarios: {
+    board: '7231876117',
+    rotulo: 'Honorários Extrajudiciais',
+    colunasAmostra: [
+      'id_origem', 'tipo', 'motivo', 'situacao', 'unidade', 'grupo',
+      'fonte', 'versao', 'data_referencia', 'extraido_em',
+    ],
+    textoLivre: ['motivo', 'situacao', 'tipo'],
+    campoDeTeste: 'situacao',
+  },
+  entregas: {
+    board: '18410779605',
+    rotulo: 'Controle de Entrega Carpe Diem',
+    colunasAmostra: [
+      'id_origem', 'tipo', 'situacao', 'unidade', 'grupo',
+      'fonte', 'versao', 'data_referencia', 'extraido_em',
+    ],
+    textoLivre: ['situacao', 'tipo'],
+    campoDeTeste: 'situacao',
+  },
+};
 
 function argumento(nome: string): string | undefined {
   const i = process.argv.indexOf(`--${nome}`);
   return i >= 0 ? process.argv[i + 1] : undefined;
 }
 const temFlag = (nome: string) => process.argv.includes(`--${nome}`);
+
+/**
+ * Quadro a homologar.
+ *
+ * `processos` continua sendo o padrao — a homologacao ja aprovada roda sem
+ * argumento nenhum, e um comando registrado em documentacao nao muda de
+ * significado por causa desta generalizacao.
+ */
+const QUADRO = (argumento('quadro') ?? 'processos') as ChaveQuadro;
+
+if (!(QUADRO in PERFIS)) {
+  console.error(
+    `\n✗ Quadro "${QUADRO}" nao tem perfil de homologacao.\n` +
+      `  Autorizados: ${Object.keys(PERFIS).join(', ')}\n`,
+  );
+  process.exit(1);
+}
+
+const PERFIL = PERFIS[QUADRO]!;
+const BOARD_ESPERADO = PERFIL.board;
+const TABELA = QUADROS[QUADRO].destino;
 
 const linhas: string[] = [];
 const escrever = (texto = '') => {
@@ -111,7 +227,7 @@ async function confirmarAntesDeSincronizar(): Promise<ItemConfirmacao[]> {
   // 3. quadro configurado
   const quadroOk = String(QUADROS[QUADRO].idPadrao) === BOARD_ESPERADO;
   itens.push({
-    rotulo: 'quadro configurado = 5959705266',
+    rotulo: `quadro configurado = ${BOARD_ESPERADO}`,
     ok: quadroOk,
     detalhe: quadroOk
       ? `${QUADROS[QUADRO].nome} — \`${QUADROS[QUADRO].idPadrao}\``
@@ -229,7 +345,7 @@ function formatarResumo(titulo: string, r: ResumoExecucao, f: Fotografia): void 
   escrever('| Métrica | Valor |');
   escrever('| --- | --- |');
   escrever(`| Identificador da execução | \`${r.id}\` |`);
-  escrever(`| Quadro | Processos Judiciais — board \`${BOARD_ESPERADO}\` |`);
+  escrever(`| Quadro | ${PERFIL.rotulo} — board \`${BOARD_ESPERADO}\` |`);
   escrever(`| Início | ${r.iniciada_em.toISOString()} |`);
   escrever(`| Conclusão | ${r.finalizada_em.toISOString()} |`);
   escrever(`| Duração | ${(r.duracao_ms / 1000).toFixed(2)} s |`);
@@ -276,11 +392,12 @@ function formatarResumo(titulo: string, r: ResumoExecucao, f: Fotografia): void 
 
 /** Amostra anonimizada: prova o formato sem expor cliente real. */
 async function amostraAnonimizada(): Promise<void> {
+  // As colunas vem do perfil do quadro. Um `SELECT *` publicaria qualquer
+  // coluna nova que o esquema ganhasse — inclusive uma que carregue dado
+  // pessoal —, e a amostra e o unico lugar do relatorio com dado real.
+  const colunas = PERFIL.colunasAmostra.map((c) => sql.ref(c));
   const linhasAmostra = await sql<Record<string, unknown>>`
-    SELECT id_origem, numero, ano, tipo, motivo, posicao, situacao,
-           situacao_comite, atuacao, interno, comarca, valor_causa,
-           data_citacao, judicializado, revisao_necessaria,
-           fonte, versao, data_referencia, extraido_em
+    SELECT ${sql.join(colunas, sql`, `)}
     FROM ${sql.table(TABELA)}
     WHERE fonte = 'monday' AND ausente_desde IS NULL
     ORDER BY criado_em
@@ -300,18 +417,23 @@ async function amostraAnonimizada(): Promise<void> {
   escrever('campos de texto livre passam por uma varredura de documento — `MOTIVO` é');
   escrever('digitado à mão e pode conter um CPF que ninguém previu.');
   escrever();
-  const mascaradas = linhasAmostra.rows.map((l) => ({
-    ...l,
-    id_origem: mascararId(String(l.id_origem ?? '')),
-    numero: mascararProcesso(l.numero as string | null),
-    valor_causa: l.valor_causa === null ? null : '***',
-    motivo: varrerTextoLivre(l.motivo as string | null),
-    tipo: varrerTextoLivre(l.tipo as string | null),
-    situacao: varrerTextoLivre(l.situacao as string | null),
-    situacao_comite: varrerTextoLivre(l.situacao_comite as string | null),
+  const mascaradas = linhasAmostra.rows.map((l) => {
+    const m: Record<string, unknown> = { ...l };
+
+    if ('id_origem' in m) m.id_origem = mascararId(String(m.id_origem ?? ''));
+    if ('numero' in m) m.numero = mascararProcesso(m.numero as string | null);
+    if ('valor_causa' in m) m.valor_causa = m.valor_causa === null ? null : '***';
     // ATUAÇÃO traz "EXTERNO <escritório>", que pode ser nome de pessoa.
-    atuacao: mascararAtuacao(l.atuacao as string | null),
-  }));
+    if ('atuacao' in m) m.atuacao = mascararAtuacao(m.atuacao as string | null);
+    // Nome de cliente e nome completo: nao entra na amostra de jeito nenhum.
+    if ('cliente_nome' in m) m.cliente_nome = m.cliente_nome === null ? null : '***';
+
+    for (const campo of PERFIL.textoLivre) {
+      if (campo in m) m[campo] = varrerTextoLivre(m[campo] as string | null);
+    }
+
+    return m;
+  });
 
   escrever('```json');
   escrever(JSON.stringify(mascaradas, null, 2));
@@ -476,10 +598,22 @@ function relatarRotulos(l: LevantamentoRotulos, ausentes: string[]): void {
   }
 
   // ── Cobertura das regras ────────────────────────────────────────────────
-  const situacao = l.colunas.find((c) => mesmoTitulo(c.titulo, 'MEU TRABALHO'));
+  //
+  // So se aplica a quadros que alimentam a classificacao de judicializacao.
+  // Rodar esta analise sobre um quadro de notificacoes produziria uma taxa de
+  // judicializacao de notificacoes — numero sem significado nenhum.
+  if (!PERFIL.colunaClassificacao) {
+    escrever('> Este quadro não alimenta a classificação de judicialização.');
+    escrever('> A análise de cobertura não se aplica.');
+    escrever();
+    return;
+  }
+
+  const tituloClassificacao = PERFIL.colunaClassificacao;
+  const situacao = l.colunas.find((c) => mesmoTitulo(c.titulo, tituloClassificacao));
   if (!situacao) {
-    escrever('> **Coluna MEU TRABALHO não encontrada.** A classificação de');
-    escrever('> judicialização depende dela; sem a coluna, todos os processos');
+    escrever(`> **Coluna ${tituloClassificacao} não encontrada.** A classificação de`);
+    escrever('> judicialização depende dela; sem a coluna, todos os registros');
     escrever('> ficam em revisão necessária.');
     escrever();
     return;
@@ -616,8 +750,12 @@ async function provas(
  * upsert corrige o destino, não que alguém consiga editar a origem.
  */
 async function conferirAtualizacao(): Promise<{ ok: boolean; evidencia: string }> {
-  const alvo = await sql<{ id: string; situacao: string | null; versao: number }>`
-    SELECT id, situacao, versao FROM ${sql.table(TABELA)}
+  // A coluna alterada vem do perfil: cada quadro tem a sua, e `situacao` nem
+  // existe em todos.
+  const campo = sql.ref(PERFIL.campoDeTeste);
+
+  const alvo = await sql<{ id: string; alvo: string | null; versao: number }>`
+    SELECT id, ${campo} AS alvo, versao FROM ${sql.table(TABELA)}
     WHERE fonte = 'monday' AND ausente_desde IS NULL
     ORDER BY criado_em LIMIT 1
   `.execute(db);
@@ -625,11 +763,11 @@ async function conferirAtualizacao(): Promise<{ ok: boolean; evidencia: string }
   const registro = alvo.rows[0];
   if (!registro) return { ok: false, evidencia: 'nenhum registro para testar' };
 
-  const original = registro.situacao;
+  const original = registro.alvo;
   const versaoAntes = registro.versao;
 
   await sql`
-    UPDATE ${sql.table(TABELA)} SET situacao = 'DIVERGENCIA DE TESTE' WHERE id = ${registro.id}
+    UPDATE ${sql.table(TABELA)} SET ${campo} = 'DIVERGENCIA DE TESTE' WHERE id = ${registro.id}
   `.execute(db);
 
   const r = await sincronizarQuadro({
@@ -639,18 +777,19 @@ async function conferirAtualizacao(): Promise<{ ok: boolean; evidencia: string }
     usuarioId: null,
   });
 
-  const depois = await sql<{ situacao: string | null; versao: number }>`
-    SELECT situacao, versao FROM ${sql.table(TABELA)} WHERE id = ${registro.id}
+  const depois = await sql<{ alvo: string | null; versao: number }>`
+    SELECT ${campo} AS alvo, versao FROM ${sql.table(TABELA)} WHERE id = ${registro.id}
   `.execute(db);
 
-  const voltou = depois.rows[0]?.situacao === original;
+  const voltou = depois.rows[0]?.alvo === original;
   const versaoSubiu = (depois.rows[0]?.versao ?? 0) > versaoAntes;
 
   return {
     ok: voltou && versaoSubiu && r.atualizados >= 1,
     evidencia:
-      `situação alterada no banco e devolvida pela origem (\`${original ?? 'null'}\`); ` +
-      `versão ${versaoAntes} → ${depois.rows[0]?.versao}; ${r.atualizados} atualizado(s)`,
+      `\`${PERFIL.campoDeTeste}\` alterado no banco e devolvido pela origem ` +
+      `(\`${original ?? 'null'}\`); versão ${versaoAntes} → ${depois.rows[0]?.versao}; ` +
+      `${r.atualizados} atualizado(s)`,
   };
 }
 
@@ -749,8 +888,8 @@ async function principal(): Promise<void> {
 
   if (String(def.idPadrao) !== BOARD_ESPERADO) {
     throw new Error(
-      `O quadro de processos está configurado como ${def.idPadrao}, e a homologação ` +
-        `foi autorizada apenas para ${BOARD_ESPERADO}. Nada foi executado.`,
+      `O quadro "${QUADRO}" está configurado como ${def.idPadrao}, e o perfil de ` +
+        `homologação autoriza apenas ${BOARD_ESPERADO}. Nada foi executado.`,
     );
   }
 
@@ -772,7 +911,7 @@ async function principal(): Promise<void> {
 
   escrever('# Homologação controlada do Monday');
   escrever();
-  escrever(`**Quadro:** Processos Judiciais — board \`${BOARD_ESPERADO}\`  `);
+  escrever(`**Quadro:** ${PERFIL.rotulo} — board \`${BOARD_ESPERADO}\`  `);
   escrever(`**Ambiente:** ${config.ambiente}  `);
   escrever(`**Competência:** ${competencia ?? 'todas'}  `);
   escrever(`**Executado em:** ${new Date().toISOString()}  `);
@@ -890,7 +1029,7 @@ async function principal(): Promise<void> {
   escrever();
   escrever(
     falhas === 0
-      ? '**As sete provas passaram.** A homologação do quadro de Processos Judiciais está pronta para aprovação.'
+      ? `**As sete provas passaram.** A homologação do quadro ${PERFIL.rotulo} está pronta para aprovação.`
       : `**${falhas} prova(s) falharam.** A homologação NÃO deve ser aprovada nesta condição.`,
   );
 

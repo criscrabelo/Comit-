@@ -1,7 +1,18 @@
 # Homologação controlada do Monday — Processos Judiciais
 
+> ## ✅ APROVADA — 06/08/2026
+>
+> A homologação do quadro **Processos Judiciais** (board `5959705266`) foi
+> aprovada pela Cristiane Rabelo. A partir daqui, os demais quadros do Monday
+> podem ser homologados, **um por vez**, com o mesmo rito.
+>
+> Segue pendente de aprovação separada a **política de judicialização**
+> (`docs/REGRA-JUDICIALIZACAO.md`): os 250 registros continuam em
+> `revisao_necessaria` até que ela seja aprovada em produção.
+
+
 **Quadro autorizado:** `(JUR) PROCESSOS JUDICIAIS` — board **5959705266**
-**Demais quadros:** desligados até a aprovação desta homologação.
+**Demais quadros:** liberados para homologação individual a partir de 06/08/2026.
 **Sienge:** desligado. Checklist em `docs/SIENGE-INFORMACOES-NECESSARIAS.md`.
 
 ---
