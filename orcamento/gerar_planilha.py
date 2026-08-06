@@ -122,7 +122,9 @@ LINHAS = [
      "Serviço de backup em nuvem para servidor — RATEIO A DEFINIR", "",
      "Licenças de Softwares", _12(825.00)),
     ("TI-D03", "TI", "Despesas", "Inteligência Artificial (Adapta)",
-     "Plataforma de IA para utilização de agentes — RATEIO A DEFINIR", "",
+     "Plataforma de IA para utilização de agentes — RATEIO A DEFINIR. Pagamentos "
+     "reais de R$ 575/mês estão lançados no centro de custo Jurídico por engano "
+     "(ver pendência Q)", "",
      "Licenças de Softwares", [1300.00] * 6 + [1600.00] * 6),
     ("TI-D04", "TI", "Despesas", "Antivírus",
      "Proteção para equipamentos — RATEIO A DEFINIR", "",
@@ -509,6 +511,17 @@ PEND = [
      "mês caiu em jul — é o lançamento isolado de R$ 2.750 que aparece lá. "
      "A justificativa da inclusão é pauta da reunião.",
      "Cristiane + Diretoria", "APLICADO", "Jurídico"),
+    ("Q", "Adapta lançado no centro de custo errado — RECLASSIFICAR",
+     "Os pagamentos do Adapta (ADAPTA EDUCACAO LTDA, contrato 4134643529) estão "
+     "no centro de custo Jurídico no SIENGE: R$ 575,00/mês de jan a mai e "
+     "R$ 476,00 em jun, todos com vencimento dia 15. Total de R$ 3.351,00 em seis "
+     "meses. Não é despesa do Jurídico — é ferramenta de IA, de uso transversal.",
+     "Reclassificar no SIENGE para o centro de custo correto e aplicar o rateio "
+     "do item L. Enquanto não for corrigido, o Jurídico carrega R$ 3.351 que não "
+     "são dele e o TI aparece sem um gasto que é seu — as duas áreas ficam com o "
+     "comparativo errado. Aproveitar a abertura do novo centro de custo para "
+     "acertar a classificação desde a origem.",
+     "Cristiane + Financeiro", "RECLASSIFICAR", ""),
     ("P", "Extrato contém REPASSES, não só custo",
      "Os lançamentos em nome da Dra. Michele até jun/26 (R$ 20.821,53) são "
      "repasse: o cliente paga à empresa e a empresa repassa a ela. Não são custo "
@@ -1423,7 +1436,7 @@ def gerar(DEPTO, OUT):
                          "A LANÇAR": "F8CBAD", "CONFERIR": "FFE699",
                      "BASE DIFERENTE": "F8CBAD", "DECIDIR": "FFE699",
                      "PAUTA REUNIÃO": "FFD966", "EM ANDAMENTO": "DDEBF7",
-                     "PRAZO 01/11": "F8CBAD"}
+                     "PRAZO 01/11": "F8CBAD", "RECLASSIFICAR": "F8CBAD"}
                 c.fill = PatternFill("solid", fgColor=cores.get(val, LARANJA))
             else:
                 c.fill = PatternFill("solid", fgColor=BRANCO if i % 2 == 0 else CINZA_L)
