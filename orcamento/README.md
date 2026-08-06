@@ -3,9 +3,18 @@
 Planilha de acompanhamento orçamentário dos departamentos Jurídico e TI,
 construída a partir da ficha de orçamento (`ficha_CRIS`).
 
-**Arquivo:** `Orcamento_Planejado_x_Realizado_2026.xlsx`
 **Período:** janeiro a dezembro/2026 (12 meses)
-**Total orçado:** R$ 547.548,72
+
+| Arquivo | Escopo | Orçado do ano |
+|---|---|---:|
+| `Orcamento_JURIDICO_2026.xlsx` | Jurídico | R$ 290.730,42 |
+| `Orcamento_TI_2026.xlsx` | TI | R$ 256.818,30 |
+| `Orcamento_Planejado_x_Realizado_2026.xlsx` | Consolidado | R$ 547.548,72 |
+
+As três saem do mesmo gerador e da mesma base de dados, então não divergem entre si.
+As planilhas por departamento têm as mesmas oito abas do consolidado, com o Painel,
+o resumo por plano de contas e a evolução mensal reduzidos àquele departamento, e a
+aba Pendências trazendo só o que é daquela área (mais o que vale para as duas).
 
 | Departamento | Equipe | Despesas | Total |
 |---|---:|---:|---:|
@@ -91,6 +100,10 @@ a ficha não o cobria — ver a pendência "Planejado de jan a abr" na planilha.
 - A coluna `O` da aba **Comparativo** está oculta: é a chave de ordenação do
   ranking de estouros do Painel.
 
-O arquivo é gerado pelo script `gerar_planilha.py`, que pode ser reexecutado
-para recriar a planilha do zero (`python3 gerar_planilha.py`). Os lançamentos do
-realizado ficam apenas no `.xlsx` — reexecutar o script sobrescreve o arquivo.
+Os arquivos são gerados por `gerar_planilha.py`, que produz os três de uma vez
+(`python3 gerar_planilha.py`). A função `gerar(DEPTO, OUT)` aceita `"Jurídico"`,
+`"TI"` ou `None` para o consolidado.
+
+Os lançamentos do realizado vivem no dicionário `REALIZADO` do script, não só no
+`.xlsx` — reexecutar sobrescreve os arquivos, então lançamentos feitos direto na
+planilha devem ser transportados para o script antes de regerar.
