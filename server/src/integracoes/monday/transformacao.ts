@@ -193,12 +193,18 @@ export function extrairLocalizacao(
   const torre = casaTorre ? `TORRE ${casaTorre[1]!.toUpperCase()}` : null;
 
   // A unidade e o nome do item sem o prefixo do empreendimento.
+  //
+  // O prefixo so e removido quando termina em fronteira de palavra. Sem a
+  // condicao, o empreendimento `ALAMEDA` cortava o item `ALAMEDAS 406A` no meio
+  // da palavra e produzia a unidade `S 406A` — visto no board 18404493605.
+  // Quando o nome nao e prefixo do item, o nome do item inteiro vira a unidade:
+  // e informacao incompleta, mas verdadeira, e nao um identificador inventado.
   let unidade: string | null = null;
   const item = (nomeItem || '').trim();
   if (item) {
     if (base) {
       const escapado = base.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      unidade = item.replace(new RegExp(`^${escapado}\\s*`, 'i'), '').trim() || item;
+      unidade = item.replace(new RegExp(`^${escapado}(?=\\s|$)\\s*`, 'i'), '').trim() || item;
     } else {
       unidade = item;
     }

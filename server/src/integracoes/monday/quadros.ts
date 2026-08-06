@@ -165,14 +165,22 @@ export const QUADROS: Record<ChaveQuadro, DefinicaoQuadro> = {
       equipe: ['EQUIPE', 'RESPONSÁVEL', 'RESPONSAVEL'],
       data_solicitacao: ['DATA DA SOLICITAÇÃO', 'DATA SOLICITAÇÃO'],
       data_conclusao: ['DATA DA RETOMADA', 'DATA RETOMADA', 'DATA DA CONCLUSÃO'],
-      // Recompra tem grupo proprio NESTE quadro, e so termina quando a unidade
-      // e revendida. Sem procurar a data de venda aqui, nao ha como responder
-      // "quantas recompras estao abertas e ha quanto tempo" — pergunta da
-      // diretoria sobre unidade parada em estoque.
+      // A recompra so termina quando a unidade e revendida, e e disso que
+      // "quantas recompras estao abertas e ha quanto tempo" precisa.
       //
-      // Se a coluna nao existir no quadro real, `resolverMapa` a reporta em
-      // `ausentes` e nada e preenchido por suposicao. Procurar nao inventa dado.
-      data_venda: ['DATA DA VENDA', 'DATA VENDA', 'DATA DA REVENDA', 'REVENDA', 'NOVA VENDA'],
+      // AQUI a lista aceita SO titulos de revenda — de proposito, e ao
+      // contrario do quadro de distratos. O board 18413057491 TEM uma coluna
+      // `DATA DA VENDA`, e ela e a venda ORIGINAL ao cliente que sai: as datas
+      // vao de 2022 a 2025 contra solicitacoes de 2026, e a formula de
+      // `PERIODO (DIAS)` e a mesma `DAYS({SOLICITACAO}, {VENDA})` do outro
+      // quadro. Aceita-la aqui encheria `data_venda` em quase todo item com a
+      // data errada, e o indicador trataria toda retomada como recompra
+      // concluida — errando para o lado que parece certo.
+      //
+      // Nenhum destes titulos existe hoje: `resolverMapa` reporta o campo em
+      // `ausentes` e ele fica nulo. E o resultado honesto ate a coluna ser
+      // criada na origem. Ver docs/REGRA-SAIDA-DE-CLIENTE.md secao 7.
+      data_venda: ['DATA DA REVENDA', 'REVENDA', 'NOVA VENDA'],
       tempo_dias: ['TEMPO', 'DIAS', 'TOTAL DE DIAS'],
     },
   },

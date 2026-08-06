@@ -101,27 +101,32 @@ const PERFIS: Record<string, PerfilHomologacao> = {
     // carga — a ida e volta passa a provar alguma coisa.
     campoDeTeste: 'estagio_detalhe',
   },
+  // Os dois quadros abaixo gravam na MESMA tabela `distratos`, que nao tem
+  // `situacao`, `torre`, `grupo` nem `total_dias` — os perfis originais
+  // nomeavam colunas que o esquema nunca teve, e a amostra falharia no
+  // `SELECT`. O campo de teste tambem apontava para uma coluna inexistente.
+  // Corrigido contra a migracao 005 na homologacao do board 18404493605.
   distratos: {
     board: '18404493605',
     rotulo: 'Distratos e Desistências',
     colunasAmostra: [
-      'id_origem', 'categoria', 'motivo', 'situacao', 'torre', 'unidade',
-      'grupo', 'data_solicitacao', 'data_conclusao', 'total_dias',
+      'id_origem', 'categoria', 'motivo', 'equipe', 'unidade',
+      'data_solicitacao', 'data_venda', 'data_conclusao', 'tempo_dias',
       'fonte', 'versao', 'data_referencia', 'extraido_em',
     ],
-    textoLivre: ['motivo', 'situacao'],
-    campoDeTeste: 'situacao',
+    textoLivre: ['motivo', 'equipe'],
+    campoDeTeste: 'motivo',
   },
   retomadas: {
     board: '18413057491',
     rotulo: 'Retomadas',
     colunasAmostra: [
-      'id_origem', 'categoria', 'motivo', 'situacao', 'torre', 'unidade',
-      'grupo', 'data_solicitacao', 'data_conclusao', 'total_dias',
+      'id_origem', 'categoria', 'motivo', 'equipe', 'unidade',
+      'data_solicitacao', 'data_venda', 'data_conclusao', 'tempo_dias',
       'fonte', 'versao', 'data_referencia', 'extraido_em',
     ],
-    textoLivre: ['motivo', 'situacao'],
-    campoDeTeste: 'situacao',
+    textoLivre: ['motivo', 'equipe'],
+    campoDeTeste: 'motivo',
   },
   honorarios: {
     board: '7231876117',
@@ -610,6 +615,20 @@ function relatarRotulos(
     // Comparacao pela forma canonica: o quadro real tem `'MEU TRABALHO'` com
     // aspas e `STATUS (para comitê)` em caixa mista. Com `includes` cru as duas
     // deixavam de ser reconhecidas como colunas de classificacao.
+    // Coluna que carrega endereco: o valor NAO e listado.
+    //
+    // O board 18404493605 tem uma coluna espelhada com 22 links de assinatura
+    // da ClickSign. Um link desses nao descreve o dado — ele DA ACESSO a ele,
+    // e este relatorio e evidencia versionada em repositorio. A regra da
+    // amostra ("sem CPF/CNPJ/nome completo") vale para o relatorio inteiro, e
+    // um endereco de documento assinado esta do mesmo lado da linha.
+    if (c.rotulos.some((r) => /\bhttps?:\/\//i.test(r.valor))) {
+      escrever('_Valores não listados: a coluna contém endereços de acesso, e este_');
+      escrever('_relatório é evidência versionada. Só a contagem é publicada._');
+      escrever();
+      continue;
+    }
+
     const ehClassificacao = (COLUNAS_DE_CLASSIFICACAO as readonly string[]).some((t) =>
       mesmoTitulo(t, c.titulo),
     );

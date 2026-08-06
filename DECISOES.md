@@ -1203,3 +1203,246 @@ as homologações; os dois viram pergunta na etapa de indicadores. O segundo nã
 tem de onde ser puxado automaticamente — vive no banco, que não é fonte de
 dados —, então será entrada manual com proveniência declarada, se for
 necessário.
+---
+
+## B17.4 — Homologação de Distratos e Desistências: a coluna EMPREENDIMENTO não é o empreendimento
+
+**Data:** 2026-08-06
+**Board:** `18404493605` — `(JUR) DISTRATOS E DESISTÊNCIAS`
+**Resultado:** 38 lidos, 38 incluídos, 0 erros; **7 de 7 provas**.
+Relatório em `docs/evidencias/homologacao-monday-distratos.md`; documentação em
+`docs/HOMOLOGACAO-MONDAY-DISTRATOS.md`.
+
+### O detector de títulos repetidos pagou na primeira oportunidade
+
+`titulosAmbiguos`, criado em B17.1 para um caso que não afetava a carga de
+notificações, encontrou **dois** casos neste quadro: `EMPREENDIMENTO` e `SETOR`,
+cada um com uma coluna espelho e uma de status. A regra "espelho perde para
+não-espelho" acertou nos dois — os espelhos vêm vazios em 12 dos 38 itens —, e
+agora a escolha aparece no relatório em vez de acontecer em silêncio.
+
+Os dois espelhos ainda discordam do status no conteúdo: `SETOR` espelhado traz
+`JURIDICO/RELACIONAMENTO/COMERCIAL/CRÉDITO`, o de status traz
+`PÓS VENDAS/JURÍDICO/COMERCIAL`. Vocabulários diferentes sob o mesmo título.
+
+### Três defeitos corrigidos
+
+**1. O perfil de homologação nomeava colunas inexistentes.** Os perfis de
+`distratos` e `retomadas` pediam `situacao`, `torre`, `grupo` e `total_dias` na
+amostra, e usavam `situacao` na prova 5. A tabela `distratos` não tem nenhuma
+das quatro: a amostra falharia no `SELECT`, depois das duas execuções já terem
+rodado. Encontrado estaticamente, contra a migração 005, antes da carga.
+
+Perfis alinhados ao esquema; campo da prova 5 passou a ser `motivo` — existe,
+vem sempre preenchido e não tem `CHECK` que recuse o valor de teste, como
+`categoria` tem. Um teste compara os nomes do perfil com o `information_schema`.
+
+**2. O prefixo do empreendimento era cortado no meio da palavra.** Item
+`ALAMEDAS 406A` com EMPREENDIMENTO `ALAMEDA` produzia a unidade `S 406A`. A
+remoção passou a exigir fronteira de palavra; quando o nome não é prefixo do
+item, o nome do item inteiro vira a unidade. **Informação incompleta e
+verdadeira vale mais que recorte inventado.**
+
+**3. O relatório publicava 22 links de assinatura da ClickSign.** A coluna
+espelhada `Espelho` carrega endereços de assinatura notarial, e o levantamento
+de rótulos os listava um a um — num arquivo versionado no repositório.
+
+O runner já suprimia valores de colunas `text`, pela regra do texto digitado à
+mão. Link não é texto livre; é pior: **não descreve o dado, dá acesso a ele.**
+Coluna com endereço `http(s)` passou a ter os valores suprimidos, publicando só
+a contagem.
+
+Consequência de método: não há relatório "antes da correção" preservado para
+este quadro — as versões anteriores continham os links, e versioná-las anularia
+a correção. E fica o registro de que a varredura automática cobre CPF/CNPJ na
+amostra, não tudo que é sensível em todas as seções: a conferência final do
+relatório gerado é parte do rito.
+
+### A decisão que NÃO foi tomada: EMPREENDIMENTO é a SPE
+
+A coluna `EMPREENDIMENTO` deste quadro não traz o empreendimento do item:
+`ALENCAR MAZZEO` para itens `MORATTA …`, `COEVO E CONELESTE` para `ALAMEDA …`,
+`SAN MARINO` para `VERANO …`, `FGV` para `VITA 02`. Às vezes coincidem
+(`GRAN PARK`), o que torna o defeito mais difícil de ver, não menos.
+
+É a mesma classe de `LOCAL` em B16.3: coluna com nome familiar carregando outro
+conceito. Aqui parece ser a SPE/incorporadora.
+
+Três consequências medidas: **9 empreendimentos criados na base**, cinco dos
+quais não são empreendimentos; **o cruzamento com Notificações não fecha** — o
+mesmo prédio entra com dois nomes que não se encontram; e **25 de 38 unidades
+ficaram com o nome do item inteiro**, porque o recorte depende de o nome do
+empreendimento ser o começo do nome do item.
+
+**Nada foi corrigido por suposição.** A saída limpa é renomear a coluna para
+`SPE` no Monday e criar um `EMPREENDIMENTO` de verdade — resolve na origem e não
+deixa dívida no código. Enquanto a decisão não vem, **a carga de distratos não
+deve alimentar indicadores por empreendimento nem ser cruzada com Notificações
+por esse campo**.
+
+### A outra decisão que NÃO foi tomada: PERÍODO (DIAS) ≠ tempo_dias
+
+Seria natural ligar a coluna `PERÍODO (DIAS)` a `tempo_dias`. A fórmula diz que
+seria errado: `DAYS({DATA DA SOLICITAÇÃO}, {DATA DA VENDA})` é o tempo que o
+cliente segurou a unidade antes de pedir o distrato — período de posse, não
+tempo de processamento.
+
+Vale registrar a simetria com B17.1: lá a fórmula de `TOTAL DIAS` **confirmou**
+que `RESOLUÇÃO` era a data de solução; aqui a fórmula **desmentiu** a associação
+óbvia. Ler a fórmula da origem antes de mapear vale nos dois sentidos.
+
+### Aberto e consequente: o quadro não tem data de conclusão
+
+Não existe coluna de conclusão. `data_conclusao` e `tempo_dias` ficam nulos em
+38 de 38, e — mais grave — `dataReferencia` deriva de `data_conclusao`, então
+**a carga saiu sem data de referência**: não sabe declarar até quando o dado
+está atualizado. Três saídas possíveis (criar a coluna; usar a solicitação;
+aceitar que o quadro não tem corte próprio) e nenhuma foi assumida.
+
+Também sem destino: nove colunas financeiras (venda, pago, devolvido, a receber,
+corretagem, comissões, honorários, multa). A tabela `distratos` não tem campo de
+valor — se o comitê precisa de perda financeira por distrato, é coluna nova e
+migração, não ajuste de mapa.
+
+### Verificação
+
+`test/monday-distratos.test.ts` — **9 testes**: prefixo não cortado no meio da
+palavra, prefixo ainda removido quando termina em espaço, item igual ao
+empreendimento, coluna que não é prefixo do item, as duas categorias reais pelos
+grupos, mapa contra as colunas reais, ausência de `data_conclusao`/`tempo_dias`,
+ambiguidade de `EMPREENDIMENTO`/`SETOR`, e o perfil conferido contra o
+`information_schema`.
+
+Suíte completa: **380 testes passando** (eram 371 em B17.1).
+---
+
+## B17.5 — `data_venda` é a venda original, não a revenda; e não existe recompra para medir
+
+**Data:** 2026-08-06
+**Motivo:** verificação pedida sobre `docs/REGRA-SAIDA-DE-CLIENTE.md` §4.2, que
+encaminhava "alimentar `distratos.data_venda` na homologação do quadro de
+Distratos e Retomadas, e derivar dali o tempo de ciclo da recompra".
+
+O encaminhamento não se sustenta, por três razões independentes. Cada uma
+sozinha já bastaria.
+
+### 1. O campo já era alimentado — a premissa do encaminhamento estava errada
+
+`quadros.ts` liga `data_venda → DATA DA VENDA`, `sincronizar.ts` a lê, e a carga
+real do board `18404493605` gravou **38 de 38** preenchidos. A afirmação de que
+"a ingestão ainda não alimenta `data_venda`" era factualmente errada quando foi
+escrita.
+
+Vale como método: a regra descreveu o código de memória em vez de conferir. O
+mesmo documento que corrigiu um entendimento errado sobre o Sienge (§4.1) trazia
+um sobre o próprio repositório.
+
+### 2. O que ela carrega não é a revenda
+
+É a venda ORIGINAL ao cliente que está saindo. Três evidências convergentes:
+
+- `data_venda` é **anterior** à `data_solicitacao` em **36 dos 38** registros;
+- o intervalo médio venda → solicitação é de **300 dias**, com máximo de 1312;
+- a fórmula da coluna `PERÍODO (DIAS)` no board é
+  `DAYS({DATA DA SOLICITAÇÃO}, {DATA DA VENDA})` — o quadro define esse par como
+  período de posse.
+
+Usá-la como data de revenda daria número **plausível e errado**, inflado por
+todo o tempo em que o cliente teve a unidade. É o terceiro caso nesta série em
+que a fórmula da origem decide um mapeamento: em B17.1 confirmou `RESOLUÇÃO`,
+em B17.4 desmentiu `PERÍODO (DIAS) → tempo_dias`, e aqui desmente
+`DATA DA VENDA → revenda`.
+
+**Nenhum dos dois quadros tem coluna de revenda** — conferido em `18404493605`
+e `18413057491`.
+
+### 3. Não há nenhuma recompra registrada para medir
+
+A seção 3 daquele documento diz que a recompra é acompanhada "no quadro de
+Distratos e Retomadas, com `categoria = 'recompra'`". Os grupos reais são:
+
+| Quadro | Grupos |
+| --- | --- |
+| `18404493605` Distratos | `DISTRATOS` (26), `DESISTÊNCIAS` (12) |
+| `18413057491` Retomadas | `RETOMADAS` (23) |
+
+`classificarCategoriaDistrato()` só produz `recompra` para grupo
+`RECOMPRA`/`RE-COMPRA`. **Nenhum existe.** Hoje `recompra` é um valor que o
+`CHECK` do banco aceita e que a ingestão nunca produz.
+
+O desenho ficou meio construído sem que isso aparecesse: o estágio `Recompra`
+**existe** na notificação (board `5630368737`) e a encerra corretamente — B17.3
+—, mas a notificação encerra apontando para um acompanhamento que **nenhum
+quadro faz**. O lado que fecha foi implementado; o lado que continua, não.
+
+### Encaminhamento revisado
+
+Na ordem, e nenhum se obtém ajustando mapa de colunas:
+
+1. a recompra precisa existir na ORIGEM, com grupo próprio num dos dois quadros;
+2. uma data de revenda precisa existir na ORIGEM, distinta de `DATA DA VENDA` —
+   e o nome importa, porque as duas são "venda" e serão confundidas;
+3. só então o ciclo acordo → revenda pode ser derivado.
+
+Até lá, **`distratos.data_venda` não deve ser lida como data de revenda**.
+`docs/REGRA-SAIDA-DE-CLIENTE.md` foi corrigido nas seções 4.2, 4.3 e 6.
+
+### Anomalia registrada
+
+2 dos 38 registros têm `data_venda` igual ou posterior à solicitação —
+`VERANO 1003B` por 46 dias. Erro de digitação ou uso da coluna com outro sentido
+naquela linha. Conferência do jurídico.
+
+### Correção aplicada sobre o commit paralelo `e86fff3`
+
+Enquanto esta verificação rodava, outra sessão acrescentou candidatos de data de
+venda aos dois quadros, com a justificativa de medir o ciclo da recompra. A
+intenção está certa e a seção 7 que ela escreveu é o plano correto; **duas
+premissas do Passo 1, não.**
+
+**1. Recompra não tem grupo próprio no quadro de Retomadas.** O board
+`18413057491` tem um único grupo, `RETOMADAS`, com 23 itens. Conferido duas
+vezes contra a origem.
+
+**2. Incluir `DATA DA VENDA` na lista de Retomadas era ativamente perigoso.**
+Aquele board TEM essa coluna, e ela é a venda original: datas de 2022 a 2025
+contra solicitações de 2026, com a mesma fórmula `DAYS({SOLICITAÇÃO},{VENDA})`.
+Com ela na lista, `retomadas.data_venda` sairia preenchido em quase todo item —
+com a data errada. E pelo critério do Passo 2 da própria seção 7, alguém leria
+"a coluna existe e está preenchida → o indicador sai direto" e publicaria um
+indicador que trata toda retomada como recompra concluída.
+
+É o pior dos três desfechos previstos, **porque parece o melhor**. Um campo
+nulo é obviamente uma lacuna; um campo preenchido com o dado errado não.
+
+Em Retomadas, `data_venda` passou a aceitar só títulos de revenda
+(`DATA DA REVENDA`, `REVENDA`, `NOVA VENDA`). Nenhum existe, o campo cai em
+`ausentes` e fica nulo — que é o que o próprio Passo 1 pede quando escreve
+"procurar não inventa dado". Em Distratos a lista segue aceitando
+`DATA DA VENDA`: lá o sentido é a venda original, e a assimetria entre os dois
+quadros é deliberada.
+
+O Passo 2 daquela seção — "a homologação de Distratos e Retomadas responde" —
+está respondido: vale a terceira saída, a coluna não existe. E falta mais do que
+ela previa: das três informações necessárias, **duas faltam**, porque não há
+nenhuma recompra registrada.
+
+### Nota de modelagem levantada, não decidida
+
+`distratos.data_venda` é gravada pelos dois quadros, que compartilham a tabela.
+Se Retomadas passar a alimentá-la com a revenda e Distratos continuar com a
+venda original, a mesma coluna significa coisas diferentes conforme a
+`categoria`. Vale decidir antes de criar a coluna no Monday: campo próprio
+(`data_revenda`) ou um sentido só. Não foi decidido aqui.
+
+### Verificação
+
+Cinco testes novos em `test/monday-distratos.test.ts`: nenhum grupo real produz
+`recompra`; a regra de recompra continua valendo se o grupo passar a existir
+(a capacidade está pronta — o que falta é a origem); `data_venda` sai de
+`DATA DA VENDA`, sem nenhum título de revenda no quadro; Retomadas **não** aceita
+`DATA DA VENDA` e cai em `ausentes` contra as colunas reais daquele board; e
+Distratos continua aceitando, fixando a assimetria como deliberada.
+
+O primeiro falha no dia em que o grupo de recompra for criado, que é exatamente
+quando esta regra precisa ser revisitada.
