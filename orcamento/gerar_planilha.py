@@ -697,6 +697,26 @@ PEND = [
      "de custo. Avaliar licenças individuais ou plano de equipe, que costuma sair "
      "mais barato por usuário e separa os históricos.",
      "Cristiane + Vitor", "LEVANTAR", "TI"),
+    ("Y", "Divisão de responsabilidades no acompanhamento",
+     "Definição de quem faz o quê no controle orçamentário do TI. Capacidades: "
+     "Vinicius, analista, 173 h/mês a R$ 31,25/h de custo total; Jonathan, "
+     "consultor/desenvolvedor, 3 dias por semana, 104 h/mês a R$ 60,58/h — o "
+     "dobro. Cristiane na gestão.",
+     "VINICIUS (todo o recorrente): extração mensal do SIENGE e lançamento do "
+     "realizado, controle de equipamentos (solicitações, empréstimos, troca 1x1), "
+     "acompanhamento do saldo por área para avisar antes do estouro, conferência "
+     "de faturas contra contrato. "
+     "JONATHAN (pontual e técnico, nunca rotina): avaliar AnyDesk x Monitor "
+     "Remoto, avaliar Claude x GPT e planos de equipe, e automatizar a extração "
+     "do SIENGE — esta última é a que paga o custo dele, porque devolve tempo do "
+     "analista todos os meses. "
+     "CRISTIANE: negociação de contratos, rateio, o que entra e sai do orçamento, "
+     "apresentação à diretoria. "
+     "Critério: 104 h/mês é capacidade limitada, e cada hora do consultor em "
+     "tarefa administrativa custa o dobro da mesma hora do analista. Se o "
+     "Jonathan aparecer na rotina mensal, é sinal de que algo deveria ter sido "
+     "automatizado.",
+     "Cristiane", "APLICADO", "TI"),
     ("6", "Office 365 — CONFIRMAR se R$ 440 é por licença ou o total",
      "A gestora esclareceu a estrutura: cada licença atende 6 funcionários e "
      "custa R$ 440. Com 10 licenças, fecham os 60 usuários da ficha. Falta "
