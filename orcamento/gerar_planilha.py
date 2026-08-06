@@ -384,12 +384,26 @@ PEND = [
      "bonificação nesse período, o planejado de jan a abr precisa ser corrigido "
      "antes de comparar com o realizado.",
      "Cristiane", "CONFERIR", ""),
-    ("I", "Realizado de jan a abr — A LANÇAR",
-     "As colunas de jan a abr estão em branco na aba Realizado. Só mai, jun e jul "
-     "foram informados.",
-     "São 4 dos 7 meses já fechados do ano. Sem eles o acumulado e o Painel "
-     "refletem menos da metade do período decorrido.",
-     "Cristiane", "A LANÇAR", ""),
+    ("I", "Realizado de ago a dez — a lançar no decorrer do ano",
+     "Jan a jul estão lançados. Ago a dez ficam em branco e serão preenchidos "
+     "conforme os meses fecharem, com a extração do SIENGE.",
+     "Enquanto isso, o mês de referência do Comparativo deve ficar no último mês "
+     "fechado (hoje Jul/26) — assim o acumulado compara períodos iguais dos dois "
+     "lados.",
+     "Cristiane", "EM ANDAMENTO", ""),
+    ("M", "Despesas fora do orçamento identificadas no extrato",
+     "O extrato do financeiro traz gastos relevantes sem linha na ficha. "
+     "Jurídico: Carneiro Rabelo (R$ 107.742) e Cristiane Carneiro Rabelo "
+     "(R$ 94.825), somando R$ 202.567 em sete meses; mais Tribunal de Justiça "
+     "(R$ 49.244), Michele de Oliveira (R$ 23.572) e ONR (R$ 22.576). "
+     "TI: J H Alves / Monitor Remoto (R$ 20.509) e um bloco de telefonia e "
+     "infraestrutura de cerca de R$ 15.700 (Claro, TIM, Telefônica, Locaweb, "
+     "Web Mobile, Sabha, Intelbras, VC1, Alfama).",
+     "Só os dois primeiros credores do Jurídico superam o orçamento anual inteiro "
+     "do departamento. Decidir na reunião quais entram no centro de custo da área "
+     "— e, para os que entrarem, criar linha no orçamento, senão aparecerão como "
+     "'Não orçado' e distorcerão o comparativo.",
+     "Cristiane + Diretoria", "PAUTA REUNIÃO", ""),
     ("J", "Despesas do TI — A LANÇAR",
      "As 9 linhas de despesas do TI (peças, backup, Adapta, antivírus, Office, "
      "sala de reunião, cursos, app de gravação e bonificação) não têm lançamento "
@@ -406,13 +420,16 @@ PEND = [
      "Equipe de TI no valor original de R$ 167.778,30. Jonathan lançado com "
      "entrada em abr/26 (9 meses), que é o que explica os R$ 90.000.",
      "Cristiane", "RESOLVIDO", "TI"),
-    ("2", "Origem do valor realizado",
-     "Ainda não definido se o realizado virá de lançamento manual, de relatório do "
-     "financeiro/ERP por centro de custo, ou misto. Até aqui os números vieram "
-     "informados pela gestora.",
-     "Sem fonte definida o realizado pode divergir da contabilidade e o comparativo "
-     "perde valor na apresentação à diretoria.",
-     "Cristiane + Financeiro", "EM ABERTO", ""),
+    ("2", "Origem do valor realizado — DEFINIDA: SIENGE",
+     "Será aberto um centro de custo próprio no SIENGE e todos os valores do "
+     "realizado serão extraídos de lá. Nada será lançado manualmente. O extrato "
+     "das abas 'Contas Pagas' já vem nesse formato.",
+     "O realizado passa a bater com a contabilidade por construção, que era o "
+     "risco principal. Duas coisas a encaminhar: (1) o de-para entre credor do "
+     "SIENGE e linha do orçamento — a coluna 'Já está no orçamento?' da aba de "
+     "resumo é o rascunho dele; (2) definir se a extração sai por regime de caixa "
+     "ou de competência, ver item 7.",
+     "Cristiane + Financeiro", "RESOLVIDO", ""),
     ("3", "Jusfy x Astrea",
      "O Astrea NÃO foi cancelado: custa R$ 346,00/mês e segue ativo. O Jusfy está "
      "em R$ 0 — ainda não iniciado. A informação anterior de que o Astrea estava "
@@ -466,9 +483,9 @@ PEND = [
      "os valores foram informados.",
      "Consequência: o valor lançado em jan/26 pode ser referente a dez/2025, e o "
      "serviço de dez/26 só aparecerá em jan/2027 — o ano fecha com 12 pagamentos, "
-     "mas defasados em relação ao orçamento, que é de competência. Vale conferir "
-     "quais contratos pagam no mês seguinte e decidir se o comparativo passa para "
-     "competência.",
+     "mas defasados em relação ao orçamento, que é de competência. Com a extração "
+     "vindo do SIENGE, basta escolher o regime na hora de gerar o relatório: "
+     "definir isso UMA vez e manter, para o histórico não misturar critérios.",
      "Cristiane + Financeiro", "DECIDIR", ""),
 ]
 
@@ -1295,7 +1312,7 @@ def gerar(DEPTO, OUT):
                 cores = {"RESOLVIDO": VERDE, "APLICADO": VERDE, "PREENCHER": "F8CBAD",
                          "A LANÇAR": "F8CBAD", "CONFERIR": "FFE699",
                      "BASE DIFERENTE": "F8CBAD", "DECIDIR": "FFE699",
-                     "PAUTA REUNIÃO": "FFD966"}
+                     "PAUTA REUNIÃO": "FFD966", "EM ANDAMENTO": "DDEBF7"}
                 c.fill = PatternFill("solid", fgColor=cores.get(val, LARANJA))
             else:
                 c.fill = PatternFill("solid", fgColor=BRANCO if i % 2 == 0 else CINZA_L)
@@ -1421,11 +1438,12 @@ def gerar(DEPTO, OUT):
 
     PASSOS = [
         ("Rotina mensal", ""),
-        ("1", "Abra a aba REALIZADO e preencha apenas as células amarelas do mês que fechou. "
-              "Se o item não teve gasto no mês, digite 0 — deixar em branco significa "
-              "'ainda não lancei'."),
-        ("2", "Preencha a coluna 'Fonte do dado' (ex.: relatório do financeiro, nota fiscal, "
-              "extrato do cartão) para o número ser auditável depois."),
+        ("1", "Extraia do SIENGE o relatório do centro de custo do departamento, no mês "
+              "que fechou. A fonte do realizado é o SIENGE — nada é digitado de cabeça."),
+        ("2", "Lance na aba REALIZADO, nas células amarelas, o valor de cada linha do "
+              "orçamento. Item sem gasto no mês: digite 0 — deixar em branco significa "
+              "'ainda não lancei'. Use a coluna 'Fonte do dado' para registrar de qual "
+              "relatório o número saiu, com a data da extração."),
         ("3", "Vá na aba COMPARATIVO e selecione o mês em B3. Todas as demais abas "
               "acompanham essa escolha."),
         ("4", "Confira o PAINEL: ele mostra o desvio por departamento e os 5 maiores "
