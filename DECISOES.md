@@ -2062,3 +2062,32 @@ cd server && SIENGE_HABILITADO=true DATABASE_URL=... \
   npx tsx scripts/homologar-sienge.ts --confirmado-por "Nome Sobrenome" \
     --saida ../docs/evidencias/homologacao-sienge.md
 ```
+
+### Desfecho (mesmo dia, 06/08/2026)
+
+Os dois destravamentos foram feitos — `api.sienge.com.br` entrou na allowlist
+de egresso e `SIENGE_PASSWORD` recebeu o valor real — e a homologação rodou
+completa: **7 de 7 endpoints confirmados e registrados**, com autor e trilha
+de auditoria, gastando **10 requisições** da franquia de 1.000/dia. Relatório
+em `docs/evidencias/homologacao-sienge.md`.
+
+Totais reais conferem com o levantamento: 43 empresas, 285 empreendimentos,
+3.257 clientes ativos. `modifiedAfter` funciona (57 clientes alterados em 30
+dias — a carga incremental é viável). Saldo devedor confirmou o resíduo
+decimal além de 2 casas (§8.6). Comissões: 7.382 registros no ambiente.
+
+**Divergência achada e registrada:** a API ACEITOU consulta de títulos SEM
+`customerId` — o §4.4 do levantamento diz que o parâmetro é obrigatório.
+Ficou como aviso na observação da confirmação. Se a listagem geral de títulos
+for real, o desenho da carga muda: talvez não precise passar cliente por
+cliente. Validar com a Coevo antes de aproveitar.
+
+Notas de ambiente que valem para as próximas execuções:
+
+- O `fetch` embutido do Node ignora `HTTPS_PROXY`; neste ambiente o script
+  precisa de `NODE_USE_ENV_PROXY=1` (Node ≥ 22.21). Sem isso o proxy devolve
+  403 e o cliente confunde com credencial recusada.
+- O registro desta homologação vive no PostgreSQL **desta sessão**, que é
+  efêmera. Ao implantar no ambiente definitivo (produção/fly.io), rodar o
+  script de novo contra o `DATABASE_URL` real — as sondas custam 10
+  requisições e o registro nasce no banco certo, com nova evidência.
