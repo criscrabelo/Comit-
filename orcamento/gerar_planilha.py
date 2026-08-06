@@ -106,8 +106,11 @@ LINHAS = [
      "Salário bruto: R$ 2.570,52/mês até jul/26 e R$ 3.070,52 a partir de 05/08/26, "
      "aumento absorvido pela folga do envelope",
      "CLT", "Pessoal - CLT", _12(VIN)),
-    ("TI-E02", "TI", "Equipe", "Elias Benedito", "Suporte Técnico Terceirizado", "PJ",
-     "Pessoal - PJ", _12(1065.00)),
+    # R$ 1.065/mes ate ago; renegociado para R$ 603,30 a partir de set/26.
+    ("TI-E02", "TI", "Equipe", "Elias Benedito",
+     "Suporte Técnico Terceirizado — R$ 1.065/mês até ago/26; R$ 603,30 a partir "
+     "de set/26 (renegociação)",
+     "PJ", "Pessoal - PJ", [1065.00] * 8 + [603.30] * 4),
     # Orcado desde jan/26 pelos 12 meses, conforme a gestora. A ficha trazia
     # R$ 90.000 (9 meses), valor que nao refletia o orcamento aprovado.
     ("TI-E03", "TI", "Equipe", "Jonathan",
@@ -159,6 +162,11 @@ LINHAS = [
      "Ferramenta de IA — não constava na ficha. Planejado a definir com a "
      "diretoria. RATEIO A DEFINIR: uso transversal entre as áreas. CONFERIR o "
      "nome exato do produto e a sobreposição com 'Inteligência Artificial (Adapta)'",
+     "", "Licenças de Softwares", _12(0.00)),
+    ("TI-D14", "TI", "Despesas", "AnyDesk",
+     "Licença de acesso remoto — contratação prevista, não constava na ficha. "
+     "Valor e mês de início a definir. CONFERIR sobreposição com o serviço de "
+     "monitoramento remoto já contratado (J H Alves)",
      "", "Licenças de Softwares", _12(0.00)),
     ("TI-D09", "TI", "Despesas", "Bonificação do time",
      "Cumprimento de prazos e participação em projetos — CONFIRMAR se houve "
@@ -417,12 +425,15 @@ PEND = [
      "R$ 6.300 se mantiver até dez, somam-se outros R$ 18.500 — total de "
      "R$ 63.300 no ano. Vale destacar na apresentação à diretoria.",
      "Cristiane", "RESOLVIDO", "TI"),
-    ("G", "Elias Benedito zerado nos três meses",
-     "Orçado R$ 1.065/mês como suporte técnico terceirizado, realizado R$ 0 "
-     "em mai, jun e jul.",
-     "Confirmar se o contrato segue ativo (acionamento sob demanda) ou se foi "
-     "encerrado. Se encerrado, são R$ 12.780 a liberar no orçamento do ano.",
-     "Cristiane", "EM ABERTO", "TI"),
+    ("G", "Elias Benedito — sem custo até jul, renegociado para set",
+     "Orçado R$ 1.065/mês, realizado R$ 0 de jan a jul — contrato ativo, mas sem "
+     "acionamento no período (confirmado pela gestora). O pagamento passa a "
+     "ocorrer agora, e a partir de set/26 o valor foi renegociado de R$ 1.065 "
+     "para R$ 603,30.",
+     "Duas economias na mesma linha: R$ 7.455 pelos sete meses sem acionamento, e "
+     "R$ 461,70/mês (43%) a partir de set pela renegociação — R$ 1.846,80 no ano. "
+     "O planejado já reflete o valor novo de set a dez.",
+     "Cristiane", "RESOLVIDO", "TI"),
     ("H", "Planejado de jan a abr — conferido",
      "O 1º quadrimestre foi preenchido replicando os valores mensais conhecidos, "
      "porque a ficha original só trazia o grid de mai a dez. Exceções tratadas: "
@@ -648,6 +659,17 @@ PEND = [
      "histórico, é o mesmo caso do Adapta (item Q): classificação errada, "
      "corrigir na origem quando o centro de custo novo for aberto.",
      "Cristiane + Administrativo", "RECOMENDAÇÃO", "TI"),
+    ("V", "AnyDesk — contratação prevista, definir valor",
+     "Licença de acesso remoto que será contratada e não constava na ficha. Linha "
+     "criada com planejado zerado, à espera do valor e do mês de início.",
+     "ATENÇÃO À SOBREPOSIÇÃO: o extrato mostra R$ 20.508,55 pagos a J H ALVES — "
+     "MONITOR REMOTO de jan a jul, o maior fornecedor de despesa do TI e também "
+     "fora do orçamento (item M). Se o AnyDesk cobre a mesma necessidade, é "
+     "substituição e pode gerar economia; se é complementar, é custo novo somado "
+     "a um custo que já não estava previsto. Esclarecer antes de contratar — é o "
+     "mesmo padrão do Jusfy x Astrea, em que dois softwares de função parecida "
+     "quase rodaram em paralelo.",
+     "Cristiane", "DEFINIR VALOR", "TI"),
     ("6", "Office 365 — nº de licenças",
      "A observação diz '10 licenças de software – 60 usuários'. Os dois números "
      "não fecham entre si.",
