@@ -67,8 +67,9 @@ LINHAS = [
     # e mantido nos meses ja fechados (jan-jul) para o desvio ficar visivel, e o
     # planejado e revisado para R$ 5.500 de ago em diante — os meses a realizar.
     ("JUR-E03", "Jurídico", "Equipe", "Thamar Victória",
-     "Advogada — recebe R$ 5.500/mês desde jan/26 contra R$ 5.000 orçados. "
-     "Planejado revisado para R$ 5.500 a partir de ago/26",
+     "Advogada — recebia R$ 4.500/mês em jan–fev e passou a R$ 5.500 em mar/26 "
+     "(aumento de R$ 1.000), contra R$ 5.000 orçados. Planejado revisado para "
+     "R$ 5.500 a partir de ago/26",
      "PJ", "Pessoal - PJ", [5000.00] * 7 + [5500.00] * 5),
     # JURIDICO - DESPESAS
     ("JUR-D01", "Jurídico", "Despesas", "JUSFY",
@@ -147,7 +148,9 @@ REALIZADO = {
     "JUR-E02": ([None] * 12, "",
                 "PREENCHER com o CUSTO TOTAL. Bruto informado: R$ 2.886,91/mês — "
                 "faltam encargos e benefícios"),
-    "JUR-E03": (_r7(5500.00), FONTE_JUR, "Reajuste permanente aplicado desde mai/26"),
+    # R$ 4.500 em jan e fev; aumento de R$ 1.000 a partir de mar/26.
+    "JUR-E03": ([4500.00] * 2 + [5500.00] * 5 + [None] * 5, FONTE_JUR,
+                "R$ 4.500/mês em jan–fev; aumento de R$ 1.000 a partir de mar/26"),
     "JUR-D01": (_r7(0.00), FONTE_JUR, "Ainda não iniciado — sem cobrança"),
     "JUR-D02": (_r7(136.00), FONTE_JUR, "Acima do orçado (R$ 104,90) — conferir contrato"),
     "JUR-D03": (_r7(0.00), FONTE_JUR, "Cancelado — sem cobrança"),
@@ -240,13 +243,15 @@ PEND = [
      "faixa normal (67% a 80%), então pode sobrar ou estourar. Só o custo total "
      "real vai dizer.",
      "Cristiane + RH", "A LANÇAR", "TI"),
-    ("C", "Thamar acima do orçado desde janeiro",
-     "Recebe R$ 5.500/mês desde jan/26 contra R$ 5.000 orçados. O planejado foi "
-     "mantido em R$ 5.000 nos sete meses fechados (para o desvio ficar visível) e "
-     "revisado para R$ 5.500 de ago a dez.",
-     "R$ 3.500 já gastos acima do orçado em jan–jul, e mais R$ 2.500 previstos até "
+    ("C", "Aumento da Thamar em mar/26",
+     "Recebia R$ 4.500/mês em jan e fev, abaixo dos R$ 5.000 orçados. Em mar/26 "
+     "teve aumento de R$ 1.000 e passou a R$ 5.500, acima do orçado. O planejado "
+     "foi mantido em R$ 5.000 nos sete meses fechados (para o desvio ficar visível) "
+     "e revisado para R$ 5.500 de ago a dez.",
+     "No acumulado jan–jul o efeito líquido é de R$ 1.500 acima do orçado "
+     "(−R$ 1.000 em jan–fev, +R$ 2.500 em mar–jul), e mais R$ 2.500 previstos até "
      "dezembro. Ao contrário do aumento do Vinicius, este estourou o orçado: não "
-     "havia folga na linha dela. Orçamento do Jurídico sobe para R$ 291.730,42.",
+     "havia folga na linha dela.",
      "Cristiane", "APLICADO", "Jurídico"),
     ("D", "Jusbrasil 30% acima do orçado",
      "Orçado R$ 104,90/mês, realizado R$ 136,00/mês em mai, jun e jul.",
