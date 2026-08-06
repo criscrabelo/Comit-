@@ -102,7 +102,9 @@ LINHAS = [
     # o total digitado a mao na ficha original. O aumento de 05/08 (bruto de 2.570,52
     # para 3.070,52) e absorvido pela folga: o planejado de encargos e o residuo.
     ("TI-E01", "TI", "Equipe", "Vinicius Di Franco",
-     "Analista Administrativo — orçado pelo custo total (encargos de folha + benefícios). "
+     "Analista Administrativo — suporte ao usuário, rotina administrativa do "
+     "orçamento e apoio operacional ao desenvolvimento conduzido pelo consultor. "
+     "Orçado pelo custo total (encargos de folha + benefícios). "
      "Salário bruto: R$ 2.570,52/mês até jul/26 e R$ 3.070,52 a partir de 05/08/26, "
      "aumento absorvido pela folga do envelope",
      "CLT", "Pessoal - CLT", _12(VIN)),
@@ -113,10 +115,18 @@ LINHAS = [
      "PJ", "Pessoal - PJ", [1065.00] * 8 + [603.30] * 4),
     # Orcado desde jan/26 pelos 12 meses, conforme a gestora. A ficha trazia
     # R$ 90.000 (9 meses), valor que nao refletia o orcamento aprovado.
-    ("TI-E03", "TI", "Equipe", "Jonathan",
-     "Consultor — orçado desde jan/26. As atividades só começaram em abr/26: a "
-     "contratação foi segurada por três meses",
+    ("TI-E03", "TI", "Equipe", "Jonathan — consultor (desde abr/26)",
+     "Consultor/desenvolvedor, 3 dias por semana (104 h/mês) desde abr/26. "
+     "Orçado em R$ 10.000/mês desde jan/26; a contratação foi segurada por três "
+     "meses. Credor no SIENGE: J H ALVES — MONITOR REMOTO",
      "PJ", "Pessoal - PJ", _12(10000.00)),
+    # Vinculo anterior do mesmo prestador: servicos esporadicos, prestados de fora,
+    # ate mar/26. Natureza diferente da consultoria fixa, por isso linha separada.
+    ("TI-E04", "TI", "Equipe", "Monitor Remoto — serviços esporádicos (até mar/26)",
+     "Mesmo prestador do TI-E03, em vínculo anterior: serviços esporádicos "
+     "prestados de fora, encerrados quando ele passou a atuar como consultor "
+     "fixo em abr/26. Não constava na ficha de orçamento",
+     "PJ", "Pessoal - PJ", _12(0.00)),
     # TI - DESPESAS
     ("TI-D01", "TI", "Despesas", "Peças de Manutenção",
      "Tela, teclado, carcaça, mouses de reposição, carregadores etc.", "",
@@ -225,12 +235,16 @@ REALIZADO = {
                "PREENCHER com o CUSTO TOTAL. Bruto: R$ 2.570,52/mês até jul e "
                "R$ 3.070,52 de ago — faltam encargos e benefícios"),
     "TI-E02": (_r7(0.00), FONTE_JUR, "Sem acionamento no período — confirmar se o contrato segue ativo"),
-    # Lancado pelo extrato (credor "J H ALVES - MONITOR REMOTO"), regime de caixa.
-    "TI-E03": ([4311.56, 0.00, 0.00, 0.00, 3723.62, 6173.37, 6300.00] + [None] * 5,
+    # Consultoria fixa: pagamentos de 01/05 em diante.
+    "TI-E03": ([0.00] * 4 + [3723.62, 6173.37, 6300.00] + [None] * 5,
                "Extrato do financeiro",
-               "Credor 'J H ALVES - MONITOR REMOTO'. Pagamentos: 19/01 NFS.70 "
-               "R$ 4.311,56; 01/05 NFS.76 R$ 3.723,62; 01/06 NFS.78 R$ 6.173,37; "
-               "01/07 NFS.3 R$ 6.300,00. Sem pagamento em fev, mar e abr"),
+               "01/05 NFS.76 R$ 3.723,62; 01/06 NFS.78 R$ 6.173,37; 01/07 NFS.3 "
+               "R$ 6.300,00. Sem pagamento em jan–abr: contratação segurada"),
+    # Vinculo esporadico anterior: unico pagamento em jan, encerrado.
+    "TI-E04": ([4311.56] + [0.00] * 11, "Extrato do financeiro",
+               "19/01 NFS.70 R$ 4.311,56 — serviço esporádico, provavelmente "
+               "referente a dez/25. Vínculo encerrado com a entrada como "
+               "consultor fixo"),
 }
 
 # Linhas cujo realizado esta numa base diferente do orcado (bruto x custo total).
@@ -419,19 +433,28 @@ PEND = [
      "O realizado de agosto ainda não foi informado.",
      "É a maior despesa isolada do Jurídico no segundo semestre.",
      "Cristiane", "EM ABERTO", "Jurídico"),
-    ("F", "Jonathan — economia de R$ 49.491 até julho",
-     "Orçado R$ 10.000/mês desde jan/26. A contratação foi segurada e o serviço "
-     "só começou depois, chegando a R$ 6.300/mês. Realizado pelo extrato, no "
-     "credor 'J H ALVES — MONITOR REMOTO': R$ 4.311,56 em jan, nada em fev, mar "
-     "e abr, e R$ 3.723,62, R$ 6.173,37 e R$ 6.300,00 em mai, jun e jul. "
-     "Total de R$ 20.508,55 contra R$ 70.000 orçados.",
-     "É de longe a maior economia das duas áreas: R$ 49.491,45 em sete meses, e "
+    ("F", "Jonathan — economia de R$ 53.803 até julho",
+     "Orçado R$ 10.000/mês desde jan/26, com a contratação segurada até abr/26, "
+     "quando ele passou a atuar como consultor fixo, 3 dias por semana. "
+     "Realizado de R$ 16.196,99 em jan–jul (pagamentos de mai, jun e jul) contra "
+     "R$ 70.000 orçados. O vínculo anterior, de serviços esporádicos prestados "
+     "de fora, foi separado na linha TI-E04.",
+     "É de longe a maior economia das duas áreas: R$ 53.803,01 em sete meses, e "
      "decorre de decisão de gestão, não de erro de orçamento. Vale destacar na "
-     "apresentação. DOIS PONTOS A ESCLARECER: (1) o pagamento de R$ 4.311,56 em "
-     "19/01 é anterior ao início das atividades — provavelmente serviço de "
-     "dez/2025 recebido no mês seguinte, confirmar; (2) mai e jun saíram abaixo "
-     "de R$ 6.300 (R$ 3.723,62 e R$ 6.173,37), verificar se foi proporcional por "
-     "dias trabalhados.",
+     "apresentação. A CONFERIR: mai e jun saíram abaixo de R$ 6.300 "
+     "(R$ 3.723,62 e R$ 6.173,37) — verificar se foi proporcional aos dias "
+     "trabalhados no início do contrato.",
+     "Cristiane", "CONFERIR", "TI"),
+    ("Z", "Serviços esporádicos do Monitor Remoto — fora do orçamento",
+     "Antes de entrar como consultor fixo, o mesmo prestador atendia de fora, em "
+     "serviços esporádicos. Consta um pagamento de R$ 4.311,56 em 19/01/26 "
+     "(NFS.70), provavelmente referente a dez/25 pelo regime de caixa. Esse "
+     "vínculo não estava na ficha de orçamento e foi encerrado em abr/26.",
+     "Linha TI-E04 criada com planejado zero, então o valor aparece como 'Não "
+     "orçado'. Como o vínculo acabou, não haverá novos lançamentos — a linha "
+     "existe para o histórico não se misturar com a consultoria fixa. Confirmar "
+     "se houve pagamento esporádico em fev e mar que não caiu no centro de custo "
+     "do TI.",
      "Cristiane", "CONFERIR", "TI"),
     ("G", "Elias Benedito — sem custo até jul, renegociado para set",
      "Orçado R$ 1.065/mês, realizado R$ 0 de jan a jul — contrato ativo, mas sem "
@@ -709,10 +732,14 @@ PEND = [
      "Vinicius, analista, 173 h/mês a R$ 31,25/h de custo total; Jonathan, "
      "consultor/desenvolvedor, 3 dias por semana, 104 h/mês a R$ 60,58/h — o "
      "dobro. Cristiane na gestão.",
-     "VINICIUS (todo o recorrente): extração mensal do SIENGE e lançamento do "
-     "realizado, controle de equipamentos (solicitações, empréstimos, troca 1x1), "
-     "acompanhamento do saldo por área para avisar antes do estouro, conferência "
-     "de faturas contra contrato. "
+     "VINICIUS (suporte + recorrente + apoio ao desenvolvimento): suporte ao "
+     "usuário; extração mensal do SIENGE e lançamento do realizado; controle de "
+     "equipamentos (solicitações, empréstimos, troca 1x1); acompanhamento do "
+     "saldo por área para avisar antes do estouro; conferência de faturas contra "
+     "contrato; e apoio operacional ao Jonathan no que o desenvolvimento exigir. "
+     "Esse apoio é o que multiplica as 104 h/mês do consultor: cada tarefa "
+     "operacional que sai das mãos dele por R$ 31,25/h é uma hora de R$ 60,58 "
+     "liberada para o que só ele faz. "
      "JONATHAN (pontual e técnico, nunca rotina): avaliar AnyDesk x Monitor "
      "Remoto, avaliar Claude x GPT e planos de equipe, e automatizar a extração "
      "do SIENGE — esta última é a que paga o custo dele, porque devolve tempo do "
