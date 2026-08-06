@@ -613,6 +613,23 @@ PEND = [
      "que é o que dá leitura gerencial, e não item a item. Mesmo critério vale "
      "para 'Equipamentos Eletrônicos Diversos' e demais rubricas genéricas.",
      "Cristiane", "APLICADO", "TI"),
+    ("T", "Política de troca 1x1 e empréstimo — IMPLANTAR",
+     "Hoje não existe regra: o pedido chega e a compra é feita. A proposta é que "
+     "para receber um item novo a pessoa entregue o que quebrou (troca 1x1), e "
+     "que exista um equipamento reserva para empréstimo imediato, para ninguém "
+     "ficar parado esperando. O reserva é COM FIO de propósito: mais barato e "
+     "menos confortável que o definitivo, o que cria o incentivo natural para "
+     "devolver e fechar a troca. A aba 'Controle de Equipamentos' já está pronta "
+     "para o registro.",
+     "Além de controlar estoque, a troca 1x1 gera dado de durabilidade e padrão "
+     "de uso — se uma área quebra três vezes mais que as outras, isso aparece. "
+     "Encaminhar: (1) comunicar a regra às áreas; (2) montar o pequeno estoque de "
+     "reserva; (3) definir quantos dias o empréstimo pode durar antes de virar "
+     "'Atrasado'; (4) verificar com o financeiro se o lançamento pode nascer no "
+     "centro de custo da área solicitante — se puder, o controle de custo por "
+     "área sai do próprio SIENGE e esta aba fica só para o que ainda não virou "
+     "pagamento.",
+     "Cristiane", "IMPLANTAR", "TI"),
     ("6", "Office 365 — nº de licenças",
      "A observação diz '10 licenças de software – 60 usuários'. Os dois números "
      "não fecham entre si.",
@@ -1480,6 +1497,116 @@ def gerar(DEPTO, OUT):
         wn.row_dimensions[rr].height = 58
 
     widths(wn, {"A": 5, "B": 30, "C": 52, "D": 52, "E": 22, "F": 14})
+
+    # ===========================================================================
+    # ABA DE CONTROLE - EQUIPAMENTOS (so no TI)
+    # ===========================================================================
+    if DEPTO in (None, "TI"):
+        wq = wb.create_sheet("Controle de Equipamentos")
+        titulo(wq, "CONTROLE DE EQUIPAMENTOS — solicitações, troca 1x1 e empréstimos",
+               "Registro operacional do TI. O SIENGE mostra o que foi PAGO; esta aba mostra "
+               "o que foi PEDIDO — é no intervalo entre os dois que dá para avisar a área "
+               "antes de estourar o saldo.", 10)
+
+        r = 4
+        wq.merge_cells(start_row=r, start_column=1, end_row=r, end_column=10)
+        c = wq.cell(row=r, column=1, value="REGRAS")
+        c.font = Font(bold=True, size=11, color=BRANCO)
+        c.fill = PatternFill("solid", fgColor=AZUL_MED)
+        c.alignment = Alignment(indent=1, vertical="center")
+        wq.row_dimensions[r].height = 22
+        r += 1
+        regras = [
+            ("Troca 1x1", "Para receber um item novo, a pessoa entrega o que quebrou. "
+                          "O patrimônio devolvido é registrado na coluna própria."),
+            ("Empréstimo", "Quem está sem o equipamento sai com um reserva na hora, para não "
+                           "ficar parado. O reserva é COM FIO de propósito: mais barato e "
+                           "menos confortável que o definitivo, o que cria o incentivo para "
+                           "devolver e fechar a troca."),
+            ("Sem devolução", "Se a pessoa não entrega o item antigo, a solicitação fica "
+                              "'Pendente devolução' e não vira compra até ser resolvida."),
+            ("Aviso de saldo", "Antes de aprovar, conferir o saldo da rubrica da área "
+                               "solicitante. Se a compra for levar ao estouro, avisar a área "
+                               "ANTES de comprar (pendência R)."),
+        ]
+        for lab, txt in regras:
+            wq.cell(row=r, column=1, value=lab).font = Font(bold=True, size=9)
+            wq.merge_cells(start_row=r, start_column=2, end_row=r, end_column=10)
+            cc = wq.cell(row=r, column=2, value=txt)
+            cc.font = Font(size=9)
+            cc.alignment = Alignment(wrap_text=True, vertical="top")
+            for col in range(1, 11):
+                wq.cell(row=r, column=col).border = BORDA
+            wq.row_dimensions[r].height = 30
+            r += 1
+
+        r += 1
+        wq.merge_cells(start_row=r, start_column=1, end_row=r, end_column=10)
+        c = wq.cell(row=r, column=1, value="SOLICITAÇÕES")
+        c.font = Font(bold=True, size=11, color=BRANCO)
+        c.fill = PatternFill("solid", fgColor=AZUL)
+        c.alignment = Alignment(indent=1, vertical="center")
+        wq.row_dimensions[r].height = 22
+        r += 1
+        header(wq, r, ["Data", "Área solicitante", "Solicitante", "Item", "Motivo",
+                       "Devolveu o antigo?", "Patrimônio devolvido",
+                       "Valor estimado", "Status", "Observações"])
+        sol_hdr = r
+        for i in range(40):
+            rr = r + 1 + i
+            for col in range(1, 11):
+                cc = wq.cell(row=rr, column=col)
+                cc.border = BORDA
+                cc.fill = PatternFill("solid", fgColor=INPUT_BG)
+                cc.font = Font(size=9)
+                if col == 8:
+                    cc.number_format = MOEDA
+        dv_sit = DataValidation(
+            type="list", allow_blank=True, showDropDown=False,
+            formula1='"Aberta,Aguardando devolução,Aprovada,Comprada,Entregue,Negada"')
+        wq.add_data_validation(dv_sit)
+        dv_sit.add("I{0}:I{1}".format(sol_hdr + 1, sol_hdr + 40))
+        dv_dev = DataValidation(type="list", allow_blank=True, showDropDown=False,
+                                formula1='"Sim,Não,Não se aplica"')
+        wq.add_data_validation(dv_dev)
+        dv_dev.add("F{0}:F{1}".format(sol_hdr + 1, sol_hdr + 40))
+        wq.auto_filter.ref = "A{0}:J{1}".format(sol_hdr, sol_hdr + 40)
+        r = sol_hdr + 42
+
+        wq.merge_cells(start_row=r, start_column=1, end_row=r, end_column=10)
+        c = wq.cell(row=r, column=1, value="EMPRÉSTIMOS (equipamento reserva)")
+        c.font = Font(bold=True, size=11, color=BRANCO)
+        c.fill = PatternFill("solid", fgColor="1E6B3A")
+        c.alignment = Alignment(indent=1, vertical="center")
+        wq.row_dimensions[r].height = 22
+        r += 1
+        header(wq, r, ["Item emprestado", "Patrimônio", "Área", "Pessoa",
+                       "Saída em", "Previsão de devolução", "Devolvido em",
+                       "Status", "Dias em posse", "Observações"], fill="1E6B3A")
+        emp_hdr = r
+        for i in range(25):
+            rr = r + 1 + i
+            for col in range(1, 11):
+                cc = wq.cell(row=rr, column=col)
+                cc.border = BORDA
+                cc.fill = PatternFill("solid", fgColor=INPUT_BG)
+                cc.font = Font(size=9)
+            # dias em posse: da saida ate a devolucao, ou ate hoje se ainda em uso
+            cc = wq.cell(row=rr, column=9,
+                         value='=IF(E{0}="","",IF(G{0}="",TODAY()-E{0},G{0}-E{0}))'.format(rr))
+            cc.number_format = "0"
+            cc.font = Font(size=9)
+            cc.alignment = Alignment(horizontal="center")
+            cc.border = BORDA
+            cc.fill = PatternFill("solid", fgColor=CINZA_L)
+        dv_emp = DataValidation(type="list", allow_blank=True, showDropDown=False,
+                                formula1='"Emprestado,Devolvido,Atrasado,Baixado"')
+        wq.add_data_validation(dv_emp)
+        dv_emp.add("H{0}:H{1}".format(emp_hdr + 1, emp_hdr + 25))
+
+        widths(wq, {"A": 22, "B": 18, "C": 22, "D": 26, "E": 30, "F": 18,
+                    "G": 20, "H": 15, "I": 14, "J": 30})
+        wq.freeze_panes = "A{0}".format(sol_hdr + 1)
 
     # ===========================================================================
     # ABA DE APOIO - CONCILIACAO ASTREA
