@@ -583,6 +583,19 @@ PEND = [
      "diluída linearmente, e se for compra única o desvio mensal vai acusar "
      "economia falsa todo mês até a compra e um pico no mês em que ocorrer.",
      "Cristiane + Diretoria", "PAUTA REUNIÃO", "TI"),
+    ("R", "Notebooks — TI compra, mas não enxerga o saldo das áreas",
+     "Cada área tem a própria linha de orçamento para notebooks, mas é o TI que "
+     "recebe a solicitação e executa a compra quando surge a necessidade. Hoje o "
+     "TI não tem acompanhamento do orçamento das outras áreas, então aprova "
+     "pedidos sem saber quanto resta em cada uma.",
+     "O TI vira o executor de um estouro que não é dele e que ninguém percebe "
+     "antes de acontecer — a área descobre no fechamento, quando já comprou. "
+     "Proposta: o TI passa a acompanhar o saldo da rubrica de notebooks de cada "
+     "área e avisa quando a solicitação for levar ao estouro, antes de comprar. "
+     "Com o centro de custo no SIENGE, esse acompanhamento sai do mesmo "
+     "relatório. Definir com a diretoria quem dá o aval quando o saldo acabar: "
+     "a área solicitante, o TI ou a controladoria.",
+     "Cristiane + Diretoria", "PAUTA REUNIÃO", "TI"),
     ("6", "Office 365 — nº de licenças",
      "A observação diz '10 licenças de software – 60 usuários'. Os dois números "
      "não fecham entre si.",
