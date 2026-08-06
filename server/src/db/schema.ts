@@ -299,6 +299,20 @@ export interface TabelaUnidades extends Proveniencia {
   tipo_financiamento: string | null;
 }
 
+export interface TabelaTitulosReceber extends Proveniencia {
+  id: Auto<string>;
+  empresa: string | null;
+  empreendimento_id: string | null;
+  cliente_id: string | null;
+  contrato_id: string | null;
+  unidade_id: string | null;
+  /** Identificador original do Sienge, preservado. */
+  numero_titulo: string | null;
+  situacao: string | null;
+  valor_nominal: string | null;
+  saldo_atualizado: string | null;
+}
+
 export interface TabelaClientes extends Proveniencia {
   id: Auto<string>;
   nome: string;
@@ -919,6 +933,7 @@ export interface Database {
   empreendimentos_fontes: TabelaEmpreendimentosFontes;
   unidades: TabelaUnidades;
   clientes: TabelaClientes;
+  titulos_receber: TabelaTitulosReceber;
   contratos: TabelaContratos;
 
   integracoes: TabelaIntegracoes;

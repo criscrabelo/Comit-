@@ -29,7 +29,8 @@ export type TabelaIntegravel =
   | 'notificacoes'
   | 'processos_judiciais'
   | 'distratos'
-  | 'honorarios';
+  | 'honorarios'
+  | 'titulos_receber';
 
 export interface RegistroParaUpsert {
   /** Identificador no sistema de origem. Obrigatorio: e a chave da idempotencia. */

@@ -2123,3 +2123,57 @@ desenho da carga: parcelas apenas dos títulos que interessam à inadimplência
 demanda para os demais.
 
 Consumo do dia após a sonda: 12 requisições das 1.000 (10 da homologação + 2).
+
+## B20 — Primeira carga controlada do Sienge executada
+
+**Data:** 2026-08-06 · Autorizada pela Cristiane ("pode"). Duas passagens
+completas contra a API real; relatório em `docs/evidencias/carga-sienge.md`.
+
+### Os números
+
+| Conjunto | Lidos | Destino |
+| --- | ---: | --- |
+| Empresas | 43 | registro bruto (alimenta o mapa companyId → nome) |
+| Empreendimentos | 285 | **registro bruto SOMENTE** |
+| Clientes | 3.257 | `clientes` — 3.243 com CPF/CNPJ válido por dígito (99,6%) |
+| Títulos | 5.142 | `titulos_receber` — **100% ligados a cliente por id do Sienge** |
+
+Segunda passagem: **0 incluídos, 0 atualizados, tudo inalterado** — upsert
+idempotente provado no rito de sempre. Consumo: 92 requisições; saldo 808/900.
+
+Agregados da carteira (flags factuais da API, nenhuma classificação nossa):
+
+- em aberto: 3.835 títulos · R$ 990,5 mi
+- **inadimplentes: 1.022 títulos · R$ 188,0 mi**
+- quitados: 285 títulos · R$ 28,8 mi
+- sub judice: 0 (a flag existe e veio false em todos)
+
+### Decisões de desenho tomadas na carga
+
+1. **285 empreendimentos do Sienge NÃO viraram entidades.** Incluem SPEs e
+   bases auxiliares; despejar isso na entidade que as telas usam repetiria o
+   problema da SPE do quadro de Distratos. O casamento com os 28 do Monday é
+   a próxima etapa, com regra explícita.
+2. **Documento válido duplicado dentro do lote** não colide com o índice
+   único: o primeiro fica com o documento, os demais entram sem e viram
+   inconsistência de duplicidade. Nesta carga: 0 casos.
+3. **Situação do título é factual**: quitado (payOffDate), inadimplente
+   (defaulting) ou em aberto — direto das flags da API, nada inferido.
+4. **Parcelas ficaram fora**, conforme B19.2: 1 requisição por título (5.142)
+   estoura a franquia. Estratégia: parcelas só dos 1.022 inadimplentes —
+   cabe em dois dias de franquia, ou um com folga se limitado aos maiores.
+5. Confirmações da homologação **reidratadas** neste banco citando o ato de
+   06/08 (docs/evidencias/homologacao-sienge.md) — restauração de estado, não
+   nova aprovação.
+
+### Ressalva de ambiente
+
+A carga rodou no banco da sessão (patrono_demo), que morre com o contêiner. O
+que fica é o PIPELINE provado e o relatório versionado; a carga de produção
+repete os mesmos ~46 por passagem quando houver banco durável.
+
+### Próxima etapa (ordem aprovada)
+
+Cruzamento Monday × Sienge: os 3.243 documentos válidos são a chave. Lembrete
+já registrado: recompra aparece como distrato no Sienge — não é inconsistência
+(REGRA-SAIDA-DE-CLIENTE.md §4.1).
