@@ -225,9 +225,12 @@ REALIZADO = {
                "PREENCHER com o CUSTO TOTAL. Bruto: R$ 2.570,52/mês até jul e "
                "R$ 3.070,52 de ago — faltam encargos e benefícios"),
     "TI-E02": (_r7(0.00), FONTE_JUR, "Sem acionamento no período — confirmar se o contrato segue ativo"),
-    "TI-E03": ([0.00] * 3 + [6300.00] * 4 + [None] * 5, FONTE_JUR,
-               "Sem custo em jan–mar (contratação segurada). R$ 6.300/mês a partir "
-               "de abr, contra R$ 10.000 orçados"),
+    # Lancado pelo extrato (credor "J H ALVES - MONITOR REMOTO"), regime de caixa.
+    "TI-E03": ([4311.56, 0.00, 0.00, 0.00, 3723.62, 6173.37, 6300.00] + [None] * 5,
+               "Extrato do financeiro",
+               "Credor 'J H ALVES - MONITOR REMOTO'. Pagamentos: 19/01 NFS.70 "
+               "R$ 4.311,56; 01/05 NFS.76 R$ 3.723,62; 01/06 NFS.78 R$ 6.173,37; "
+               "01/07 NFS.3 R$ 6.300,00. Sem pagamento em fev, mar e abr"),
 }
 
 # Linhas cujo realizado esta numa base diferente do orcado (bruto x custo total).
@@ -266,6 +269,7 @@ DE_PARA = [
     ("Vale Alimentação Vinicius", "TI-E01 Vinicius (benefício)"),
     ("ELIAS", "TI-E02 Elias Benedito"),
     ("JONATHAN", "TI-E03 Jonathan"),
+    ("J H ALVES", "TI-E03 Jonathan (Monitor Remoto)"),
     ("ADAPTA", "TI-D03 / TI-D12 / TI-D13 (Adapta)"),
     ("OPENAI", "TI-D11 GPT"),
     ("ANTHROPIC", "TI-D10 Claude"),
@@ -415,16 +419,20 @@ PEND = [
      "O realizado de agosto ainda não foi informado.",
      "É a maior despesa isolada do Jurídico no segundo semestre.",
      "Cristiane", "EM ABERTO", "Jurídico"),
-    ("F", "Jonathan — economia de R$ 44.800 até julho",
-     "Orçado R$ 10.000/mês desde jan/26. A contratação foi segurada e as "
-     "atividades só começaram em abr/26, a R$ 6.300/mês. Resultado: três meses "
-     "sem custo (R$ 30.000) e quatro meses a R$ 3.700 abaixo do orçado "
-     "(R$ 14.800).",
-     "É de longe a maior economia das duas áreas: R$ 44.800 em sete meses, e "
-     "decorre de decisão de gestão, não de erro de orçamento. Se o valor de "
-     "R$ 6.300 se mantiver até dez, somam-se outros R$ 18.500 — total de "
-     "R$ 63.300 no ano. Vale destacar na apresentação à diretoria.",
-     "Cristiane", "RESOLVIDO", "TI"),
+    ("F", "Jonathan — economia de R$ 49.491 até julho",
+     "Orçado R$ 10.000/mês desde jan/26. A contratação foi segurada e o serviço "
+     "só começou depois, chegando a R$ 6.300/mês. Realizado pelo extrato, no "
+     "credor 'J H ALVES — MONITOR REMOTO': R$ 4.311,56 em jan, nada em fev, mar "
+     "e abr, e R$ 3.723,62, R$ 6.173,37 e R$ 6.300,00 em mai, jun e jul. "
+     "Total de R$ 20.508,55 contra R$ 70.000 orçados.",
+     "É de longe a maior economia das duas áreas: R$ 49.491,45 em sete meses, e "
+     "decorre de decisão de gestão, não de erro de orçamento. Vale destacar na "
+     "apresentação. DOIS PONTOS A ESCLARECER: (1) o pagamento de R$ 4.311,56 em "
+     "19/01 é anterior ao início das atividades — provavelmente serviço de "
+     "dez/2025 recebido no mês seguinte, confirmar; (2) mai e jun saíram abaixo "
+     "de R$ 6.300 (R$ 3.723,62 e R$ 6.173,37), verificar se foi proporcional por "
+     "dias trabalhados.",
+     "Cristiane", "CONFERIR", "TI"),
     ("G", "Elias Benedito — sem custo até jul, renegociado para set",
      "Orçado R$ 1.065/mês, realizado R$ 0 de jan a jul — contrato ativo, mas sem "
      "acionamento no período (confirmado pela gestora). O pagamento passa a "
@@ -454,9 +462,10 @@ PEND = [
      "Jurídico: Carneiro Rabelo (R$ 107.742) e Cristiane Carneiro Rabelo "
      "(R$ 94.825), somando R$ 202.567 em sete meses; mais Tribunal de Justiça "
      "(R$ 49.244), Michele de Oliveira (R$ 23.572) e ONR (R$ 22.576). "
-     "TI: J H Alves / Monitor Remoto (R$ 20.509) e um bloco de telefonia e "
-     "infraestrutura de cerca de R$ 15.700 (Claro, TIM, Telefônica, Locaweb, "
-     "Web Mobile, Sabha, Intelbras, VC1, Alfama).",
+     "TI: um bloco de telefonia e infraestrutura de cerca de R$ 15.700 (Claro, "
+     "TIM, Telefônica, Locaweb, Web Mobile, Sabha, Intelbras, VC1, Alfama). "
+     "O 'J H Alves — Monitor Remoto' NÃO entra nesta lista: é o Jonathan, que já "
+     "tem linha no orçamento (TI-E03).",
      "Só os dois primeiros credores do Jurídico superam o orçamento anual inteiro "
      "do departamento. ATENÇÃO: parte desses valores pode ser repasse ou custa "
      "reembolsável pelo cliente, e não custo da área — foi o caso da Dra. Michele "
@@ -662,13 +671,11 @@ PEND = [
     ("V", "AnyDesk — contratação prevista, definir valor",
      "Licença de acesso remoto que será contratada e não constava na ficha. Linha "
      "criada com planejado zerado, à espera do valor e do mês de início.",
-     "ATENÇÃO À SOBREPOSIÇÃO: o extrato mostra R$ 20.508,55 pagos a J H ALVES — "
-     "MONITOR REMOTO de jan a jul, o maior fornecedor de despesa do TI e também "
-     "fora do orçamento (item M). Se o AnyDesk cobre a mesma necessidade, é "
-     "substituição e pode gerar economia; se é complementar, é custo novo somado "
-     "a um custo que já não estava previsto. Esclarecer antes de contratar — é o "
-     "mesmo padrão do Jusfy x Astrea, em que dois softwares de função parecida "
-     "quase rodaram em paralelo.",
+     "Não há sobreposição com o 'Monitor Remoto' do extrato: aquele credor é o "
+     "Jonathan (J H Alves), consultor, não um software de acesso remoto. O "
+     "AnyDesk é contratação nova e sem substituto atual. Definir valor e mês para "
+     "a linha entrar no orçamento — enquanto o planejado for zero, qualquer "
+     "lançamento aparece como 'Não orçado'.",
      "Cristiane", "DEFINIR VALOR", "TI"),
     ("W", "Vitor (diretoria) — Claude ou GPT? PERGUNTAR",
      "Confirmar com o Vitor se ele seguirá usando o Claude, o GPT, ou os dois. "
