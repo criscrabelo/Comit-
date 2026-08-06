@@ -596,6 +596,23 @@ PEND = [
      "relatório. Definir com a diretoria quem dá o aval quando o saldo acabar: "
      "a área solicitante, o TI ou a controladoria.",
      "Cristiane + Diretoria", "PAUTA REUNIÃO", "TI"),
+    ("S", "Rubricas genéricas — detalhar no lançamento, não no orçamento",
+     "Rubricas como 'Peças de Manutenção' (R$ 9.720/ano) agrupam itens de "
+     "naturezas diferentes: mouse, teclado, carregador, tela, carcaça. Sem "
+     "detalhe, não dá para saber o que puxa o gasto. A alternativa de criar uma "
+     "linha por item foi avaliada e descartada por ora.",
+     "DECIDIDO: manter uma linha de orçamento e detalhar na DESCRIÇÃO do "
+     "lançamento no SIENGE, com padrão fixo ('Peças – mouse', 'Peças – tela'). "
+     "Motivos: (1) não há histórico — as despesas do TI ainda não têm lançamento, "
+     "então orçar item a item seria estimativa sem base, e cada linha acusaria "
+     "desvio pela divisão errada, não pelo gasto; (2) cinco linhas viram cinco "
+     "lançamentos mensais para uma rubrica que é 11% das despesas da área; (3) o "
+     "plano de contas é definido pela controladoria, então subitens no orçamento "
+     "não mudariam a classificação contábil. Em jan/27, com seis meses de dados "
+     "reais, reavaliar. Se separar, separar por NATUREZA (reposição x reparo), "
+     "que é o que dá leitura gerencial, e não item a item. Mesmo critério vale "
+     "para 'Equipamentos Eletrônicos Diversos' e demais rubricas genéricas.",
+     "Cristiane", "APLICADO", "TI"),
     ("6", "Office 365 — nº de licenças",
      "A observação diz '10 licenças de software – 60 usuários'. Os dois números "
      "não fecham entre si.",
@@ -1678,6 +1695,13 @@ def gerar(DEPTO, OUT):
         ("4", "Confira o PAINEL: ele mostra o desvio por departamento e os 5 maiores "
               "estouros do acumulado. É a tela para levar à diretoria."),
         ("5", "Atualize a aba PENDÊNCIAS conforme as decisões forem sendo tomadas."),
+        ("", ""),
+        ("Padrão de descrição", ""),
+        ("Rubricas genéricas", "Em linhas que agrupam itens variados (peças de manutenção, "
+                               "equipamentos diversos), detalhe o item na descrição do "
+                               "lançamento no SIENGE, sempre no mesmo padrão: "
+                               "'Peças – mouse', 'Peças – tela'. O orçamento fica numa "
+                               "linha só e o detalhe sai por filtro quando precisar."),
         ("", ""),
         ("Como ler os números", ""),
         ("Desvio positivo (vermelho)", "Gastou ACIMA do orçado."),
