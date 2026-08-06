@@ -142,7 +142,11 @@ FONTE_JUR = "Gestora, 05/08/26"
 _r7 = lambda v: [v] * 7 + [None] * 5
 
 REALIZADO = {
-    "JUR-E01": (_r7(8818.00), FONTE_JUR, "Valor cheio da nota — R$ 1.182/mês abaixo do contratado"),
+    # Lancado por CAIXA (mes em que o pagamento saiu). O de ago/26 refere-se a
+    # julho, pago em 01/08 — ver pendencia sobre competencia x caixa.
+    "JUR-E01": ([6750.00] * 7 + [8818.00] + [None] * 4, FONTE_JUR,
+                "R$ 6.750/mês de jan a jul; R$ 8.818 pagos em 01/08 (ref. julho). "
+                "Lançado por caixa"),
     # Lancado o salario bruto, que e o dado disponivel e nao mudou no ano. Atencao:
     # o orcado desta linha e custo total, entao o desvio dela nao e comparavel —
     # faltam encargos e beneficios do lado do realizado.
@@ -346,12 +350,17 @@ PEND = [
      "não fecham entre si.",
      "Afeta o valor orçado da linha e a projeção de crescimento.",
      "Cristiane", "EM ABERTO", "TI"),
-    ("7", "Critério de competência x caixa",
-     "Definir se o realizado será lançado pela data de pagamento (caixa) ou pelo "
-     "mês de referência da despesa (competência).",
-     "Misturar os dois critérios gera desvio artificial em meses de virada, "
-     "principalmente em folha e prêmios.",
-     "Cristiane + Financeiro", "EM ABERTO", ""),
+    ("7", "Competência x caixa — DEFASAGEM CONFIRMADA",
+     "O pagamento do Miguel de 01/08/26 refere-se a julho, então há pelo menos um "
+     "prestador cujo pagamento cai no mês seguinte ao da prestação. Todo o "
+     "realizado está lançado por CAIXA (mês em que o pagamento saiu), que é como "
+     "os valores foram informados.",
+     "Consequência: o valor lançado em jan/26 pode ser referente a dez/2025, e o "
+     "serviço de dez/26 só aparecerá em jan/2027 — o ano fecha com 12 pagamentos, "
+     "mas defasados em relação ao orçamento, que é de competência. Vale conferir "
+     "quais contratos pagam no mês seguinte e decidir se o comparativo passa para "
+     "competência.",
+     "Cristiane + Financeiro", "DECIDIR", ""),
 ]
 
 def gerar(DEPTO, OUT):
@@ -1176,7 +1185,7 @@ def gerar(DEPTO, OUT):
             if col == 6:
                 cores = {"RESOLVIDO": VERDE, "APLICADO": VERDE, "PREENCHER": "F8CBAD",
                          "A LANÇAR": "F8CBAD", "CONFERIR": "FFE699",
-                     "BASE DIFERENTE": "F8CBAD"}
+                     "BASE DIFERENTE": "F8CBAD", "DECIDIR": "FFE699"}
                 c.fill = PatternFill("solid", fgColor=cores.get(val, LARANJA))
             else:
                 c.fill = PatternFill("solid", fgColor=BRANCO if i % 2 == 0 else CINZA_L)
