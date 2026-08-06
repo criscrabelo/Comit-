@@ -17,11 +17,14 @@
 -- tempo medio, que passa a refletir quanto tempo o caso ficou aberto — sem
 -- entrar na contagem de resolvidas.
 --
--- Decisao da Coevo em 06/08/2026, sobre os dois rotulos apontados na
--- homologacao. `Recompra` NAO entra: ela so termina quando a unidade encontra
--- um novo comprador e aquele processo se conclui, o que leva de seis meses a
--- dois anos — e ate la o caso continua sendo acompanhado. Ver
--- docs/REGRA-SAIDA-DE-CLIENTE.md.
+-- `Recompra` TAMBEM encerra, pela mesma logica e por decisao da Coevo em
+-- 06/08/2026. A distincao que sustenta isso e entre dois objetos: a NOTIFICACAO
+-- e o ciclo de cobranca com o cliente, e ele acaba no acordo de recompra; a
+-- RECOMPRA e o processo da unidade ate a revenda, que continua por ate dois
+-- anos no quadro de distratos, com `categoria = 'recompra'`.
+--
+-- Deixar a notificacao aberta durante todo esse periodo faria o prazo de
+-- notificacao virar um numero sem sentido. Ver docs/REGRA-SAIDA-DE-CLIENTE.md.
 -- ============================================================================
 
 ALTER TABLE notificacoes DROP CONSTRAINT IF EXISTS notificacao_solucao_coerente;
