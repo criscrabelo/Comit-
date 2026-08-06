@@ -145,7 +145,12 @@ tempo em que o cliente teve a unidade.
 **Não existe coluna de revenda em nenhum dos dois quadros.** Nem em Distratos
 (`18404493605`) nem em Retomadas (`18413057491`).
 
-**3. E não há nenhuma recompra para medir.** A seção 3 diz que a recompra é
+**3. E não há nenhuma recompra para medir.**
+> ⚠️ **Este item 3 está SUPERADO — ver seção 8.** A recompra tem quadro próprio
+> (`6149480325`), com 25 itens e a data de conclusão que faltava. O que segue
+> abaixo continua correto sobre os DOIS quadros mapeados, e só sobre eles.
+
+A seção 3 diz que a recompra é
 acompanhada "no quadro de Distratos e Retomadas, com `categoria = 'recompra'`".
 `classificarCategoriaDistrato()` só produz `recompra` quando o título do grupo
 contém `RECOMPRA` ou `RE-COMPRA`. Os grupos reais são:
@@ -272,7 +277,7 @@ de três informações. Duas já existem; a terceira é a incógnita.
 | --- | --- | --- |
 | Quando a recompra começou | `distratos.data_solicitacao` | mapeada nos dois quadros |
 | Que é recompra | `distratos.categoria` | classificada pelo grupo do Monday |
-| **Quando terminou (revenda)** | `distratos.data_venda` | **é o que falta descobrir** |
+| **Quando terminou (revenda)** | `ASS. NOVO FINANCIAMENTO`, no quadro `6149480325` | **existe — ver seção 8** |
 
 Enquanto a data de venda não for conhecida, não há como distinguir recompra
 aberta de recompra concluída — e o indicador contaria as duas juntas.
@@ -374,3 +379,81 @@ o que fazer. O que diz é:
 
 A cauda é o que importa: três unidades acima de dois anos é uma informação
 acionável; a média que as esconde, não.
+
+---
+
+## 8. O quadro da recompra existe — e eu não o tinha achado
+
+> **Correção de duas afirmações anteriores (06/08/2026, à tarde).** As seções
+> 4.3 e 7 dizem que "não há nenhuma recompra registrada" e que a data de
+> conclusão "é o que falta descobrir". **As duas estavam erradas.** O que era
+> verdade — e continua sendo — é mais estreito: os dois quadros *mapeados* não
+> produzem `categoria = 'recompra'`. Generalizei isso para "não existe em lugar
+> nenhum" sem ter procurado, e a recompra vive num terceiro quadro.
+
+**`(JUR) CESSÃO DE DIREITOS DE RECOMPRA` — board `6149480325`, 25 itens.**
+Não é grupo dentro de Distratos nem de Retomadas: é quadro próprio, e não está
+mapeado na ingestão.
+
+### O que ele tem
+
+| Coluna | Preenchimento | O que é |
+| --- | --- | --- |
+| `DATA DE RECOMPRA` | 16 de 25 | quando a recompra começou |
+| **`ASS. NOVO FINANCIAMENTO`** | **5 de 25** | **quando ela de fato terminou** |
+| `Status` | 25 de 25 | `SUCESSO` (16) · `RECUSADO PELO CLIENTE` (9) |
+| `CONCLUSÃO` | 21 de 25 | `Concluído` (11) · `Em andamento` (5) · `ENVIADO MICHELLE` (5) |
+| `CAIXA` | 20 de 25 | `Inadimplente` (18) · `Adimplente` (2) |
+
+Os grupos são **empreendimentos** (VERANO, AURORA, BELLA VIDA, HORIZONTES,
+VITA VILLAGE, MORATTA), não meses nem categorias. Os itens se chamam
+`304 C - GUSTAVO`: unidade e primeiro nome do cliente.
+
+### `ASS. NOVO FINANCIAMENTO` fecha a exposição da seção 4.1
+
+A seção 4.1 registra que o financiamento continua no nome do cliente no banco, e
+que **a Coevo carrega uma obrigação que o sistema não enxerga**. Essa coluna é
+exatamente o ponto em que a obrigação acaba: quando o **novo** comprador assina o
+financiamento dele, o vínculo do cliente antigo se extingue.
+
+Ou seja: não é "mais uma data". É o marcador que transforma a exposição descrita
+na 4.1 de invisível em mensurável.
+
+### O ciclo, com os números reais
+
+| | Resultado |
+| --- | --- |
+| Recompras com início e assinatura | **5 pares** |
+| Duração | **média 474 dias · de 196 a 667** |
+| **Recompras em aberto** (com início, sem assinatura) | **11** |
+| A mais antiga em aberto | `AURORA 309 A` — recompra em **2024-03-01** |
+
+Os 474 dias de média confirmam com dado o que a seção 3 afirmava de memória:
+"seis meses, um ano ou até dois anos". E as **11 em aberto** são a resposta à
+pergunta da diretoria sobre unidade parada — inclusive uma parada há mais de
+dois anos, que é a cauda que a seção 7 diz que importa mais que a média.
+
+### Cuidado ao contar
+
+**`Status = RECUSADO PELO CLIENTE` em 9 dos 25.** Recompra oferecida e recusada
+não é recompra — é o caminho não tomado da árvore da seção 1. Contar os 25 como
+recompras infla o número em mais de um terço. O denominador certo são os 16 com
+`SUCESSO`.
+
+### O que falta para medir isso na plataforma
+
+O quadro **não está mapeado**. Mapeá-lo exige decisões que não são de código:
+
+1. **Destino.** Vai para `distratos` com `categoria = 'recompra'`, como a seção 3
+   prevê? Se sim, os grupos são empreendimentos e não categorias — a categoria
+   teria de vir do próprio quadro, não do grupo.
+2. **O que é uma recompra.** Os 9 `RECUSADO PELO CLIENTE` entram como registro
+   com desfecho negativo, ou não entram?
+3. **Competência.** Os grupos não são meses. A competência teria de sair de
+   `DATA DE RECOMPRA`, o que difere de todos os outros quadros.
+4. **Os valores financeiros.** O quadro tem 15 colunas de valor — devolução ao
+   cliente, lucro, ITBI, honorários, desconto. A seção 5 diz que "o valor
+   devolvido ao cliente não tem campo": **tem, na origem**. Falta destino.
+
+Também apareceu na varredura o quadro **`(PÓS) Distratos das Unidades`
+(`3978322943`, 96 itens)**, igualmente não mapeado. Não foi investigado.

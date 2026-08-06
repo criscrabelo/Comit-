@@ -80,6 +80,24 @@ const TITULOS_LIGACAO_NOTIFICACOES = [
   'LINK TO (JUR) NOTIFICAÇÕES CLIENTES',
 ];
 
+/**
+ * Titulos aceitos para a ligacao com o quadro de contratos.
+ *
+ * O pedido de distrato tem DUAS portas de entrada: a notificacao (cobranca que
+ * nao se resolveu) e o quadro de contratos, por onde Relacionamento e Credito
+ * encaminham. Guardar so a primeira faria metade dos distratos parecer sem
+ * origem.
+ *
+ * A coluna ja existe e ja esta preenchida no board 18404493605 — 26 de 38 itens
+ * em 06/08/2026. E por ela que chegam os espelhos SETOR, SOLICITANTE e
+ * EMPREENDIMENTO daquele quadro.
+ */
+const TITULOS_LIGACAO_CONTRATOS = [
+  '(JUR) CONTRATOS PARA CLIENTES',
+  'CONTRATOS PARA CLIENTES',
+  'LINK TO (JUR) CONTRATOS PARA CLIENTES',
+];
+
 export const QUADROS: Record<ChaveQuadro, DefinicaoQuadro> = {
   processos: {
     chave: 'processos',
@@ -172,6 +190,7 @@ export const QUADROS: Record<ChaveQuadro, DefinicaoQuadro> = {
       // for criada. Ate la aparece como campo ausente no relatorio, que e o
       // comportamento correto: declarado, nunca presumido.
       notificacoes: TITULOS_LIGACAO_NOTIFICACOES,
+      contratos: TITULOS_LIGACAO_CONTRATOS,
     },
   },
 
@@ -212,6 +231,9 @@ export const QUADROS: Record<ChaveQuadro, DefinicaoQuadro> = {
       // — e por isso e ele que valida o caminho de ponta a ponta enquanto o de
       // Distratos nao ganha a coluna.
       notificacoes: TITULOS_LIGACAO_NOTIFICACOES,
+      // O board 18413057491 nao tem esta ligacao hoje; fica declarada para os
+      // dois quadros nao divergirem, ja que gravam na mesma tabela.
+      contratos: TITULOS_LIGACAO_CONTRATOS,
     },
   },
 

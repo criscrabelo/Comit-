@@ -621,6 +621,8 @@ export interface TabelaDistratos extends Proveniencia {
   tempo_dias: number | null;
   /** `id_origem` das notificacoes ligadas na origem. Ver migracao 020. */
   notificacoes_origem: Auto<string[]>;
+  /** `id_origem` dos contratos ligados na origem. Ver migracao 021. */
+  contratos_origem: Auto<string[]>;
 }
 
 /** Cadastro manual do comite: fatos relevantes do mes. */

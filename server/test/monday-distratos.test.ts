@@ -39,6 +39,7 @@ const COLUNAS_REAIS = [
   { id: 'color_mm1km2gz', title: 'MOTIVO', type: 'status' },
   { id: 'color_mm1kctx7', title: 'EQUIPE', type: 'status' },
   { id: 'formula_mm1tmz3a', title: 'PERÍODO (DIAS)', type: 'formula' },
+  { id: 'board_relation_mm1r9a8w', title: '(JUR) CONTRATOS PARA CLIENTES', type: 'board_relation' },
 ];
 
 describe('Distratos — board 18404493605', () => {
@@ -246,11 +247,35 @@ describe('Distratos — board 18404493605', () => {
     expect(lerVinculo(itemComLigacao(['1']), new Map(), 'notificacoes')).toEqual([]);
   });
 
+  it('a ligação com o quadro de contratos já existe no board e é resolvida', () => {
+    // Segunda porta de entrada do pedido de distrato: Relacionamento e Crédito
+    // encaminham pelo quadro de contratos, não pela notificação. A coluna JÁ
+    // existe no board 18404493605 e já vem preenchida em 26 dos 38 itens — o
+    // que faltava era a ingestão ler.
+    const { porCampo, ausentes } = resolverMapa(QUADROS.distratos, COLUNAS_REAIS);
+
+    expect(porCampo.get('contratos')).toBe('board_relation_mm1r9a8w');
+    expect(ausentes).not.toContain('contratos');
+    // A ligação com notificações continua ausente: são portas diferentes, e uma
+    // não supre a outra.
+    expect(ausentes).toContain('notificacoes');
+  });
+
+  it('as duas portas de entrada são campos distintos', () => {
+    // Guardar as duas no mesmo campo faria "veio da notificação" e "veio do
+    // contrato" virarem a mesma coisa — e a origem do pedido é o que distingue
+    // cobrança que não se resolveu de encaminhamento de Relacionamento/Crédito.
+    expect(QUADROS.distratos.colunas.notificacoes).not.toEqual(
+      QUADROS.distratos.colunas.contratos,
+    );
+  });
+
   it('os dois quadros aceitam os MESMOS títulos de ligação', () => {
     // Eles gravam na mesma tabela. Duas listas divergindo fariam a ligação
     // existir num quadro e não no outro, com o sintoma aparecendo num indicador
     // que soma os dois.
     expect(QUADROS.distratos.colunas.notificacoes).toEqual(QUADROS.retomadas.colunas.notificacoes);
+    expect(QUADROS.distratos.colunas.contratos).toEqual(QUADROS.retomadas.colunas.contratos);
   });
 
   it('Retomadas resolve a ligação; Distratos ainda não tem a coluna', () => {

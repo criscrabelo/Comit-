@@ -407,6 +407,9 @@ async function transformarItem(
             // `SIETE 44C`, e casar por nome erraria esse par. Vazio quando a
             // coluna nao existe no quadro — que e o caso de Distratos hoje.
             notificacoes_origem: lerVinculo(item, mapa, 'notificacoes'),
+            // Segunda porta de entrada: Relacionamento e Credito encaminham
+            // pelo quadro de contratos, nao pela notificacao.
+            contratos_origem: lerVinculo(item, mapa, 'contratos'),
           },
           valorOriginal: item,
           dataReferencia: paraData(lerCampo(item, mapa, 'data_conclusao')),

@@ -1594,3 +1594,75 @@ Seis testes em `test/monday-distratos.test.ts`: lê id e não nome visível;
 deduplica e ordena; os três casos que devolvem lista vazia; os dois quadros
 aceitam os mesmos títulos; Retomadas resolve e Distratos cai em `ausentes`; e o
 nome automático do Monday é aceito. Suíte em **402 testes**.
+
+---
+
+## B17.8 — Duas portas de entrada do distrato, e o quadro da recompra que eu não tinha achado
+
+**Data:** 2026-08-06
+
+### O pedido de distrato não vem só da notificação
+
+A Coevo apontou que o pedido também entra pelo quadro de contratos, por onde
+Relacionamento e Crédito (repasses, financiamentos) encaminham. Conferido: a
+coluna de ligação `(JUR) CONTRATOS PARA CLIENTES` **já existe** no board
+`18404493605` e **já está preenchida em 26 dos 38 itens**. Não faltava nada na
+origem — faltava a ingestão ler.
+
+**Eu havia reportado essa coluna como "vazia em 38/38".** Era o mesmo falso
+negativo de B17.7: meu script de inspeção não pedia `display_value` no fragmento
+`BoardRelationValue`. Registrei a lição naquele registro e repeti o erro no mesmo
+dia, no mesmo arquivo. A correção agora é estrutural: `lerVinculo` usa
+`linked_item_ids`, e o teste cobre o caso.
+
+Migração 021: `distratos.contratos_origem text[]`, mesmas três decisões da 020.
+Carga real com as duas portas mapeadas:
+
+| Categoria | Registros | Via notificação | Via contrato | Sem origem |
+| --- | --- | --- | --- | --- |
+| distrato | 26 | 0 | **17** | 9 |
+| desistência | 12 | 0 | **9** | 3 |
+| retomada | 23 | **23** | 0 | 0 |
+
+O padrão confirma o que a Coevo descreveu, e não estava no modelo: **retomada
+vem da cobrança que não se resolveu; distrato e desistência vêm do
+encaminhamento de Relacionamento/Crédito.** São portas diferentes, e por isso
+são dois campos e não um — juntá-las apagaria justamente a distinção.
+
+### O quadro da recompra existe, e eu afirmei que não
+
+B17.5 diz: *"não há nenhuma recompra registrada para medir"* e *"a recompra não
+é registrada como tal em lugar nenhum"*. **Falso.** Existe
+`(JUR) CESSÃO DE DIREITOS DE RECOMPRA` — board `6149480325`, **25 itens**.
+
+O que era verdade é mais estreito: os dois quadros *mapeados* não produzem
+`categoria = 'recompra'`. Generalizei para "não existe em lugar nenhum" sem ter
+listado os quadros da conta — e bastava listar. São 213 quadros fora
+subelementos; a busca levou um minuto.
+
+**A coluna `ASS. NOVO FINANCIAMENTO`**, que a Coevo acabou de criar, é o
+marcador de conclusão que a seção 7 daquele documento dava como inexistente. E
+ela fecha a exposição da seção 4.1: o financiamento que continua no nome do
+cliente antigo se extingue quando o **novo** comprador assina o dele.
+
+Números reais: ciclo de **5 pares, média 474 dias, de 196 a 667** — o que
+confirma com dado o "seis meses a dois anos" que a seção 3 afirmava de memória.
+E **11 recompras em aberto**, a mais antiga desde **2024-03-01**.
+
+**Cuidado de contagem registrado:** `Status = RECUSADO PELO CLIENTE` em 9 dos
+25. Recompra oferecida e recusada não é recompra — contar os 25 infla o número
+em mais de um terço.
+
+O quadro **não foi mapeado** nesta rodada: exige decisões de destino, de
+competência (os grupos são empreendimentos, não meses), de contagem e de destino
+para 15 colunas de valor. Documentado na seção 8 de
+`docs/REGRA-SAIDA-DE-CLIENTE.md`. Também apareceu `(PÓS) Distratos das Unidades`
+(`3978322943`, 96 itens), não investigado.
+
+### Método
+
+Duas afirmações minhas foram desmentidas hoje pela própria Coevo, e as duas
+tinham a mesma forma: **eu não achei, logo não existe.** Uma coluna vazia por
+consulta incompleta; um quadro ausente por eu não ter listado os quadros.
+Verificar ausência custa mais que verificar presença, e nenhuma das duas foi
+verificada antes de virar afirmação em documento.
