@@ -1062,3 +1062,74 @@ vencendo `RESOLUÇÃO`, restrição `notificacao_solucao_coerente` respeitada,
 ambiguidade declarada, processos sem ambiguidade, e idempotência.
 
 Suíte completa: **371 testes passando** (eram 336 em B16.3).
+
+## B17.2 — As duas decisões do quadro de Notificações
+
+**Data:** 2026-08-06 · Decisão da Coevo sobre os itens levantados na
+homologação do board 5630368737.
+
+### 1. `situacao` fica NULA — `'MEU TRABALHO'` não é mapeada
+
+A coluna estava nula em 1072 de 1072 registros, porque o board não tem coluna
+`SITUAÇÃO`. O candidato era a coluna de status `'MEU TRABALHO'`
+(`FEITO` 743 / `ACOMPANHANDO` 329).
+
+**Não foi mapeada, por decisão.** O nome diz o que ela é: o acompanhamento
+pessoal de quem toca o caso, não o estado da notificação. `ESTÁGIOS` já
+alimenta `estagio` e descreve o ciclo de vida real. Mapear a primeira para
+`situacao` colocaria progresso de tarefa de uma pessoa dentro de um campo de
+negócio que alimenta indicador.
+
+Nenhuma alteração de código: a decisão foi **não fazer**.
+
+### 2. Estágios terminais passam a registrar a data — sem virar "resolvidos"
+
+7 notificações tinham data de resolução na origem e a perdiam: 6 `Distratado`
+e 1 `A Retomar`. O modelo só admitia `data_solucao` com
+`estagio = 'Resolvida'`, então elas ficavam eternamente "em andamento" no
+tempo médio de solução.
+
+A correção óbvia — classificá-las como `Resolvida` — seria errada. O cliente
+distratou, a unidade foi para retomada: o caso acabou, mas não com o desfecho
+que se queria. Contar isso como resolução **inflaria a taxa de resolução de
+notificações**, que é indicador de comitê.
+
+**Terceiro estado, `Encerrada`** (migração 019):
+
+| Estágio | Significado | Admite `data_solucao` | Conta como resolvida |
+| --- | --- | --- | --- |
+| `Resolvida` | desfecho favorável | sim | sim |
+| `Encerrada` | caso fechado sem resolução | **sim** | **não** |
+| `Em Andamento` | aberto | não | não |
+
+Assim o tempo médio passa a medir *quanto tempo o caso ficou aberto*, que é a
+pergunta que ele responde, sem contaminar a taxa de resolução.
+
+Distinção preservada de propósito: **`Unidade retomada`** (passado, a retomada
+se concretizou) continua `Resolvida`; **`A Retomar`** (futuro, caso
+encaminhado) é `Encerrada`. Colapsar as duas faria caso encaminhado contar
+como retomada concluída.
+
+### O que NÃO foi alterado
+
+**`Recompra`** (7 ocorrências) é da mesma família de `Distratado` e continua
+`Em Andamento`. A pergunta não foi feita sobre ela, e nenhuma das 7 tem data
+de resolução hoje — então a inconsistência é latente, não ativa. Mexer numa
+regra de indicador sem a decisão ter sido tomada é exatamente o que não se faz
+aqui. **Fica registrado como pendência.**
+
+### Verificação
+
+- migração 019 relaxa `notificacao_solucao_coerente` para os dois estágios
+  terminais; o DOWN zera as datas antes de restaurar a restrição antiga, para
+  não falhar deixando o esquema no meio
+- `normalizarEstagio` devolve três valores; `estagioEncerra` autoriza a data
+- mensagem da API e comentário de `entidades.ts` atualizados
+- **10 testes novos**; suíte completa **381/381**
+
+### Confirmação sobre Processos
+
+O achado das colunas homônimas levantou a dúvida sobre o quadro já aprovado.
+Verificado no relatório de evidências: o board 5959705266 tem **uma única**
+coluna `'MEU TRABALHO'`. A homologação aprovada está correta; a detecção de
+ambiguidade é proteção prospectiva.

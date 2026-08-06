@@ -343,7 +343,8 @@ function traduzirErroDoBanco(erro: unknown, entidade: NomeEntidade): never {
 
   if (/notificacao_solucao_coerente/.test(mensagem)) {
     throw entradaInvalida(
-      'Data de solucao so pode ser informada quando o estagio for "Resolvida".',
+      'Data de solucao so pode ser informada quando o caso estiver encerrado — '
+        + 'estagio "Resolvida" ou "Encerrada".',
       { campo: 'data_solucao' },
     );
   }

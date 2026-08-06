@@ -209,16 +209,43 @@ export function extrairLocalizacao(
 
 // ── Estagio da notificacao ──────────────────────────────────────────────────
 
+export type EstagioNotificacao = 'Resolvida' | 'Encerrada' | 'Em Andamento';
+
 /**
- * Normaliza o estagio para os dois valores usados nos indicadores.
+ * Rotulos terminais que NAO sao resolucao.
  *
- * Regra de js/monday-sync.js:557-560. O rotulo BRUTO tambem e preservado
- * (coluna estagio_detalhe), porque o wireframe exige fidelidade ao rotulo de
- * origem — "RE-COMPRA" e exibido como "Recompra", mas o valor da fonte
- * continua registrado.
+ * O caso acabou, mas nao com o desfecho que se queria: o cliente distratou, ou
+ * a unidade entrou em processo de retomada. Contar isso como resolvido
+ * inflaria a taxa de resolucao de notificacoes, que e indicador de comite.
+ *
+ * Vieram dos rotulos REAIS do board 5630368737 (`Distratado`, 27 ocorrencias;
+ * `A Retomar`, 3), apontados na homologacao e decididos pela Coevo em
+ * 06/08/2026. `Recompra` e da mesma familia e ficou de fora de proposito: a
+ * pergunta nao foi feita sobre ela, e nenhuma das 7 tem data de resolucao hoje.
+ *
+ * `Unidade retomada` (passado) continua como resolucao, e nao como encerramento:
+ * ali a retomada se concretizou. `A Retomar` (futuro) e o caso encaminhado.
  */
-export function normalizarEstagio(bruto: string | null | undefined): 'Resolvida' | 'Em Andamento' {
-  return /resolvid|unidade retomada/i.test(bruto ?? '') ? 'Resolvida' : 'Em Andamento';
+const ESTAGIOS_ENCERRAM_SEM_RESOLVER = [/distratad/i, /^\s*a\s+retomar/i];
+
+/**
+ * Normaliza o estagio para os valores usados nos indicadores.
+ *
+ * Regra de js/monday-sync.js:557-560, estendida com o terceiro estado. O rotulo
+ * BRUTO tambem e preservado (coluna estagio_detalhe), porque o wireframe exige
+ * fidelidade ao rotulo de origem — "RE-COMPRA" e exibido como "Recompra", mas o
+ * valor da fonte continua registrado.
+ */
+export function normalizarEstagio(bruto: string | null | undefined): EstagioNotificacao {
+  const texto = bruto ?? '';
+  if (/resolvid|unidade retomada/i.test(texto)) return 'Resolvida';
+  if (ESTAGIOS_ENCERRAM_SEM_RESOLVER.some((r) => r.test(texto))) return 'Encerrada';
+  return 'Em Andamento';
+}
+
+/** O caso esta fechado — resolvido ou nao. E o que autoriza registrar a data. */
+export function estagioEncerra(estagio: EstagioNotificacao): boolean {
+  return estagio === 'Resolvida' || estagio === 'Encerrada';
 }
 
 // ── Distrato, desistencia, retomada e recompra ──────────────────────────────

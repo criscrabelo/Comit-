@@ -62,9 +62,10 @@ export interface DefinicaoEntidade {
 }
 
 /**
- * `data_solucao` so pode existir com `estagio = 'Resolvida'` — e restricao do
- * banco (CHECK notificacao_solucao_coerente), nao invencao desta camada. A API
- * traduz a violacao em mensagem util em vez de deixar estourar como erro 500.
+ * `data_solucao` so pode existir com o caso encerrado — `estagio` em
+ * `'Resolvida'` ou `'Encerrada'`. E restricao do banco (CHECK
+ * notificacao_solucao_coerente), nao invencao desta camada. A API traduz a
+ * violacao em mensagem util em vez de deixar estourar como erro 500.
  */
 export const ENTIDADES: Record<NomeEntidade, DefinicaoEntidade> = {
   comites: {

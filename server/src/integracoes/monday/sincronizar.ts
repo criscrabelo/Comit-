@@ -29,6 +29,7 @@ import { QUADROS, resolverMapa, type ChaveQuadro, type TituloAmbiguo } from './q
 import {
   classificarCategoriaDistrato,
   competenciaDoGrupo,
+  estagioEncerra,
   extrairLocalizacao,
   interpretarAtuacao,
   lerCampo,
@@ -314,9 +315,12 @@ async function transformarItem(
             estagio_detalhe: estagioBruto || null,
             situacao: lerCampo(item, mapa, 'situacao') || null,
             data_notificacao: paraData(lerCampo(item, mapa, 'data_notificacao')),
-            // Data de solucao so para item resolvido: evita calcular tempo de
-            // caso ainda aberto.
-            data_solucao: estagio === 'Resolvida' ? paraData(lerCampo(item, mapa, 'data_solucao')) : null,
+            // Data de solucao so para caso ENCERRADO — resolvido ou nao.
+            // Antes so `Resolvida` valia, e as notificacoes distratadas perdiam
+            // a data: ficavam eternamente abertas no tempo medio de solucao.
+            data_solucao: estagioEncerra(estagio)
+              ? paraData(lerCampo(item, mapa, 'data_solucao'))
+              : null,
             total_dias: paraInteiro(lerCampo(item, mapa, 'total_dias')),
           },
           valorOriginal: item,
