@@ -3,7 +3,7 @@
 **Quadro:** Cessão de Direitos de Recompra — board `6149480325`  
 **Ambiente:** development  
 **Competência:** todas  
-**Executado em:** 2026-08-06T15:10:38.000Z  
+**Executado em:** 2026-08-06T15:21:46.183Z  
 **Versão da API do Monday:** 2024-10
 
 > Nenhum dado foi alterado no Monday. O proxy recusa `mutation` e
@@ -25,39 +25,33 @@
 
 | Métrica | Valor |
 | --- | --- |
-| Identificador da execução | `f2783f3f-43d9-4736-ad08-31d848ea4087` |
+| Identificador da execução | `9671b913-d316-41dd-9e80-72637ef0ec56` |
 | Quadro | Cessão de Direitos de Recompra — board `6149480325` |
-| Início | 2026-08-06T15:10:38.025Z |
-| Conclusão | 2026-08-06T15:10:39.038Z |
-| Duração | 1.01 s |
+| Início | 2026-08-06T15:21:46.208Z |
+| Conclusão | 2026-08-06T15:21:47.123Z |
+| Duração | 0.92 s |
 | **Quantidade recebida** (lidos da origem) | **25** |
 | **Páginas consultadas** | **1** |
 | **Último cursor** | `null` — leitura chegou ao fim |
-| **Quantidade normalizada** | **16** |
-| **Incluída** | **16** |
+| **Quantidade normalizada** | **25** |
+| **Incluída** | **25** |
 | **Atualizada** (conteúdo mudou) | **0** |
 | **Inalterada** (reconhecida, nada a mudar) | **0** |
-| **Ignorada** | **9** |
+| **Ignorada** | **0** |
 | **Duplicada** | **0** |
 | **Com erro** | **0** |
 | **Data de referência** | 2026-07-30 |
-| **Último dado válido (antes desta execução)** | 2026-08-06T15:10:36.619Z |
+| **Último dado válido (antes desta execução)** | nenhum — primeira carga |
 | Status | sucesso |
 | Contabilidade fecha | sim |
-
-**Ignorados, por motivo** — nenhum descarte é silencioso:
-
-| Motivo | Quantidade |
-| --- | --- |
-| recompra recusada pelo cliente (STATUS = RECUSADO PELO CLIENTE) | 9 |
 
 **Estado da tabela após a execução:**
 
 | Item | Valor |
 | --- | --- |
-| Registros com `fonte = 'monday'` | 16 |
-| Vivos / marcados ausentes | 16 / 0 |
-| `id_origem` distintos | 16 |
+| Registros com `fonte = 'monday'` | 25 |
+| Vivos / marcados ausentes | 25 / 0 |
+| `id_origem` distintos | 25 |
 | Maior versão | 1 |
 | Registros com versão > 1 | 0 |
 | Entradas de histórico acumuladas | 0 |
@@ -377,7 +371,7 @@ original — não do dado já interpretado.
 | --- | --- |
 | 273900 | 1 |
 
-#### Status → `situacao`
+#### Status → `desfecho`
 
 `status2` · tipo `status` · 25 preenchido(s), 0 vazio(s) · 2 valor(es) distinto(s)
 
@@ -475,39 +469,33 @@ original — não do dado já interpretado.
 
 | Métrica | Valor |
 | --- | --- |
-| Identificador da execução | `b3e53d54-405c-48ea-8b95-8cecdbad61d2` |
+| Identificador da execução | `3509a09c-264d-4815-a879-348c8139170d` |
 | Quadro | Cessão de Direitos de Recompra — board `6149480325` |
-| Início | 2026-08-06T15:10:39.061Z |
-| Conclusão | 2026-08-06T15:10:39.993Z |
-| Duração | 0.93 s |
+| Início | 2026-08-06T15:21:47.142Z |
+| Conclusão | 2026-08-06T15:21:48.056Z |
+| Duração | 0.91 s |
 | **Quantidade recebida** (lidos da origem) | **25** |
 | **Páginas consultadas** | **1** |
 | **Último cursor** | `null` — leitura chegou ao fim |
-| **Quantidade normalizada** | **16** |
+| **Quantidade normalizada** | **25** |
 | **Incluída** | **0** |
 | **Atualizada** (conteúdo mudou) | **0** |
-| **Inalterada** (reconhecida, nada a mudar) | **16** |
-| **Ignorada** | **9** |
+| **Inalterada** (reconhecida, nada a mudar) | **25** |
+| **Ignorada** | **0** |
 | **Duplicada** | **0** |
 | **Com erro** | **0** |
 | **Data de referência** | 2026-07-30 |
-| **Último dado válido (antes desta execução)** | 2026-08-06T15:10:39.036Z |
+| **Último dado válido (antes desta execução)** | 2026-08-06T15:21:47.122Z |
 | Status | sucesso |
 | Contabilidade fecha | sim |
-
-**Ignorados, por motivo** — nenhum descarte é silencioso:
-
-| Motivo | Quantidade |
-| --- | --- |
-| recompra recusada pelo cliente (STATUS = RECUSADO PELO CLIENTE) | 9 |
 
 **Estado da tabela após a execução:**
 
 | Item | Valor |
 | --- | --- |
-| Registros com `fonte = 'monday'` | 16 |
-| Vivos / marcados ausentes | 16 / 0 |
-| `id_origem` distintos | 16 |
+| Registros com `fonte = 'monday'` | 25 |
+| Vivos / marcados ausentes | 25 / 0 |
+| `id_origem` distintos | 25 |
 | Maior versão | 1 |
 | Registros com versão > 1 | 0 |
 | Entradas de histórico acumuladas | 0 |
@@ -517,12 +505,12 @@ original — não do dado já interpretado.
 
 | # | Prova | Resultado | Evidência |
 | --- | --- | --- | --- |
-| 1 | Ausência de duplicação | ✅ | 16 → 16 registros; 16 `id_origem` distintos |
-| 2 | Upsert idempotente | ✅ | 2ª execução: 0 incluídos, 0 atualizados, 16 inalterados sobre 25 lidos |
+| 1 | Ausência de duplicação | ✅ | 25 → 25 registros; 25 `id_origem` distintos |
+| 2 | Upsert idempotente | ✅ | 2ª execução: 0 incluídos, 0 atualizados, 25 inalterados sobre 25 lidos |
 | 3 | Preservação de `fonte` e `id_origem` | ✅ | 0 sem fonte correta, 0 sem `id_origem` |
 | 4 | Registros inalterados não geram versões indevidas | ✅ | histórico 0 → 0; versão máxima 1 → 1 |
-| 5 | Registros alterados são atualizados corretamente | ✅ | `motivo` alterado no banco e devolvido pela origem (`Concluído`); versão 1 → 3; 1 atualizado(s) |
-| 6 | Falha posterior não apaga o último dado válido | ✅ | após falha: 16 vivos (era 16); `ultima_carga_valida_em` não avançou; status `erro` |
+| 5 | Registros alterados são atualizados corretamente | ✅ | `motivo` alterado no banco e devolvido pela origem (`ENVIADO MICHELLE`); versão 1 → 3; 1 atualizado(s) |
+| 6 | Falha posterior não apaga o último dado válido | ✅ | após falha: 25 vivos (era 25); `ultima_carga_valida_em` não avançou; status `erro` |
 | 7 | Mutation e subscription continuam bloqueadas | ✅ | 4 tentativas de escrita recusadas; consulta de leitura aceita |
 
 ## Amostra anonimizada
@@ -535,49 +523,49 @@ digitado à mão e pode conter um CPF que ninguém previu.
 ```json
 [
   {
-    "id_origem": "***5950",
+    "id_origem": "***0429",
     "categoria": "recompra",
-    "motivo": "Concluído",
+    "motivo": "ENVIADO MICHELLE",
     "equipe": "Miguel",
-    "unidade": "304 C",
-    "data_solicitacao": "2025-10-01",
+    "unidade": "802A",
+    "data_solicitacao": null,
+    "data_venda": null,
+    "data_conclusao": null,
+    "tempo_dias": null,
+    "fonte": "monday",
+    "versao": 1,
+    "data_referencia": null,
+    "extraido_em": "2026-08-06T15:21:48.966Z"
+  },
+  {
+    "id_origem": "***7506",
+    "categoria": "recompra",
+    "motivo": null,
+    "equipe": null,
+    "unidade": "APTO 162 ISABELLA CRISTINA NUNES",
+    "data_solicitacao": null,
+    "data_venda": null,
+    "data_conclusao": null,
+    "tempo_dias": null,
+    "fonte": "monday",
+    "versao": 1,
+    "data_referencia": null,
+    "extraido_em": "2026-08-06T15:21:48.976Z"
+  },
+  {
+    "id_origem": "***1797",
+    "categoria": "recompra",
+    "motivo": "ENVIADO MICHELLE",
+    "equipe": "Miguel",
+    "unidade": "806 A",
+    "data_solicitacao": null,
     "data_venda": null,
     "data_conclusao": null,
     "tempo_dias": null,
     "fonte": "monday",
     "versao": 3,
-    "data_referencia": "2025-10-01",
-    "extraido_em": "2026-08-06T15:10:40.787Z"
-  },
-  {
-    "id_origem": "***1508",
-    "categoria": "recompra",
-    "motivo": "Concluído",
-    "equipe": "Miguel",
-    "unidade": "806 B",
-    "data_solicitacao": "2025-08-01",
-    "data_venda": null,
-    "data_conclusao": null,
-    "tempo_dias": null,
-    "fonte": "monday",
-    "versao": 1,
-    "data_referencia": "2025-08-01",
-    "extraido_em": "2026-08-06T15:10:40.793Z"
-  },
-  {
-    "id_origem": "***9271",
-    "categoria": "recompra",
-    "motivo": "Concluído",
-    "equipe": "Miguel",
-    "unidade": "1302 B",
-    "data_solicitacao": "2025-09-01",
-    "data_venda": null,
-    "data_conclusao": null,
-    "tempo_dias": null,
-    "fonte": "monday",
-    "versao": 1,
-    "data_referencia": "2025-09-01",
-    "extraido_em": "2026-08-06T15:10:40.791Z"
+    "data_referencia": null,
+    "extraido_em": "2026-08-06T15:21:48.974Z"
   }
 ]
 ```
@@ -589,8 +577,6 @@ _Varredura da amostra publicada: nenhum CPF ou CNPJ presente._
 | Tipo | Gravidade | Ocorrências | Descrição |
 | --- | --- | --- | --- |
 | falha_importacao | alta | 1 | Falha ao sincronizar (JUR) CESSÃO DE DIREITOS DE RECOMPRA: Quadro 1 nao encontrado ou sem acesso.. O ultimo dado valido foi preservado. |
-| falha_importacao | alta | 1 | Falha ao sincronizar (JUR) RETOMADAS: Quadro 1 nao encontrado ou sem acesso.. O ultimo dado valido foi preservado. |
-| falha_importacao | alta | 1 | Falha ao sincronizar (JUR) DISTRATOS E DESISTÊNCIAS: Quadro 1 nao encontrado ou sem acesso.. O ultimo dado valido foi preservado. |
 
 ---
 

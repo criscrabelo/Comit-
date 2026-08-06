@@ -518,10 +518,117 @@ mais de um terço. O payload íntegro das 25 continua em `registros_brutos`.
 | Decisão | O que ficou | Reversível? |
 | --- | --- | --- |
 | Destino | tabela `distratos`, `categoria = 'recompra'` | sim |
-| Recusadas | ignoradas com motivo; bruto preservado | sim |
+| Recusadas | ~~ignoradas~~ → **carregadas, com `desfecho`** (ver seção 10) | feito |
 | Competência | derivada de `DATA DE RECOMPRA` — os grupos são empreendimentos | sim |
 | Empreendimento | vem do **grupo**; unidade e cliente saem do nome do item (`304 C - GUSTAVO`) | sim |
 | 15 colunas de valor | **não mapeadas** — `distratos` não tem campo de valor | exige migração |
 
 A última segue aberta e agora tem nome: `DEVOLUÇÃO AO CLIENTE`, que a seção 5
 dava como inexistente, **existe na origem**. Falta destino.
+
+
+---
+
+## 10. A recompra tem três portas de entrada e um desfecho — e nem uma nem outro estavam no modelo
+
+Registrado a partir da explicação da Cristiane em 06/08/2026.
+
+### 10.1 As três portas
+
+A recompra pode entrar por caminhos que acontecem em momentos diferentes do
+ciclo de vida do cliente:
+
+| Porta | Quando | Onde nasce |
+| --- | --- | --- |
+| **Negociação após a notificação** | cliente já financiado, cobrança em curso | quadro de Notificações |
+| **Solicitação do próprio cliente** | a qualquer momento | quadro de Contratos (Relacionamento / Crédito) |
+| **Dentro de um processo judicial** | bem depois, com ação em andamento | quadro de Processos Judiciais |
+
+**A porta não muda o que a recompra é.** Em todas, a Coevo assume o
+financiamento, a unidade volta e o ciclo só fecha na assinatura do novo
+financiamento. Por isso a origem é **vínculo**, não categoria: criar
+`recompra_judicial`, `recompra_notificacao` e `recompra_espontanea` multiplicaria
+o `CHECK` do banco, quebraria a contagem única de recompras e obrigaria todo
+indicador a somar três coisas para responder "quantas recompras temos".
+
+O modelo para isso já existe e está provado: `notificacoes_origem` e
+`contratos_origem`. Falta o terceiro, `processos_origem`, e falta o principal —
+
+> **O quadro de recompra (`6149480325`) não tem NENHUMA coluna de ligação.**
+> Conferido em 06/08/2026: zero colunas do tipo `board_relation`. Hoje é
+> impossível saber por qual porta cada uma das 25 entrou.
+
+Situação das ligações em toda a base:
+
+| Quadro | Colunas de ligação |
+| --- | --- |
+| Notificações `5630368737` | 4 — três para Retomadas, uma para Honorários |
+| Distratos `18404493605` | 1 — Contratos (preenchida em 26 de 38) |
+| Retomadas `18413057491` | 1 — Notificações (preenchida em 23 de 23) |
+| **Recompra `6149480325`** | **0** |
+| **Processos `5959705266`** | **0** |
+
+**O que pedir à origem**, em ordem de retorno: três colunas de ligação no quadro
+de recompra — para Notificações, Contratos e Processos Judiciais. A ingestão já
+sabe ler as duas primeiras e a terceira é o mesmo mecanismo. Sem elas, a
+pergunta "de onde vêm nossas recompras" não tem resposta, e ela é justamente a
+que diz onde investir esforço comercial.
+
+### 10.2 O desfecho: tentativa não é sucesso
+
+> **Correção de uma decisão minha.** Eu ignorava as 9 recompras
+> `RECUSADO PELO CLIENTE`, para não inflar a contagem. Estava errado pela
+> metade: não inflar o numerador é correto, **descartar o denominador apaga a
+> pergunta inteira**. A Coevo precisa saber quantas tentou e quantas deram certo
+> — é exatamente por isso que o quadro registra a recusa.
+
+Migração 022 acrescenta `distratos.desfecho`, e as 25 passam a entrar:
+
+| Desfecho | Conclusão operacional | Tentativas | Concluídas |
+| --- | --- | --- | --- |
+| SUCESSO | Concluído | 11 | 5 |
+| SUCESSO | Em andamento | 5 | 0 |
+| RECUSADO PELO CLIENTE | ENVIADO MICHELLE | 5 | 0 |
+| RECUSADO PELO CLIENTE | — | 4 | 0 |
+
+**25 tentativas · 16 aceitas · 9 recusadas · taxa de conversão 64%.**
+
+São **dois eixos independentes**, e colapsá-los perderia informação:
+
+- **`desfecho`** — a decisão do **cliente**: aceitou ou recusou;
+- **`motivo`** (coluna `CONCLUSÃO`) — o andamento **operacional**: concluído, em
+  andamento.
+
+Uma recompra pode estar aceita e ainda em andamento (5 casos), ou recusada e já
+encerrada. Um campo só não expressa isso.
+
+### 10.3 O caso que ainda não existe na origem: aceitar e desistir depois
+
+A Coevo apontou que o cliente pode optar pela recompra e **desistir depois**.
+Hoje o quadro não tem como registrar isso: `Status` só oferece `SUCESSO` e
+`RECUSADO PELO CLIENTE`, e nenhum dos dois descreve "aceitou e voltou atrás".
+
+Consequência prática: uma desistência posterior hoje vira ou um `SUCESSO` que
+nunca conclui — indistinguível de uma recompra legitimamente em andamento — ou
+um `RECUSADO` retroativo, que apaga o fato de a oferta ter sido aceita.
+
+**O campo `desfecho` já aceita o valor**: foi criado deliberadamente **sem
+`CHECK`**, porque o desfecho vem do rótulo da origem e a lista ia crescer. No dia
+em que `DESISTIU APÓS ACEITE` (ou o rótulo que a equipe escolher) aparecer no
+`Status`, ele entra na carga sem alteração de código.
+
+**O que pedir à origem:** um terceiro valor na coluna `Status` do quadro de
+recompra. E, se o momento da desistência importar, uma data — sem ela dá para
+saber que desistiu, não quando.
+
+### 10.4 Por que não uma tabela própria de recompra
+
+Considerado e descartado. A recompra divide com distrato e retomada o essencial:
+mesma unidade, mesmo cliente, mesmo empreendimento, mesma pergunta de negócio
+("o cliente saiu, e como"). Uma tabela separada obrigaria toda consulta de saída
+de cliente a unir duas fontes, e a `categoria` já distingue os quatro tipos com
+`CHECK` no banco.
+
+O que a recompra tem de próprio — 15 colunas de valor, incluindo
+`DEVOLUÇÃO AO CLIENTE` — continua sem destino, e **essa** é a única parte que
+talvez justifique estrutura nova. Segue aberta.

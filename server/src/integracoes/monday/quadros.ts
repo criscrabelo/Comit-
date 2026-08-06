@@ -278,7 +278,12 @@ export const QUADROS: Record<ChaveQuadro, DefinicaoQuadro> = {
       // `DATA DA VENDA` deste quadro e a venda ORIGINAL ao cliente que sai —
       // datas de 2020 a 2025. NAO entra em `data_venda`, pelo mesmo motivo que
       // nao entra em Retomadas.
-      situacao: ['STATUS'],
+      // Duas colunas, dois eixos que nao podem ser colapsados:
+      //   STATUS    — decisao do CLIENTE (SUCESSO / RECUSADO PELO CLIENTE)
+      //   CONCLUSÃO — andamento OPERACIONAL (Concluído / Em andamento / ...)
+      // Uma recompra pode estar aceita e ainda em andamento, ou recusada e
+      // encerrada. Juntar as duas perderia justamente a taxa de conversao.
+      desfecho: ['STATUS'],
       motivo: ['CONCLUSÃO'],
       equipe: ['EXECUTOR'],
     },

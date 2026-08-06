@@ -387,15 +387,13 @@ async function transformarItem(
   }
 
   if (quadro === 'recompras') {
-    // Recompra RECUSADA pelo cliente nao e recompra: e o caminho nao tomado da
-    // arvore de decisao. Sao 9 dos 25 itens do quadro — conta-las como recompra
-    // infla o numero em mais de um tercio. Ignorada COM motivo: o payload
-    // integral continua em `registros_brutos`, e a contagem aparece no
-    // relatorio, entao a taxa de recusa continua recuperavel.
-    const status = lerCampo(item, mapa, 'situacao');
-    if (/recusad/i.test(status)) {
-      return { ignorar: `recompra recusada pelo cliente (STATUS = ${status})` };
-    }
+    // A recompra e uma OFERTA, e oferta tem taxa de conversao. As recusadas
+    // ENTRAM: sao o denominador de "quantas tentamos e quantas deram certo".
+    //
+    // A versao anterior as ignorava, para nao inflar a contagem de recompras.
+    // Nao inflar o numerador estava certo; descartar o denominador apagava a
+    // pergunta. `desfecho` deixa as duas contagens conviverem.
+    const desfecho = lerCampo(item, mapa, 'desfecho') || null;
 
     // O empreendimento E o grupo: este quadro nao tem coluna de empreendimento.
     const empreendimentoRecompra = await resolverEmpreendimento(tituloGrupo);
@@ -415,6 +413,7 @@ async function transformarItem(
             empreendimento_id: empreendimentoRecompra,
             unidade,
             categoria: 'recompra',
+            desfecho,
             motivo: lerCampo(item, mapa, 'motivo') || null,
             equipe: lerCampo(item, mapa, 'equipe') || null,
             data_solicitacao: dataRecompra,
@@ -450,6 +449,7 @@ async function transformarItem(
             ...comum,
             unidade: local.unidade,
             categoria,
+            desfecho: lerCampo(item, mapa, 'desfecho') || null,
             motivo: lerCampo(item, mapa, 'motivo') || null,
             equipe: lerCampo(item, mapa, 'equipe') || null,
             data_solicitacao: paraData(lerCampo(item, mapa, 'data_solicitacao')),

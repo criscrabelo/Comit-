@@ -613,6 +613,8 @@ export interface TabelaDistratos extends Proveniencia {
   empreendimento_id: string | null;
   unidade: string | null;
   categoria: string;
+  /** Rotulo bruto do desfecho na origem. Ver migracao 022. */
+  desfecho: string | null;
   motivo: string | null;
   equipe: string | null;
   data_solicitacao: Dia | null;

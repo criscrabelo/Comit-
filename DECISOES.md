@@ -1736,3 +1736,75 @@ Resultado: **16 recompras**, 5 concluídas (média 474 dias, de 196 a 667) e
 **11 em aberto**, a mais antiga desde **2024-03-01**.
 
 Suíte em **410 testes**.
+
+---
+
+## B17.10 — Origem é vínculo, desfecho é campo: as três portas da recompra
+
+**Data:** 2026-08-06
+
+### As três portas
+
+A Coevo explicou que a recompra entra por três caminhos, em momentos diferentes:
+negociação após a notificação; solicitação do próprio cliente (via
+Relacionamento/Crédito); e dentro de um processo judicial já em andamento.
+
+**Decisão: a porta é VÍNCULO, não categoria.** Em todas as três a recompra é a
+mesma coisa — a Coevo assume o financiamento, a unidade volta, o ciclo fecha na
+assinatura do novo financiamento. Criar `recompra_judicial` e afins
+multiplicaria o `CHECK`, quebraria a contagem única e obrigaria todo indicador a
+somar três coisas para responder "quantas recompras temos".
+
+A infraestrutura já existe e está provada: `notificacoes_origem` (B17.7) e
+`contratos_origem` (B17.8). Falta `processos_origem` — e falta o principal:
+
+**O quadro de recompra não tem NENHUMA coluna de ligação.** Zero
+`board_relation`, conferido na origem. O de Processos também tem zero. Hoje é
+impossível dizer por qual porta cada uma das 25 recompras entrou, e essa é
+justamente a pergunta que diz onde investir esforço comercial. É pedido à
+origem, não trabalho de código.
+
+### O desfecho: eu tinha descartado o denominador
+
+Em B17.9 decidi ignorar as 9 recompras `RECUSADO PELO CLIENTE`, para não inflar
+a contagem. A Coevo corrigiu: **precisa saber quantas tentou e quantas deram
+certo** — é para isso que a recusa é registrada no quadro.
+
+Estava errado pela metade. Não inflar o numerador era correto; descartar o
+denominador apagava a pergunta. O erro de fundo foi tratar "não contamina o
+indicador que eu conheço" como se fosse "não serve para nada".
+
+Migração 022: `distratos.desfecho`, sem `CHECK`. As 25 entram:
+
+**25 tentativas · 16 aceitas · 9 recusadas · conversão 64%.**
+
+São dois eixos independentes, e colapsá-los perderia informação: `desfecho` é a
+decisão do CLIENTE (SUCESSO / RECUSADO), `motivo` é o andamento OPERACIONAL
+(Concluído / Em andamento). Cinco recompras estão aceitas E em andamento — um
+campo só não expressa isso.
+
+### O caso que a origem ainda não sabe registrar
+
+O cliente pode aceitar a recompra e desistir depois. Hoje `Status` só tem
+`SUCESSO` e `RECUSADO PELO CLIENTE`: uma desistência posterior vira ou um
+`SUCESSO` que nunca conclui — indistinguível de uma recompra legitimamente em
+andamento — ou um `RECUSADO` retroativo, que apaga o fato de a oferta ter sido
+aceita.
+
+`desfecho` foi criado **sem `CHECK` de propósito**, por isso: o rótulo vem da
+origem, a lista vai crescer, e um `CHECK` recusaria a carga inteira no dia em
+que o valor novo aparecesse — exatamente quando se quer que ele entre e apareça.
+Falta o terceiro valor na coluna `Status` do Monday, e uma data se o momento da
+desistência importar.
+
+### Tabela própria de recompra: considerado e descartado
+
+A recompra divide com distrato e retomada a unidade, o cliente, o
+empreendimento e a pergunta de negócio. Tabela separada obrigaria toda consulta
+de saída de cliente a unir duas fontes, e `categoria` já distingue os quatro
+tipos com `CHECK`. O que ela tem de próprio — 15 colunas de valor, incluindo
+`DEVOLUÇÃO AO CLIENTE` — segue sem destino, e é a única parte que talvez
+justifique estrutura nova.
+
+Homologação de recompras reexecutada: **7 de 7 provas**, 25 lidos, 25 incluídos,
+0 ignorados. Suíte em 410 testes.
