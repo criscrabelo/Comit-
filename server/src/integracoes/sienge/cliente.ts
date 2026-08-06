@@ -1,28 +1,38 @@
 /**
- * Cliente HTTP do Sienge — estrutura, sem endpoints presumidos.
+ * Cliente HTTP do Sienge.
  *
- * ⚠️ NENHUM ENDPOINT, PARÂMETRO OU FORMATO DE RESPOSTA FOI INVENTADO.
+ * Os caminhos vêm do levantamento REAL da Coevo/Tetus
+ * (docs/SIENGE-INFORMACOES-PREENCHIDAS.md, 06/08/2026) — nenhum endpoint,
+ * parâmetro ou formato foi inventado. A hipótese anterior, mantida desligada
+ * por meses, provou-se errada quando a confirmação chegou; a espera pagou.
  *
- * `references/sienge.md` lista cinco caminhos com a ressalva explícita
- * "confirmar no ambiente", e o adaptador Python da skill repete a advertência.
- * Nenhum foi validado contra a API da Coevo. Por isso eles vivem aqui como
- * CANDIDATOS declarados, e a ingestão fica travada até que a homologação do
- * ambiente confirme cada um.
+ * A ingestão continua travada até a homologação por endpoint: o documento
+ * confirma o caminho, o ato registrado no banco libera a chamada.
  *
- * O que existe é a estrutura: autenticação por variável de ambiente, paginação,
- * retentativa com espera progressiva, limite de requisições, tempo limite,
- * redação de dados sensíveis e área bruta. Ligar é trocar uma variável — depois
- * de confirmar.
+ * Estrutura: Basic Auth por variável de ambiente, paginação limit/offset com
+ * resultSetMetadata, retentativa com espera progressiva, limite por minuto E
+ * orçamento diário (franquia do plano Start), tempo limite, e somente GET por
+ * construção.
  */
 import { config } from '../../config.js';
 import { logger } from '../../logging.js';
 import { ErroApi } from '../../errors.js';
 
 /**
- * Caminhos CANDIDATOS, extraídos de references/sienge.md.
+ * Caminhos confirmados pela Coevo/Tetus em consultas reais à API
+ * (docs/SIENGE-INFORMACOES-PREENCHIDAS.md, 06/08/2026).
  *
- * `confirmado: false` em todos. A trava de homologação recusa qualquer chamada
- * a caminho não confirmado — não é documentação, é comportamento.
+ * A versão anterior deste catálogo guardava cinco hipóteses de
+ * references/sienge.md — e a confirmação provou que os caminhos de títulos e
+ * saldo estavam ERRADOS (`/receivable-bills` não existe; o real é
+ * `/accounts-receivable/receivable-bills`). É o motivo de a regra "não invente
+ * endpoints" existir.
+ *
+ * `confirmado: false` continua em todos, de propósito: o documento confirma o
+ * CAMINHO, mas a homologação por endpoint (`POST /api/sienge/homologar`) é o
+ * ato registrado — com autor, data e observação — que libera a chamada. A
+ * trava recusa qualquer endpoint não homologado; não é documentação, é
+ * comportamento.
  */
 export interface EndpointCandidato {
   caminho: string;
@@ -35,33 +45,45 @@ export interface EndpointCandidato {
 }
 
 export const ENDPOINTS_CANDIDATOS: Record<string, EndpointCandidato> = {
+  companies: {
+    caminho: '/companies',
+    descricao: 'Empresas (43 no ambiente; id é o identificador, sem deduplicar por nome/CNPJ)',
+    natureza: 'posicao',
+    confirmado: false,
+  },
+  enterprises: {
+    caminho: '/enterprises',
+    descricao: 'Empreendimentos (285 no ambiente; incluir todos, sem filtro prévio)',
+    natureza: 'posicao',
+    confirmado: false,
+  },
+  customers: {
+    caminho: '/customers',
+    descricao: 'Clientes (3.257 ativos; carga incremental por modifiedAfter/modifiedBefore)',
+    natureza: 'posicao',
+    confirmado: false,
+  },
   receivable_bills: {
-    caminho: '/receivable-bills',
-    descricao: 'Títulos a receber',
+    caminho: '/accounts-receivable/receivable-bills',
+    descricao: 'Títulos a receber — customerId OBRIGATÓRIO: não há listagem geral',
     natureza: 'posicao',
     confirmado: false,
   },
   installments: {
-    caminho: '/installments',
-    descricao: 'Parcelas',
-    natureza: 'posicao',
-    confirmado: false,
-  },
-  current_debit_balance: {
-    caminho: '/current-debit-balance',
-    descricao: 'Saldo devedor por contrato',
+    caminho: '/accounts-receivable/receivable-bills/{receivableBillId}/installments',
+    descricao: 'Parcelas de um título',
     natureza: 'posicao',
     confirmado: false,
   },
   total_current_debit_balance: {
     caminho: '/total-current-debit-balance',
-    descricao: 'Carteira de referência',
+    descricao: 'Saldo devedor presente do cliente (CPF ou CNPJ, mutuamente excludentes)',
     natureza: 'posicao',
     confirmado: false,
   },
   commissions: {
     caminho: '/commissions',
-    descricao: 'Comissões',
+    descricao: 'Comissões — limit e offset OBRIGATÓRIOS neste endpoint',
     natureza: 'movimentacao',
     confirmado: false,
   },
@@ -103,10 +125,9 @@ export function verificarConfiguracao(): {
 }
 
 /**
- * URL base.
- *
- * O formato vem de `scripts/adaptadores/sienge.py` da skill. Também precisa ser
- * confirmado: se a Coevo usar outro padrão, muda aqui e só aqui.
+ * URL base — formato CONFIRMADO pelo levantamento:
+ * `https://api.sienge.com.br/{subdominio}/public/api/v1`, subdomínio `tetus`.
+ * O subdomínio segue vindo do ambiente: infraestrutura não vive em código.
  */
 function urlBase(): string {
   const subdominio = config.sienge.subdominio;
@@ -158,6 +179,57 @@ class LimitadorDeRequisicoes {
 
 const limitador = new LimitadorDeRequisicoes(config.sienge.requisicoesPorMinuto);
 
+/**
+ * Orçamento DIÁRIO de requisições.
+ *
+ * O plano Start da Coevo tem franquia de 1.000 requisições REST por dia, e o
+ * custo do excedente ainda não foi validado contratualmente
+ * (docs/SIENGE-INFORMACOES-PREENCHIDAS.md §6). Estourar a franquia em silêncio
+ * geraria custo sem ninguém ter decidido pagar — por isso o teto vive aqui,
+ * abaixo da franquia, e esgotá-lo interrompe a carga com erro claro em vez de
+ * seguir gastando.
+ *
+ * O saldo restante fica exposto para a ingestão PLANEJAR: com 3.257 clientes
+ * ativos e títulos apenas por customerId, uma carga completa custa 3+ dias de
+ * franquia — o desenho incremental não é otimização, é obrigação.
+ */
+class OrcamentoDiario {
+  private dia = '';
+  private usadas = 0;
+
+  constructor(private readonly teto: number) {}
+
+  consumir(): void {
+    const hoje = new Date().toISOString().slice(0, 10);
+    if (hoje !== this.dia) {
+      this.dia = hoje;
+      this.usadas = 0;
+    }
+    if (this.usadas >= this.teto) {
+      throw new ErroSienge(
+        `Orcamento diario de requisicoes ao Sienge esgotado (${this.teto}). ` +
+          'A franquia do plano Start e de 1.000/dia e o custo do excedente nao foi validado. ' +
+          'A carga continua amanha, ou ajuste SIENGE_ORCAMENTO_DIARIO deliberadamente.',
+        { teto: this.teto, usadas: this.usadas, reentar: false },
+      );
+    }
+    this.usadas++;
+  }
+
+  restante(): number {
+    const hoje = new Date().toISOString().slice(0, 10);
+    if (hoje !== this.dia) return this.teto;
+    return Math.max(0, this.teto - this.usadas);
+  }
+}
+
+const orcamento = new OrcamentoDiario(config.sienge.orcamentoDiario);
+
+/** Saldo diário restante — para a ingestão decidir se cabe mais uma página. */
+export function orcamentoRestante(): number {
+  return orcamento.restante();
+}
+
 const esperar = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /**
@@ -182,7 +254,26 @@ export interface OpcoesRequisicao {
   /** Chave de ENDPOINTS_CANDIDATOS. Caminho livre não é aceito. */
   endpoint: keyof typeof ENDPOINTS_CANDIDATOS;
   parametros?: Record<string, string | number | undefined>;
+  /**
+   * Valores para os marcadores `{nome}` do caminho — hoje só
+   * `{receivableBillId}` em parcelas. Obrigatórios quando o caminho os tem:
+   * um marcador sem valor viraria URL literalmente com `{...}`, e o Sienge
+   * responderia 404 num caminho que existe.
+   */
+  parametrosDeCaminho?: Record<string, string | number>;
 }
+
+/**
+ * Formato de página confirmado nos endpoints de listagem
+ * (docs/SIENGE-INFORMACOES-PREENCHIDAS.md §5).
+ */
+export interface PaginaSienge<T> {
+  resultSetMetadata: { count: number; offset: number; limit: number };
+  results: T[];
+}
+
+/** Máximo aceito pela API nos endpoints de listagem confirmados. */
+export const LIMITE_POR_PAGINA = 200;
 
 /**
  * Executa uma requisição de LEITURA.
@@ -212,7 +303,21 @@ export async function ler<T>(opcoes: OpcoesRequisicao): Promise<T> {
     );
   }
 
-  const url = new URL(urlBase() + candidato.caminho);
+  // Resolve os marcadores `{nome}` do caminho ANTES de montar a URL. Falta de
+  // valor é erro imediato — nunca uma requisição com `{...}` literal na URL.
+  let caminho = candidato.caminho;
+  for (const marcador of caminho.match(/\{(\w+)\}/g) ?? []) {
+    const nome = marcador.slice(1, -1);
+    const valor = opcoes.parametrosDeCaminho?.[nome];
+    if (valor === undefined) {
+      throw new ErroSienge(`O endpoint ${candidato.caminho} exige o parametro de caminho "${nome}".`, {
+        endpoint: candidato.caminho,
+      });
+    }
+    caminho = caminho.replace(marcador, encodeURIComponent(String(valor)));
+  }
+
+  const url = new URL(urlBase() + caminho);
   for (const [chave, valor] of Object.entries(opcoes.parametros ?? {})) {
     if (valor !== undefined) url.searchParams.set(chave, String(valor));
   }
@@ -220,6 +325,9 @@ export async function ler<T>(opcoes: OpcoesRequisicao): Promise<T> {
   let ultimoErro: unknown;
 
   for (let tentativa = 1; tentativa <= TENTATIVAS_MAXIMAS; tentativa++) {
+    // Retentativa tambem consome franquia: cada tentativa e uma requisicao
+    // real cobrada pelo plano, entao cada uma passa pelo orcamento.
+    orcamento.consumir();
     await limitador.aguardarVaga();
 
     const controle = new AbortController();

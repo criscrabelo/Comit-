@@ -39,6 +39,9 @@ const esquema = z.object({
     .default('false')
     .transform((v) => v === 'true'),
   SIENGE_REQUISICOES_POR_MINUTO: z.coerce.number().int().positive().default(60),
+  // Franquia do plano Start: 1.000/dia; o teto fica ABAIXO dela de proposito,
+  // para nunca gerar excedente com custo nao validado (§6 do documento).
+  SIENGE_ORCAMENTO_DIARIO: z.coerce.number().int().positive().default(900),
 
   // ── Backup e restauracao ──────────────────────────────────────────────────
   // Diretorio FORA do repositorio. Backup dentro do repositorio acaba num
@@ -131,6 +134,7 @@ export const config = {
      */
     habilitado: env.SIENGE_HABILITADO,
     requisicoesPorMinuto: env.SIENGE_REQUISICOES_POR_MINUTO,
+    orcamentoDiario: env.SIENGE_ORCAMENTO_DIARIO,
     get credenciaisPresentes() {
       return Boolean(
         env.SIENGE_SUBDOMAIN?.trim() && env.SIENGE_USER?.trim() && env.SIENGE_PASSWORD,

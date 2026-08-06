@@ -46,12 +46,17 @@ describe('nenhum endpoint foi confirmado', () => {
     expect(confirmados).toEqual([]);
   });
 
-  it('os cinco candidatos vem de references/sienge.md, sem invencao', () => {
+  it('os sete candidatos vem do levantamento REAL da Coevo, sem invencao', () => {
+    // docs/SIENGE-INFORMACOES-PREENCHIDAS.md §3 — confirmados por consulta
+    // executada na API. Os caminhos hipoteticos anteriores (/receivable-bills,
+    // /current-debit-balance) NAO existem e sairam do catalogo.
     const caminhos = Object.values(ENDPOINTS_CANDIDATOS).map((e) => e.caminho);
     expect(caminhos).toEqual([
-      '/receivable-bills',
-      '/installments',
-      '/current-debit-balance',
+      '/companies',
+      '/enterprises',
+      '/customers',
+      '/accounts-receivable/receivable-bills',
+      '/accounts-receivable/receivable-bills/{receivableBillId}/installments',
       '/total-current-debit-balance',
       '/commissions',
     ]);
@@ -63,7 +68,7 @@ describe('nenhum endpoint foi confirmado', () => {
     }
     // Comissao e evento, nao posicao: somar posicao entre datas seria erro.
     expect(ENDPOINTS_CANDIDATOS.commissions!.natureza).toBe('movimentacao');
-    expect(ENDPOINTS_CANDIDATOS.current_debit_balance!.natureza).toBe('posicao');
+    expect(ENDPOINTS_CANDIDATOS.total_current_debit_balance!.natureza).toBe('posicao');
   });
 });
 
