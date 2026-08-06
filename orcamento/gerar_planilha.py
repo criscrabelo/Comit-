@@ -570,12 +570,19 @@ PEND = [
      "despesa que não é dele e aparece caro. Tratar os dois blocos com o mesmo "
      "critério de rateio, para não criar duas regras diferentes.",
      "Cristiane + Controladoria", "EM ABERTO", "TI"),
-    ("5", "Sala de Reunião — recorrente ou pontual?",
-     "R$ 2.800/mês × 12 = R$ 33.600 diluídos linearmente, classificados em "
-     "Móveis e Utensílios.",
-     "Se for compra pontual (CAPEX), o desvio mensal vai acusar alarme falso todo "
-     "mês até a compra acontecer, e um pico no mês da compra.",
-     "Cristiane", "EM ABERTO", "TI"),
+    ("5", "Sala de Reunião — EXECUTAR, PAUSAR OU REPENSAR?",
+     "Projeto orçado em R$ 2.800/mês × 12 = R$ 33.600, classificado em Móveis e "
+     "Utensílios, sem nenhum lançamento até jul/26. A gestora levanta que a sala "
+     "já não comporta todas as pessoas, então investir na configuração atual pode "
+     "não resolver o problema real. Três caminhos: executar como está, pausar, ou "
+     "repensar a solução (outro espaço, formato híbrido, mais de uma sala).",
+     "É a maior despesa isolada do TI e 38% de tudo que a área tem orçado em "
+     "despesas. Se pausar, são R$ 33.600 liberados — mais que a economia atual do "
+     "departamento. Decidir antes de comprometer o valor. Se a decisão for "
+     "executar, definir também se é compra pontual ou parcelada: hoje está "
+     "diluída linearmente, e se for compra única o desvio mensal vai acusar "
+     "economia falsa todo mês até a compra e um pico no mês em que ocorrer.",
+     "Cristiane + Diretoria", "PAUTA REUNIÃO", "TI"),
     ("6", "Office 365 — nº de licenças",
      "A observação diz '10 licenças de software – 60 usuários'. Os dois números "
      "não fecham entre si.",
