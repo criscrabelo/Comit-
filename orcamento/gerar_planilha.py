@@ -75,10 +75,13 @@ LINHAS = [
     ("JUR-D01", "Jurídico", "Despesas", "JUSFY",
      "Fase de teste com objetivo de eliminar o Astrea", "",
      "Licenças de Softwares", _12(100.00)),
-    ("JUR-D02", "Jurídico", "Despesas", "JUSBRASIL", "", "",
+    ("JUR-D02", "Jurídico", "Despesas", "JUSBRASIL",
+     "ORÇAMENTO VEIO ERRADO: orçado R$ 104,90/mês, custo real R$ 136,00/mês. "
+     "Corrigir na revisão orçamentária", "",
      "Licenças de Softwares", _12(104.90)),
     ("JUR-D03", "Jurídico", "Despesas", "ASTREA",
-     "Cancelado — realizado zerado desde mai/26", "",
+     "ORÇAMENTO VEIO ERRADO: orçado R$ 112,07/mês, custo real R$ 346,00/mês. "
+     "Corrigir na revisão orçamentária", "",
      "Licenças de Softwares", _12(112.07)),
     ("JUR-D04", "Jurídico", "Despesas", "LEME", "", "",
      "Licenças de Softwares", _12(1030.00)),
@@ -127,6 +130,23 @@ LINHAS = [
      "Custeio de Treinamento", _12(200.00)),
     ("TI-D08", "TI", "Despesas", "Aplicativo de Gravação de Reunião", "", "",
      "Licenças de Softwares", _12(220.00)),
+    # Ferramentas de IA que existem hoje e nao estavam na ficha. Planejado zerado
+    # de proposito: a meta sera definida com a diretoria. Lancadas em separado, a
+    # pedido da gestora, para dar visibilidade item a item.
+    ("TI-D10", "TI", "Despesas", "Claude",
+     "Ferramenta de IA — não constava na ficha. Planejado a definir com a diretoria",
+     "", "Licenças de Softwares", _12(0.00)),
+    ("TI-D11", "TI", "Despesas", "GPT",
+     "Ferramenta de IA — não constava na ficha. Planejado a definir com a diretoria",
+     "", "Licenças de Softwares", _12(0.00)),
+    ("TI-D12", "TI", "Despesas", "Adapta One",
+     "Ferramenta de IA — não constava na ficha. Planejado a definir com a diretoria. "
+     "CONFERIR sobreposição com a linha 'Inteligência Artificial (Adapta)'",
+     "", "Licenças de Softwares", _12(0.00)),
+    ("TI-D13", "TI", "Despesas", "Adapta Skip",
+     "Ferramenta de IA — não constava na ficha. Planejado a definir com a diretoria. "
+     "CONFERIR o nome exato do produto e a sobreposição com 'Inteligência Artificial (Adapta)'",
+     "", "Licenças de Softwares", _12(0.00)),
     ("TI-D09", "TI", "Despesas", "Bonificação do time",
      "Cumprimento de prazos e participação em projetos — CONFIRMAR se houve "
      "parcela no 1º quadrimestre",
@@ -158,8 +178,10 @@ REALIZADO = {
     "JUR-E03": ([4500.00] * 3 + [5500.00] * 4 + [None] * 5, FONTE_JUR,
                 "R$ 4.500/mês em jan–mar; aumento de R$ 1.000 a partir de abr/26"),
     "JUR-D01": (_r7(0.00), FONTE_JUR, "Ainda não iniciado — sem cobrança"),
-    "JUR-D02": (_r7(136.00), FONTE_JUR, "Acima do orçado (R$ 104,90) — conferir contrato"),
-    "JUR-D03": (_r7(0.00), FONTE_JUR, "Cancelado — sem cobrança"),
+    "JUR-D02": (_r7(136.00), FONTE_JUR,
+                "R$ 136,00/mês contra R$ 104,90 orçados. Erro no orçamento original"),
+    "JUR-D03": (_r7(346.00), FONTE_JUR,
+                "R$ 346,00/mês — 3x o orçado (R$ 112,07). Erro no orçamento original"),
     "JUR-D04": (_r7(970.00), FONTE_JUR, ""),
     "JUR-D05": (_r7(0.00), FONTE_JUR, "Sem gasto no período"),
     "JUR-D06": ([0.00] * 7 + [None] * 5, FONTE_JUR,
@@ -326,12 +348,33 @@ PEND = [
      "perde valor na apresentação à diretoria.",
      "Cristiane + Financeiro", "EM ABERTO", ""),
     ("3", "Jusfy x Astrea",
-     "O risco era pagar os dois em paralelo. O realizado de mai–jul mostra "
-     "Astrea em R$ 0 (cancelado) e Jusfy em R$ 0 (ainda não iniciado) — "
-     "no momento não há custo de nenhum dos dois.",
-     "Economia de R$ 212,07/mês enquanto durar. Falta decidir se o Jusfy entra "
-     "e quando, para ajustar o planejado dos meses seguintes.",
-     "Cristiane", "RESOLVIDO", "Jurídico"),
+     "O Astrea NÃO foi cancelado: custa R$ 346,00/mês e segue ativo. O Jusfy está "
+     "em R$ 0 — ainda não iniciado. A informação anterior de que o Astrea estava "
+     "zerado foi corrigida pela gestora.",
+     "O Astrea sozinho consome R$ 4.152/ano. Se o Jusfy entrar e o objetivo era "
+     "substituí-lo, essa é a economia em jogo — e ela é maior do que parecia, "
+     "porque o custo real do Astrea é 3x o que estava orçado.",
+     "Cristiane", "EM ABERTO", "Jurídico"),
+    ("K", "ORÇAMENTO VEIO ERRADO — Astrea e Jusbrasil",
+     "Os dois valores já chegaram errados na ficha de orçamento que a gestora "
+     "recebeu. Astrea: orçado R$ 112,07/mês, custo real R$ 346,00 (3,1x). "
+     "Jusbrasil: orçado R$ 104,90/mês, custo real R$ 136,00 (1,3x). "
+     "PAUTA PARA A REUNIÃO COM A DIRETORIA.",
+     "O planejado dessas duas linhas foi mantido como está na ficha, para o erro "
+     "ficar visível no comparativo. Subdimensionamento de R$ 3.180,36 no ano "
+     "(R$ 2.807,16 do Astrea + R$ 373,20 do Jusbrasil). Não é estouro de gestão: "
+     "é erro na origem do orçamento, e precisa de correção formal.",
+     "Cristiane + Diretoria", "PAUTA REUNIÃO", "Jurídico"),
+    ("L", "Ferramentas de IA sem orçamento — DEFINIR META",
+     "Claude, GPT, Adapta One e Adapta Skip são gastos que existem hoje e não "
+     "constavam na ficha. Foram criadas quatro linhas separadas, com planejado "
+     "zerado, para a meta ser definida junto com a diretoria.",
+     "Enquanto o planejado for zero, qualquer lançamento nessas linhas aparece "
+     "como 'Não orçado'. Conferir também se há sobreposição com a linha "
+     "'Inteligência Artificial (Adapta)', já orçada em R$ 17.400/ano — pode ser "
+     "que ela já cubra o Adapta One e o Adapta Skip. E confirmar o nome exato do "
+     "'Adapta Skip'.",
+     "Cristiane + Diretoria", "PAUTA REUNIÃO", "TI"),
     ("4", "Rateio dos softwares corporativos de TI",
      "Backup (R$ 9.900), Adapta/IA (R$ 17.400), Antivírus (R$ 2.880) e Office 365 "
      "(R$ 4.500) estão marcados na ficha como 'não sei se seria administrativo'. "
@@ -1185,7 +1228,8 @@ def gerar(DEPTO, OUT):
             if col == 6:
                 cores = {"RESOLVIDO": VERDE, "APLICADO": VERDE, "PREENCHER": "F8CBAD",
                          "A LANÇAR": "F8CBAD", "CONFERIR": "FFE699",
-                     "BASE DIFERENTE": "F8CBAD", "DECIDIR": "FFE699"}
+                     "BASE DIFERENTE": "F8CBAD", "DECIDIR": "FFE699",
+                     "PAUTA REUNIÃO": "FFD966"}
                 c.fill = PatternFill("solid", fgColor=cores.get(val, LARANJA))
             else:
                 c.fill = PatternFill("solid", fgColor=BRANCO if i % 2 == 0 else CINZA_L)
