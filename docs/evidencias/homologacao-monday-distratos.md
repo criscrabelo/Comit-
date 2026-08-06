@@ -3,7 +3,7 @@
 **Quadro:** Distratos e Desistências — board `18404493605`  
 **Ambiente:** development  
 **Competência:** todas  
-**Executado em:** 2026-08-06T13:28:02.437Z  
+**Executado em:** 2026-08-06T14:08:47.220Z  
 **Versão da API do Monday:** 2024-10
 
 > Nenhum dado foi alterado no Monday. O proxy recusa `mutation` e
@@ -25,11 +25,11 @@
 
 | Métrica | Valor |
 | --- | --- |
-| Identificador da execução | `72e258c0-6f4e-4dd9-8cca-3964ada9671f` |
+| Identificador da execução | `92834367-4486-4399-9785-56d082ef1e12` |
 | Quadro | Distratos e Desistências — board `18404493605` |
-| Início | 2026-08-06T13:28:02.473Z |
-| Conclusão | 2026-08-06T13:28:05.434Z |
-| Duração | 2.96 s |
+| Início | 2026-08-06T14:08:47.304Z |
+| Conclusão | 2026-08-06T14:08:49.557Z |
+| Duração | 2.25 s |
 | **Quantidade recebida** (lidos da origem) | **38** |
 | **Páginas consultadas** | **1** |
 | **Último cursor** | `null` — leitura chegou ao fim |
@@ -233,19 +233,17 @@ _Coluna vazia em todos os itens._
 
 #### EMPREENDIMENTO → `empreendimento`
 
-`color_mm28cam9` · tipo `status` · 38 preenchido(s), 0 vazio(s) · 9 valor(es) distinto(s)
+`color_mm28cam9` · tipo `status` · 38 preenchido(s), 0 vazio(s) · 7 valor(es) distinto(s)
 
 | Valor | Ocorrências |
 | --- | --- |
-| SAN MARINO | 10 |
-| ALENCAR MAZZEO | 6 |
+| VERANO | 10 |
+| ALAMEDA | 8 |
+| MORATTA | 8 |
 | GRAN PARK | 5 |
-| ALAMEDA | 4 |
-| COEVO E CONELESTE | 4 |
-| JARDIM PAULISTA | 3 |
+| CARPE DIEM | 3 |
 | SIETE | 3 |
-| MORATTA | 2 |
-| FGV | 1 |
+| VITA VILLAGE | 1 |
 
 #### EQUIPE → `equipe`
 
@@ -471,11 +469,11 @@ _relatório é evidência versionada. Só a contagem é publicada._
 
 | Métrica | Valor |
 | --- | --- |
-| Identificador da execução | `c64e0362-3314-4b9d-b959-6967f548284e` |
+| Identificador da execução | `d4f417cb-abd2-4b4c-b902-c13c64a81d47` |
 | Quadro | Distratos e Desistências — board `18404493605` |
-| Início | 2026-08-06T13:28:05.459Z |
-| Conclusão | 2026-08-06T13:28:07.592Z |
-| Duração | 2.13 s |
+| Início | 2026-08-06T14:08:49.614Z |
+| Conclusão | 2026-08-06T14:08:51.778Z |
+| Duração | 2.16 s |
 | **Quantidade recebida** (lidos da origem) | **38** |
 | **Páginas consultadas** | **1** |
 | **Último cursor** | `null` — leitura chegou ao fim |
@@ -487,7 +485,7 @@ _relatório é evidência versionada. Só a contagem é publicada._
 | **Duplicada** | **0** |
 | **Com erro** | **0** |
 | **Data de referência** | — |
-| **Último dado válido (antes desta execução)** | 2026-08-06T13:28:05.432Z |
+| **Último dado válido (antes desta execução)** | 2026-08-06T14:08:49.555Z |
 | Status | sucesso |
 | Contabilidade fecha | sim |
 
@@ -537,7 +535,7 @@ digitado à mão e pode conter um CPF que ninguém previu.
     "fonte": "monday",
     "versao": 1,
     "data_referencia": null,
-    "extraido_em": "2026-08-06T13:28:09.892Z"
+    "extraido_em": "2026-08-06T14:08:53.852Z"
   },
   {
     "id_origem": "***9112",
@@ -552,14 +550,14 @@ digitado à mão e pode conter um CPF que ninguém previu.
     "fonte": "monday",
     "versao": 1,
     "data_referencia": null,
-    "extraido_em": "2026-08-06T13:28:09.930Z"
+    "extraido_em": "2026-08-06T14:08:53.891Z"
   },
   {
     "id_origem": "***5338",
     "categoria": "distrato",
     "motivo": "INADIMPLÊNCIA",
     "equipe": "HOUSE",
-    "unidade": "CARPE DIEM 44",
+    "unidade": "44",
     "data_solicitacao": "2026-01-06",
     "data_venda": "2023-09-11",
     "data_conclusao": null,
@@ -567,7 +565,7 @@ digitado à mão e pode conter um CPF que ninguém previu.
     "fonte": "monday",
     "versao": 1,
     "data_referencia": null,
-    "extraido_em": "2026-08-06T13:28:09.890Z"
+    "extraido_em": "2026-08-06T14:08:53.849Z"
   }
 ]
 ```

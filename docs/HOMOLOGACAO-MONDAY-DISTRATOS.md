@@ -7,9 +7,9 @@
 > Processos Judiciais: pré-confirmação, duas execuções consecutivas, 14
 > métricas, 7 provas, rótulos reais e amostra anonimizada.
 >
-> **As sete provas passaram.** Há **cinco itens abertos**, dois deles com
-> consequência direta: o cruzamento entre quadros (6.3) e a medição do ciclo da
-> recompra (6.4) — seção 6.
+> **As sete provas passaram.** O item mais consequente — a coluna
+> `EMPREENDIMENTO` (6.3) — foi **corrigido na origem e reverificado**. Restam
+> **quatro itens abertos**, o maior deles a medição do ciclo da recompra (6.4).
 
 **Quadro autorizado:** `(JUR) DISTRATOS E DESISTÊNCIAS` — board **18404493605**
 **Tabela de destino:** `distratos` — a mesma que o quadro de Retomadas usará.
@@ -130,13 +130,13 @@ alimentam campos do Patrono.
 | Campo no Patrono | Coluna no Monday | Coluna no banco | Preenchimento |
 | --- | --- | --- | --- |
 | `cliente` | CLIENTE | (vínculo) | 38 / 38 |
-| `empreendimento` | EMPREENDIMENTO (status) | `empreendimento_id` | 38 / 38 |
+| `empreendimento` | EMPREENDIMENTO (status — o **prédio**, ver 6.3) | `empreendimento_id` | 38 / 38 |
 | `motivo` | MOTIVO | `motivo` | 38 / 38 |
 | `equipe` | EQUIPE | `equipe` | 38 / 38 |
 | `data_solicitacao` | DATA DA SOLICITAÇÃO | `data_solicitacao` | 38 / 38 |
 | `data_venda` | DATA DA VENDA | `data_venda` | 38 / 38 |
 | — | título do grupo | `categoria` | 38 / 38 |
-| — | nome do item | `unidade` | 38 / 38 |
+| — | nome do item, sem o prefixo do empreendimento | `unidade` | 38 / 38 (36 só com o identificador) |
 | — | **não existe no quadro** | `data_conclusao` | **0 / 38** |
 | — | **não existe no quadro** | `tempo_dias` | **0 / 38** |
 
@@ -186,6 +186,19 @@ dois espelhos discordam do status também no conteúdo: `SETOR` espelhado traz
 `JURIDICO / RELACIONAMENTO / COMERCIAL / CRÉDITO`, e o de status traz
 `PÓS VENDAS / JURÍDICO / COMERCIAL`. São vocabulários diferentes para o mesmo
 nome de coluna.
+
+**A correção do item 6.3 tornou essa duplicidade útil, e não só tolerável.** O
+espelho de `EMPREENDIMENTO` passou a guardar a **SPE** (`ALENCAR MAZZEO`,
+`SAN MARINO`, `COEVO E CONELESTE`, `FGV`, `JARDIM PAULISTA`) e o status passou a
+guardar o **prédio**. Duas informações distintas sob o mesmo título: a ingestão
+lê a certa pela regra de desempate, e a outra não se perdeu.
+
+Isso muda a natureza da pendência. Não é mais "qual das duas está certa" — as
+duas estão, para coisas diferentes. É **um título que descreve mal uma delas**.
+Renomear o espelho para `SPE` no Monday deixaria a distinção explícita e
+liberaria o campo para ser mapeado no dia em que a SPE virar dimensão de
+análise. Enquanto não for renomeado, o detector continua sinalizando — o que é
+o comportamento certo: dois títulos iguais continuam sendo dois títulos iguais.
 
 ---
 
@@ -250,46 +263,62 @@ de solução. Ler a fórmula antes de mapear vale nos dois sentidos.
 indicador que interessa? Se sim, ele merece campo próprio, e não o de tempo de
 conclusão.
 
-### 6.3 A coluna EMPREENDIMENTO é a SPE, não o prédio
+### 6.3 ✅ RESOLVIDO na origem — a coluna EMPREENDIMENTO passou a trazer o prédio
 
-O achado mais consequente. A coluna EMPREENDIMENTO do quadro **não traz o
-empreendimento do item**:
+**Corrigido pela Coevo em 06/08/2026, e verificado com nova execução real.**
 
-| EMPREENDIMENTO (coluna) | Nome do item | Prédio real |
+A coluna trazia a **SPE / incorporadora**, não o empreendimento do item:
+`ALENCAR MAZZEO` para itens `MORATTA …`, `SAN MARINO` para `VERANO …`,
+`COEVO E CONELESTE` para `ALAMEDA …`. Às vezes coincidiam (`GRAN PARK`), o que
+tornava o defeito mais difícil de ver, não menos. Era a mesma classe do `LOCAL`
+em Processos, que parecia comarca e era atuação.
+
+**A correção foi nos valores, não na estrutura** — e é melhor do que a proposta
+original de renomear a coluna. Os valores da coluna de **status** passaram a ser
+os prédios; a coluna **espelhada**, que continua com o mesmo título, preservou
+as SPEs. Como a resolução por título já prefere não-espelho, a ingestão passou a
+ler o campo certo **sem nenhuma alteração de código** — e a informação de SPE não
+se perdeu.
+
+Medido na reexecução, banco recriado:
+
+| | Antes | Depois |
 | --- | --- | --- |
-| `ALENCAR MAZZEO` | `MORATTA 001B` | MORATTA |
-| `COEVO E CONELESTE` | `ALAMEDA 003B` | ALAMEDA |
-| `SAN MARINO` | `VERANO 907A` | VERANO |
-| `FGV` | `VITA 02` | VITA |
-| `GRAN PARK` | `GRAN PARK 1308` | GRAN PARK — coincidem |
+| Empreendimentos criados na base | 9 — cinco deles eram SPE | **7, todos prédios** |
+| Unidades com o nome do item inteiro | 25 de 38 | **2 de 38** |
+| Empreendimentos que cruzam com Notificações | **0** | **6 de 7** |
 
-É a mesma classe de defeito do `LOCAL` em Processos, que parecia comarca e era
-atuação: uma coluna com nome familiar carregando outro conceito. Aqui parece ser
-a **SPE / incorporadora** proprietária do empreendimento.
+O cruzamento — que era a consequência mais cara — fechou: `VERANO` (256
+notificações + 10 distratos), `MORATTA` (152 + 8), `CARPE DIEM` (88 + 3),
+`VITA VILLAGE` (27 + 1), `SIETE` (16 + 3), `GRAN PARK` (9 + 5).
 
-Três consequências concretas, já medidas:
+#### O que sobrou: `ALAMEDA` vs `ALAMEDAS`
 
-1. **9 empreendimentos foram criados na base** a partir dessa coluna —
-   `ALENCAR MAZZEO`, `COEVO E CONELESTE`, `SAN MARINO`, `FGV`,
-   `JARDIM PAULISTA`, `GRAN PARK`, `ALAMEDA`, `SIETE`, `MORATTA`. Os cinco
-   primeiros **não são empreendimentos**.
-2. **O cruzamento entre quadros não fecha.** Notificações trouxe `MORATTA`,
-   `VERANO`, `AURORA`, `ALAMEDAS`, `BELLA VIDA`, `CARPE DIEM`. Distratos traz
-   `ALENCAR MAZZEO` e `SAN MARINO`. O mesmo prédio entra na base com dois nomes
-   que não se encontram — e o histórico do ativo fica partido.
-3. **25 de 38 unidades ficaram com o nome do item inteiro** (`MORATTA 001B` em
-   vez de `001B`), porque a remoção do prefixo depende de o nome do
-   empreendimento ser o começo do nome do item. Comportamento correto — o
-   recorte não é inventado —, mas o dado fica menos útil.
+Único caso em que o histórico de um prédio continua partido em dois:
 
-**Nada foi corrigido por suposição.** A pergunta para o jurídico: o
-empreendimento do distrato deve sair do **prefixo do nome do item** (como em
-Notificações) ou essa coluna deve ser renomeada no Monday para `SPE` e uma
-coluna `EMPREENDIMENTO` de verdade ser criada? A segunda resolve na origem e não
-deixa dívida no código.
+| Quadro | Nome usado | Registros |
+| --- | --- | --- |
+| Notificações `5630368737` | `ALAMEDAS` | 33 |
+| Distratos `18404493605` | `ALAMEDA` | 8 |
 
-**Até a decisão, a carga de distratos não deve alimentar indicadores por
-empreendimento**, nem ser cruzada com Notificações por esse campo.
+São duas linhas em `empreendimentos`, e nenhum indicador soma as duas. O próprio
+quadro de Distratos é inconsistente por dentro: 7 itens se chamam `ALAMEDA 003B`,
+`ALAMEDA 603A`… e 1 se chama `ALAMEDAS 406A` — que é justamente o que ficou com
+a unidade `ALAMEDAS 406A` em vez de `406A`, porque a extração se recusa a cortar
+`ALAMEDA` no meio de `ALAMEDAS` (seção 2.2).
+
+**Resolver na origem**, escolhendo um nome só. Padronizar em `ALAMEDAS` custa 8
+registros; em `ALAMEDA`, custa 33.
+
+**Não será resolvido no código.** Uma regra de plural genérica juntaria
+`ALAMEDA`/`ALAMEDAS` hoje e, um dia, dois empreendimentos que só diferem por uma
+letra — trocaria um erro visível por um invisível.
+
+#### Resíduo menor
+
+`VITA 02` ficou com a unidade `VITA 02` em vez de `02`: a coluna diz
+`VITA VILLAGE` e o item diz `VITA`. O empreendimento cruza normalmente; só a
+unidade fica com o nome inteiro. 1 item em 38.
 
 ### 6.4 `data_venda` é a venda original, não a revenda — e não há recompra para medir
 

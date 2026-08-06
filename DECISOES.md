@@ -1446,3 +1446,65 @@ Distratos continua aceitando, fixando a assimetria como deliberada.
 
 O primeiro falha no dia em que o grupo de recompra for criado, que é exatamente
 quando esta regra precisa ser revisitada.
+
+---
+
+## B17.6 — `EMPREENDIMENTO` corrigido na origem: o cruzamento entre quadros fechou
+
+**Data:** 2026-08-06
+**Board:** `18404493605` · resolve o item 6.3 de `docs/HOMOLOGACAO-MONDAY-DISTRATOS.md`
+
+A coluna `EMPREENDIMENTO` trazia a SPE/incorporadora em vez do prédio (B17.4).
+A Coevo corrigiu no Monday, e a correção foi **melhor que a proposta original**.
+
+### A correção: valores, não estrutura
+
+A proposta era renomear a coluna para `SPE` e criar um `EMPREENDIMENTO` novo. O
+que se fez foi trocar os **valores** da coluna de **status** para os prédios,
+deixando a coluna **espelhada** — de mesmo título — com as SPEs.
+
+Como `montarMapaColunas` já prefere não-espelho, a ingestão passou a ler o campo
+certo **sem uma linha de código alterada**. E a informação de SPE não se perdeu:
+ficou no espelho, disponível para o dia em que virar dimensão de análise.
+
+Vale como registro de método: a regra de desempate "espelho perde para
+não-espelho" — herdada de `js/monday-sync.js`, onde foi descoberta na prática —
+sustentou uma correção feita na origem meses depois, sem coordenação com o
+código. Regra boa é a que continua certa quando o mundo muda sozinho.
+
+### Verificado com reexecução real, banco recriado
+
+| | Antes | Depois |
+| --- | --- | --- |
+| Empreendimentos criados na base | 9 — cinco eram SPE | **7, todos prédios** |
+| Unidades com o nome do item inteiro | 25 de 38 | **2 de 38** |
+| Empreendimentos que cruzam com Notificações | **0** | **6 de 7** |
+
+7 de 7 provas, 38 lidos, 38 incluídos. O cruzamento fechou: `VERANO` (256
+notificações + 10 distratos), `MORATTA` (152 + 8), `CARPE DIEM` (88 + 3),
+`VITA VILLAGE` (27 + 1), `SIETE` (16 + 3), `GRAN PARK` (9 + 5).
+
+### O que sobrou: `ALAMEDA` vs `ALAMEDAS`
+
+Notificações usa `ALAMEDAS` (33 registros), Distratos usa `ALAMEDA` (8). Duas
+linhas em `empreendimentos` para o mesmo prédio, e nenhum indicador soma as duas.
+O quadro de Distratos é inconsistente por dentro: 7 itens `ALAMEDA …` e 1
+`ALAMEDAS 406A` — este último é o que ficou com a unidade inteira, porque a
+extração se recusa a cortar `ALAMEDA` no meio de `ALAMEDAS` (B17.4, item 2).
+
+**Decisão: resolver na origem, não no código.** Uma regra de plural genérica
+juntaria `ALAMEDA`/`ALAMEDAS` hoje e, um dia, dois empreendimentos que só
+diferem por uma letra — trocaria um erro visível por um invisível. Padronizar em
+`ALAMEDAS` custa 8 registros; em `ALAMEDA`, custa 33.
+
+Resíduo menor: `VITA 02` mantém a unidade `VITA 02` porque a coluna diz
+`VITA VILLAGE` e o item diz `VITA`. O empreendimento cruza; só a unidade fica
+com o nome inteiro. 1 em 38.
+
+### A pendência de título repetido mudou de natureza
+
+Não é mais "qual das duas colunas está certa" — as duas estão, para coisas
+diferentes. É **um título que descreve mal uma delas**. Renomear o espelho para
+`SPE` tornaria a distinção explícita. Enquanto isso, o detector de B17.1 continua
+sinalizando, que é o comportamento certo: dois títulos iguais continuam sendo
+dois títulos iguais, mesmo quando o desempate acerta.
