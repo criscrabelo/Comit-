@@ -143,11 +143,13 @@ _r7 = lambda v: [v] * 7 + [None] * 5
 
 REALIZADO = {
     "JUR-E01": (_r7(8818.00), FONTE_JUR, "Valor cheio da nota — R$ 1.182/mês abaixo do contratado"),
-    # Bruto informado (R$ 2.886,91) nao e lancavel contra um orcado de custo total:
-    # lancar so ele produziria economia de R$ 1.938,61/mes que nao existe.
-    "JUR-E02": ([None] * 12, "",
-                "PREENCHER com o CUSTO TOTAL. Bruto informado: R$ 2.886,91/mês — "
-                "faltam encargos e benefícios"),
+    # Lancado o salario bruto, que e o dado disponivel e nao mudou no ano. Atencao:
+    # o orcado desta linha e custo total, entao o desvio dela nao e comparavel —
+    # faltam encargos e beneficios do lado do realizado.
+    "JUR-E02": (_r7(2886.91), FONTE_JUR,
+                "SALÁRIO BRUTO, sem alteração no ano. O orçado é custo total, "
+                "então o desvio desta linha NÃO é economia: faltam encargos e "
+                "benefícios (~R$ 1.938,61/mês)"),
     # R$ 4.500 de jan a mar; aumento de R$ 1.000 a partir de abr/26.
     "JUR-E03": ([4500.00] * 3 + [5500.00] * 4 + [None] * 5, FONTE_JUR,
                 "R$ 4.500/mês em jan–mar; aumento de R$ 1.000 a partir de abr/26"),
@@ -166,6 +168,10 @@ REALIZADO = {
     "TI-E03": ([0.00] * 3 + [6300.00] * 4 + [None] * 5, FONTE_JUR,
                "Entrada em abr/26. R$ 3.700/mês abaixo do contratado — confirmar escopo"),
 }
+
+# Linhas cujo realizado esta numa base diferente do orcado (bruto x custo total).
+# O desvio delas nao e comparavel, entao recebem status proprio e alerta no Painel.
+BASE_DIF = {"JUR-E02": "realizado em salário bruto; orçado em custo total"}
 
 PLANOS = [
     "Pessoal - CLT",
@@ -225,15 +231,17 @@ def widths(ws, mapping):
 # (#, Tema, Em aberto, Impacto, Responsavel, Status, Departamento)
 # ---------------------------------------------------------------------------
 PEND = [
-    ("A", "Custo total da Geovanna — A LANÇAR",
-     "O planejado dela é R$ 4.825,52/mês, que é o custo total orçado na ficha "
-     "(salário + encargos de folha + benefícios). O dado disponível hoje é só o "
-     "salário bruto, R$ 2.886,91/mês. O realizado está em branco.",
-     "Lançar só o bruto contra um orçado de custo total mostraria economia de "
-     "R$ 1.938,61/mês que não existe. Peça ao RH o custo total mensal dela, ou o "
-     "bruto mais os encargos para somar antes de lançar.",
-     "Cristiane + RH", "A LANÇAR", "Jurídico"),
-    ("B", "Custo total do Vinicius — A LANÇAR",
+    ("A", "Geovanna — realizado em base diferente do orçado",
+     "O planejado dela é R$ 4.825,52/mês, que é o CUSTO TOTAL orçado na ficha "
+     "(salário + encargos de folha + benefícios). O realizado lançado é o SALÁRIO "
+     "BRUTO, R$ 2.886,91/mês, confirmado sem alteração no ano. São bases "
+     "diferentes.",
+     "O desvio desta linha (−R$ 1.938,61/mês, −R$ 13.570,24 no acumulado jan–jul) "
+     "NÃO é economia: é o encargo que falta do lado do realizado. Para fechar, "
+     "peça ao RH o custo total mensal dela — ou o percentual de encargos da "
+     "empresa, que dá para calcular a partir do bruto.",
+     "Cristiane + RH", "BASE DIFERENTE", "Jurídico"),
+    ("B", "Vinicius — custo total A LANÇAR",
      "Mesmo caso da Geovanna. O planejado é R$ 5.416,525/mês (custo total). Brutos "
      "confirmados: R$ 2.570,52 até jul/26 e R$ 3.070,52 a partir de 05/08/26 — o "
      "aumento é absorvido pela folga do envelope, que já previa reajuste, então o "
@@ -562,6 +570,10 @@ def gerar(DEPTO, OUT):
             16: ('=SUMPRODUCT((COLUMN(Realizado!$H$4:$S$4)-COLUMN(Realizado!$H$4)'
                  '+1<=$D$3)*(Realizado!$H{0}:$S{0}<>""))').format(rp),
         }
+        # Linha em base divergente nao pode receber o status generico: "Abaixo do
+        # orcado" leria como economia o que e so encargo faltando no realizado.
+        if LIN[i][0] in BASE_DIF:
+            formulas[14] = "⚠ Base diferente"
         for col, f in formulas.items():
             c = wc.cell(row=rc, column=col, value=f)
             c.font = Font(size=9)
@@ -643,6 +655,19 @@ def gerar(DEPTO, OUT):
     m.font = Font(bold=True, size=11, color=AZUL)
     m.alignment = Alignment(horizontal="center")
     wp.cell(row=3, column=3, value="(altere na aba Comparativo)").font = Font(size=9, italic=True, color="808080")
+
+    # Alerta de bases divergentes: sem isso, "9 de 9 linhas lançadas" sugere que o
+    # numero esta fechado quando ha linha comparando bruto contra custo total.
+    avisos = [(l[3], BASE_DIF[l[0]]) for l in LIN if l[0] in BASE_DIF]
+    if avisos:
+        wp.merge_cells(start_row=4, start_column=1, end_row=4, end_column=9)
+        txt = "  ".join("⚠ {0}: {1} — o desvio desta linha não é economia.".format(a, b)
+                        for a, b in avisos)
+        ca = wp.cell(row=4, column=1, value=txt)
+        ca.font = Font(bold=True, size=9, color="9C0006")
+        ca.fill = PatternFill("solid", fgColor="FFC7CE")
+        ca.alignment = Alignment(vertical="center", indent=1)
+        wp.row_dimensions[4].height = 20
 
     PH = 5
     header(wp, PH, ["Departamento", "Bloco", "Orçado do ano",
@@ -1014,7 +1039,8 @@ def gerar(DEPTO, OUT):
                                     horizontal="center" if col in (1, 6) else "left")
             if col == 6:
                 cores = {"RESOLVIDO": VERDE, "APLICADO": VERDE, "PREENCHER": "F8CBAD",
-                         "A LANÇAR": "F8CBAD", "CONFERIR": "FFE699"}
+                         "A LANÇAR": "F8CBAD", "CONFERIR": "FFE699",
+                     "BASE DIFERENTE": "F8CBAD"}
                 c.fill = PatternFill("solid", fgColor=cores.get(val, LARANJA))
             else:
                 c.fill = PatternFill("solid", fgColor=BRANCO if i % 2 == 0 else CINZA_L)
