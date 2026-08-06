@@ -177,15 +177,18 @@ REALIZADO = {
     # R$ 4.500 de jan a mar; aumento de R$ 1.000 a partir de abr/26.
     "JUR-E03": ([4500.00] * 3 + [5500.00] * 4 + [None] * 5, FONTE_JUR,
                 "R$ 4.500/mês em jan–mar; aumento de R$ 1.000 a partir de abr/26"),
-    "JUR-D01": (_r7(0.00), FONTE_JUR, "Ainda não iniciado — sem cobrança"),
+    "JUR-D01": ([0.00] * 12, FONTE_JUR,
+                "Nunca iniciado. Cancelado em jan/26 na fase de experimento e não "
+                "será contratado: zero o ano todo"),
     "JUR-D02": (_r7(136.00), FONTE_JUR,
                 "R$ 136,00/mês contra R$ 104,90 orçados. Erro no orçamento original"),
     # Anuidade 2026 em 5 parcelas de R$ 1.346,28. Por caixa: 1 parcela em jan e as
     # outras 4 em fev (R$ 150 + R$ 1.196,28 + R$ 4.038,84 de antecipacao). Por
     # competencia as parcelas vao de dez/25 a abr/26. Sem cobranca de mar em diante.
-    "JUR-D03": ([1346.28, 5385.12] + [0.00] * 5 + [None] * 5, "Extrato do financeiro",
-                "Anuidade 2026 = R$ 6.731,40 em 5x de R$ 1.346,28, quitada em fev "
-                "(competência até abr). Sem cobrança de mar em diante"),
+    "JUR-D03": ([1346.28, 5385.12] + [0.00] * 10, "Extrato do financeiro + portal Astrea",
+                "Anuidade 2025/26 = R$ 6.731,40 em 5x de R$ 1.346,28 (venc. 01/11/25 a "
+                "01/03/26), quitada em 10/02/26. Cancelamento em ago/26, sem renovação "
+                "e sem substituto: zero de mar a dez"),
     "JUR-D04": (_r7(970.00), FONTE_JUR, ""),
     "JUR-D05": (_r7(0.00), FONTE_JUR, "Sem gasto no período"),
     "JUR-D06": ([0.00] * 7 + [None] * 5, FONTE_JUR,
@@ -437,19 +440,22 @@ PEND = [
      "O Jusfy entrou na ficha porque o orçamento foi montado em nov/dez de 2025, "
      "durante a fase de experimento. Em janeiro a decisão foi cancelar, e o "
      "serviço nunca chegou a ser iniciado. Custo zero o ano todo.",
-     "Os R$ 1.200 orçados no ano nunca serão usados. Não é economia de gestão: é "
-     "item que já nasceu fora do escopo e deve sair na revisão do orçamento.",
+     "Os R$ 1.200 orçados no ano nunca serão usados, e a gestora confirmou que "
+     "não haverá substituto para o Astrea. Não é economia de gestão: é item que "
+     "já nasceu fora do escopo e deve sair na revisão do orçamento.",
      "Cristiane", "RESOLVIDO", "Jurídico"),
-    ("N", "Astrea — anuidade quitada e cancelamento em curso",
-     "A anuidade 2026 custou R$ 6.731,40, parcelada em 5x de R$ 1.346,28. Pelo "
-     "extrato, uma parcela foi paga em jan e as outras quatro em fev (incluindo "
-     "R$ 4.038,84 de antecipação); por competência as parcelas vão até abr/26. "
-     "Não há e não haverá cobrança de mar em diante. O cancelamento formal foi "
-     "solicitado em ago/26 e aguarda confirmação por e-mail do fornecedor.",
-     "O realizado das linhas de mar a dez é zero de fato, não falta de "
-     "lançamento. Guardar a confirmação por e-mail do cancelamento para não haver "
-     "renovação automática da anuidade 2027.",
-     "Cristiane", "EM ANDAMENTO", "Jurídico"),
+    ("N", "Astrea — cancelar antes de 01/11/26 (renovação automática)",
+     "Anuidade 2025/26 de R$ 6.731,40 em 5x de R$ 1.346,28, com vencimentos de "
+     "01/11/25 a 01/03/26 e quitação em 10/02/26 — conferido contra o portal do "
+     "fornecedor. Cancelamento solicitado em ago/26, sem substituto. Realizado "
+     "zerado de mar a dez.",
+     "ATENÇÃO AO PRAZO: o ciclo do Astrea começa sempre em 1º de novembro e a "
+     "cobrança é automática em cartão (Visa final 4957) — não passa por aprovação "
+     "de boleto. Se o cancelamento não estiver confirmado até 01/11/26, entra a "
+     "anuidade 2026/27, que pelo histórico de reajuste (+83% e depois +10,1%) "
+     "sairia por volta de R$ 7.400. O responsável financeiro cadastrado no "
+     "fornecedor é a Thamar. Guardar a confirmação por escrito.",
+     "Cristiane + Thamar", "PRAZO 01/11", "Jurídico"),
     ("K", "ORÇAMENTO VEIO ERRADO — Astrea e Jusbrasil",
      "ASTREA: orçado R$ 112,07/mês, o que dá R$ 1.344,84 no ano — praticamente o "
      "valor de UMA das cinco parcelas (R$ 1.346,28). Quem montou a ficha tomou uma "
@@ -503,6 +509,9 @@ PEND = [
      "definir isso UMA vez e manter, para o histórico não misturar critérios.",
      "Cristiane + Financeiro", "DECIDIR", ""),
 ]
+
+_rl = [k for k, v in REALIZADO.items() if len(v[0]) != NM]
+assert not _rl, "realizado com nº de meses errado: {0}".format(_rl)
 
 _ruins = [p[0] for p in PEND if len(p) != 7]
 assert not _ruins, "pendencias com nº de campos errado: {0}".format(_ruins)
@@ -611,8 +620,8 @@ def gerar(DEPTO, OUT):
             c.alignment = Alignment(vertical="center",
                                     wrap_text=(col in (4, 5)), horizontal="left")
         lid = LIN[i][0]
-        vals, fonte, obs = REALIZADO.get(lid, ([None] * 8, "", ""))
-        for j in range(8):
+        vals, fonte, obs = REALIZADO.get(lid, ([None] * NM, "", ""))
+        for j in range(NM):
             c = wr.cell(row=r, column=8 + j, value=vals[j])
             c.number_format = MOEDA
             c.font = Font(size=9)
@@ -1331,7 +1340,8 @@ def gerar(DEPTO, OUT):
                 cores = {"RESOLVIDO": VERDE, "APLICADO": VERDE, "PREENCHER": "F8CBAD",
                          "A LANÇAR": "F8CBAD", "CONFERIR": "FFE699",
                      "BASE DIFERENTE": "F8CBAD", "DECIDIR": "FFE699",
-                     "PAUTA REUNIÃO": "FFD966", "EM ANDAMENTO": "DDEBF7"}
+                     "PAUTA REUNIÃO": "FFD966", "EM ANDAMENTO": "DDEBF7",
+                     "PRAZO 01/11": "F8CBAD"}
                 c.fill = PatternFill("solid", fgColor=cores.get(val, LARANJA))
             else:
                 c.fill = PatternFill("solid", fgColor=BRANCO if i % 2 == 0 else CINZA_L)
