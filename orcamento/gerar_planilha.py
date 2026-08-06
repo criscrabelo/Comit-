@@ -209,6 +209,72 @@ PLANOS = [
     "Móveis e Utensílios",
 ]
 
+
+# ---------------------------------------------------------------------------
+# Contas pagas — extrato do financeiro (jan a jul/2026), carregado do arquivo em
+# dados/. Entra como abas de APOIO: o centro de custo desses itens ainda nao foi
+# decidido, entao nada daqui alimenta o Planejado, o Realizado ou o Painel.
+# ---------------------------------------------------------------------------
+EXTRATO = "/home/user/Comit-/orcamento/dados/Contas_Pagas_Juridico_TI.xlsx"
+
+# Palavra-chave no nome do credor -> linha do orcamento que ele provavelmente
+# duplica. Serve para a gestora localizar as sobreposicoes e remover a mao.
+DE_PARA = [
+    ("MIGUEL", "JUR-E01 Miguel Clepf"),
+    ("GEOVAN", "JUR-E02 Geovanna"),
+    ("THAMAR", "JUR-E03 Thamar Victória"),
+    ("JUSFY", "JUR-D01 Jusfy"),
+    ("JUSBRASIL", "JUR-D02 Jusbrasil"),
+    ("ASTREA", "JUR-D03 Astrea"),
+    ("LEME", "JUR-D04 Leme"),
+    ("VINICIUS DI FRANCO", "TI-E01 Vinicius Di Franco"),
+    ("Vale Alimentação Vinicius", "TI-E01 Vinicius (benefício)"),
+    ("ELIAS", "TI-E02 Elias Benedito"),
+    ("JONATHAN", "TI-E03 Jonathan"),
+    ("ADAPTA", "TI-D03 / TI-D12 / TI-D13 (Adapta)"),
+    ("OPENAI", "TI-D11 GPT"),
+    ("ANTHROPIC", "TI-D10 Claude"),
+]
+
+
+def carrega_extrato():
+    """Le o extrato e devolve (lancamentos, meses). Silencioso se o arquivo sumir."""
+    try:
+        we = openpyxl.load_workbook(EXTRATO, data_only=True).worksheets[0]
+    except Exception:
+        return [], []
+    out = []
+    for row in we.iter_rows(min_row=2, max_row=we.max_row, max_col=14):
+        v = [c.value for c in row]
+        if v[0] is None:
+            continue
+        mes = str(v[13])[:7]
+        out.append({
+            "credor": str(v[0]).strip(),
+            "doc": str(v[2] or ""),
+            "titulo": str(v[3] or ""),
+            "dtpag": str(v[5] or ""),
+            "valor": v[10] or 0,
+            "cc": str(v[11] or "").strip(),
+            "empresa": str(v[12] or "").strip(),
+            "mes": mes,
+        })
+    meses = sorted({r["mes"] for r in out})
+    return out, meses
+
+
+def de_para(credor):
+    alvo = credor.upper()
+    for chave, linha in DE_PARA:
+        if chave.upper() in alvo:
+            return linha
+    return ""
+
+
+EXTRATO_LANC, EXTRATO_MESES = carrega_extrato()
+# O extrato usa "Júridico" e "T.I"; o orcamento usa "Jurídico" e "TI".
+CC_DO_DEPTO = {"Jurídico": "Júridico", "TI": "T.I"}
+
 HDR_ROW = 4          # linha do cabecalho nas abas de dados
 FIRST = 5            # primeira linha de dados
 LAST = FIRST + len(LINHAS) - 1
@@ -1238,6 +1304,116 @@ def gerar(DEPTO, OUT):
     widths(wn, {"A": 5, "B": 30, "C": 52, "D": 52, "E": 22, "F": 14})
 
     # ===========================================================================
+    # ABAS DE APOIO - CONTAS PAGAS (extrato do financeiro)
+    # ===========================================================================
+    cc_alvo = CC_DO_DEPTO.get(DEPTO)
+    lanc = [r for r in EXTRATO_LANC
+            if DEPTO is None or r["cc"] == cc_alvo]
+
+    if lanc:
+        MX = EXTRATO_MESES
+        rotulo = {m: MESES[int(m[5:7]) - 1] for m in MX}
+
+        # ---- resumo por credor ----
+        wx = wb.create_sheet("Contas Pagas (resumo)")
+        ncx = 3 + len(MX) + 2
+        titulo(wx, "CONTAS PAGAS — RESUMO POR CREDOR  ({0})".format(SUF),
+               "Extrato do financeiro, centro de custo \"{0}\". ABA DE APOIO: o centro de custo "
+               "destes itens ainda não foi decidido, então nada aqui entra no Planejado, no "
+               "Realizado nem no Painel. A coluna final aponta o que provavelmente já está "
+               "no orçamento — confira e remova as duplicidades à mão."
+               .format(cc_alvo or "Jurídico + T.I"), ncx)
+
+        header(wx, 4, ["Credor", "Centro de Custo", "Nº lanç."] +
+               [rotulo[m] for m in MX] + ["TOTAL", "Já está no orçamento?"],
+               fill="7B3F00")
+
+        por_credor = {}
+        for r in lanc:
+            k = (r["credor"], r["cc"])
+            por_credor.setdefault(k, {m: 0.0 for m in MX})
+            por_credor[k][r["mes"]] += r["valor"]
+        ordem = sorted(por_credor, key=lambda k: -sum(por_credor[k].values()))
+
+        rr = 5
+        for (credor, cc), vals in ((k, por_credor[k]) for k in ordem):
+            dup = de_para(credor)
+            n = sum(1 for r in lanc if r["credor"] == credor and r["cc"] == cc)
+            wx.cell(row=rr, column=1, value=credor)
+            wx.cell(row=rr, column=2, value=cc)
+            wx.cell(row=rr, column=3, value=n)
+            for j, m in enumerate(MX):
+                wx.cell(row=rr, column=4 + j, value=vals[m] or None)
+            wx.cell(row=rr, column=4 + len(MX), value=sum(vals.values()))
+            wx.cell(row=rr, column=5 + len(MX), value=dup or None)
+            for col in range(1, ncx + 1):
+                c = wx.cell(row=rr, column=col)
+                c.font = Font(size=9, bold=(col == 4 + len(MX)))
+                c.border = BORDA
+                c.fill = PatternFill("solid", fgColor="FFF2CC" if dup else BRANCO)
+                if 4 <= col <= 4 + len(MX):
+                    c.number_format = MOEDA
+                if col == 3:
+                    c.alignment = Alignment(horizontal="center")
+                if col == 5 + len(MX):
+                    c.font = Font(size=8, bold=True, color="9C0006")
+                    c.alignment = Alignment(wrap_text=True, vertical="center")
+            wx.row_dimensions[rr].height = 22
+            rr += 1
+
+        wx.cell(row=rr, column=1, value="TOTAL")
+        for col in range(1, ncx + 1):
+            c = wx.cell(row=rr, column=col)
+            c.font = Font(bold=True, size=10, color=BRANCO)
+            c.fill = PatternFill("solid", fgColor="7B3F00")
+            c.border = BORDA
+        for col in range(4, 5 + len(MX)):
+            L = get_column_letter(col)
+            c = wx.cell(row=rr, column=col,
+                        value="=SUM({0}5:{0}{1})".format(L, rr - 1))
+            c.number_format = MOEDA
+            c.font = Font(bold=True, size=10, color=BRANCO)
+            c.fill = PatternFill("solid", fgColor="7B3F00")
+            c.border = BORDA
+
+        wx.column_dimensions["A"].width = 58
+        wx.column_dimensions["B"].width = 14
+        wx.column_dimensions["C"].width = 9
+        for col in range(4, 5 + len(MX)):
+            wx.column_dimensions[get_column_letter(col)].width = 13
+        wx.column_dimensions[get_column_letter(5 + len(MX))].width = 30
+        wx.freeze_panes = "D5"
+        wx.auto_filter.ref = "A4:{0}{1}".format(get_column_letter(ncx), rr - 1)
+
+        # ---- detalhe lancamento a lancamento ----
+        wd = wb.create_sheet("Contas Pagas (detalhe)")
+        titulo(wd, "CONTAS PAGAS — DETALHE  ({0})".format(SUF),
+               "Um lançamento por linha, como veio do financeiro. Use o filtro do cabeçalho "
+               "para conferir credor, empreendimento ou mês.", 8)
+        header(wd, 4, ["Mês", "Data de Pagamento", "Credor", "Documento", "Título",
+                       "Empreendimento", "Centro de Custo", "Valor Líquido"],
+               fill="7B3F00")
+        rr = 5
+        for r in sorted(lanc, key=lambda x: (x["mes"], x["credor"])):
+            for col, val in enumerate(
+                    [rotulo[r["mes"]], r["dtpag"], r["credor"], r["doc"],
+                     r["titulo"], r["empresa"], r["cc"], r["valor"]], start=1):
+                c = wd.cell(row=rr, column=col, value=val)
+                c.font = Font(size=8)
+                c.border = BORDA
+                if col == 8:
+                    c.number_format = MOEDA
+            rr += 1
+        wd.cell(row=rr, column=7, value="TOTAL").font = Font(bold=True, size=9)
+        ct = wd.cell(row=rr, column=8, value="=SUM(H5:H{0})".format(rr - 1))
+        ct.number_format = MOEDA
+        ct.font = Font(bold=True, size=10)
+        widths(wd, {"A": 10, "B": 17, "C": 56, "D": 26, "E": 14,
+                    "F": 18, "G": 14, "H": 15})
+        wd.freeze_panes = "A5"
+        wd.auto_filter.ref = "A4:H{0}".format(rr - 1)
+
+    # ===========================================================================
     # ABA 8 - COMO USAR
     # ===========================================================================
     wu = wb.create_sheet("Como usar")
@@ -1302,6 +1478,7 @@ def gerar(DEPTO, OUT):
     wb.move_sheet("Painel", offset=0)
     order = ["Painel", "Comparativo", "Planejado", "Realizado", "Evolução Mensal",
              "Por Plano de Contas", "Pendências", "Como usar"]
+    order += [n for n in wb.sheetnames if n not in order]
     wb._sheets = [wb[n] for n in order]
     wb.active = 0
 
