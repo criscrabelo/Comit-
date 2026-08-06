@@ -670,6 +670,17 @@ PEND = [
      "mesmo padrão do Jusfy x Astrea, em que dois softwares de função parecida "
      "quase rodaram em paralelo.",
      "Cristiane", "DEFINIR VALOR", "TI"),
+    ("W", "Vitor (diretoria) — Claude ou GPT? PERGUNTAR",
+     "Confirmar com o Vitor se ele seguirá usando o Claude, o GPT, ou os dois. "
+     "Hoje as duas ferramentas estão contratadas e são de mesma finalidade — IA "
+     "generalista —, então manter as duas para o mesmo usuário é redundância "
+     "paga.",
+     "É pré-requisito para fechar a meta do item L: não dá para dimensionar o "
+     "orçamento de IA sem saber quantas licenças de cada ferramenta ficam de pé. "
+     "Referência de custo: a OpenAI aparece no extrato com R$ 5.950,10 em sete "
+     "meses, sendo R$ 5.394 só em abr/26. Levantar a mesma informação para os "
+     "demais usuários, não só a diretoria — a decisão vale para todo mundo.",
+     "Cristiane + Vitor", "PERGUNTAR", "TI"),
     ("6", "Office 365 — nº de licenças",
      "A observação diz '10 licenças de software – 60 usuários'. Os dois números "
      "não fecham entre si.",
