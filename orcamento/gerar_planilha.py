@@ -581,7 +581,11 @@ PEND = [
      "departamento. Decidir antes de comprometer o valor. Se a decisão for "
      "executar, definir também se é compra pontual ou parcelada: hoje está "
      "diluída linearmente, e se for compra única o desvio mensal vai acusar "
-     "economia falsa todo mês até a compra e um pico no mês em que ocorrer.",
+     "economia falsa todo mês até a compra e um pico no mês em que ocorrer. "
+     "SEPARAR OS ITENS: a descrição na ficha mistura infraestrutura de reunião "
+     "(câmeras, microfones, cadeiras) com material de consumo e brindes (canetas, "
+     "blocos personalizados, copos, cafeteira). O segundo grupo é papelaria e "
+     "deveria estar no Administrativo, não no TI (item U).",
      "Cristiane + Diretoria", "PAUTA REUNIÃO", "TI"),
     ("R", "Notebooks — TI compra, mas não enxerga o saldo das áreas",
      "Cada área tem a própria linha de orçamento para notebooks, mas é o TI que "
@@ -630,6 +634,20 @@ PEND = [
      "área sai do próprio SIENGE e esta aba fica só para o que ainda não virou "
      "pagamento.",
      "Cristiane", "IMPLANTAR", "TI"),
+    ("U", "Papelaria não é TI — manter no Administrativo",
+     "Recomendação registrada: o controle de papelaria (canetas, blocos, papel, "
+     "copos) deve ficar no Administrativo/Facilities, não no TI. O TI controla "
+     "equipamento porque há decisão TÉCNICA envolvida — se o notebook precisa "
+     "de troca ou só de formatação, se a tela quebrou por defeito ou por queda. "
+     "Não existe decisão técnica em caneta e bloco.",
+     "Três diferenças separam as duas coisas: (1) papelaria acaba, não quebra, "
+     "então a regra de troca 1x1 não se aplica — o controle é de estoque por "
+     "ponto de pedido, outra lógica; (2) não há patrimônio nem número de série "
+     "para rastrear item a item; (3) o custo de controlar uma caneta é maior que "
+     "a caneta. Se papelaria estiver caindo no orçamento do TI por motivo "
+     "histórico, é o mesmo caso do Adapta (item Q): classificação errada, "
+     "corrigir na origem quando o centro de custo novo for aberto.",
+     "Cristiane + Administrativo", "RECOMENDAÇÃO", "TI"),
     ("6", "Office 365 — nº de licenças",
      "A observação diz '10 licenças de software – 60 usuários'. Os dois números "
      "não fecham entre si.",
