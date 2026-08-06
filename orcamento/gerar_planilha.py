@@ -681,6 +681,22 @@ PEND = [
      "meses, sendo R$ 5.394 só em abr/26. Levantar a mesma informação para os "
      "demais usuários, não só a diretoria — a decisão vale para todo mundo.",
      "Cristiane + Vitor", "PERGUNTAR", "TI"),
+    ("X", "Mapa de licenças de IA — quem usa o quê",
+     "Situação atual conhecida: a licença do GPT era da Thamar e hoje é usada em "
+     "conjunto por Gil, Miguel e Thamar. Uma licença também foi cedida ao "
+     "Financeiro. Falta o mapa completo — quem usa cada ferramenta, em qual área "
+     "e sob qual login.",
+     "Duas consequências. ORÇAMENTO: uma licença usada pelo Financeiro é custo de "
+     "outra área lançado no TI/Jurídico — é exatamente o caso que o rateio do "
+     "item L precisa resolver, e sem o mapa não há como ratear. RISCO: contas de "
+     "IA generalista são individuais, e o compartilhamento entre pessoas costuma "
+     "contrariar os termos de uso do fornecedor, com risco de suspensão. Mais "
+     "grave num escritório de advocacia: o histórico de conversas fica visível "
+     "para todos que usam o mesmo login, então dados de um cliente podem ser "
+     "vistos por quem não atua no caso — questão de sigilo profissional, não só "
+     "de custo. Avaliar licenças individuais ou plano de equipe, que costuma sair "
+     "mais barato por usuário e separa os históricos.",
+     "Cristiane + Vitor", "LEVANTAR", "TI"),
     ("6", "Office 365 — nº de licenças",
      "A observação diz '10 licenças de software – 60 usuários'. Os dois números "
      "não fecham entre si.",
