@@ -529,8 +529,8 @@ Nenhum quadro adicional é ligado antes da aprovação de Processos Judiciais.
 | --- | --- | --- |
 | Processos Judiciais | `5959705266` | ✅ **aprovada** em 06/08/2026 |
 | Notificações a Clientes | `5630368737` | ⏳ homologada em 06/08/2026, **aguardando aprovação** — `docs/HOMOLOGACAO-MONDAY-NOTIFICACOES.md` |
-| Distratos e Desistências | `18404493605` | não iniciada |
-| Retomadas | `18413057491` | não iniciada |
+| Distratos e Desistências | `18404493605` | ⏳ homologada em 06/08/2026, **aguardando aprovação** — `docs/HOMOLOGACAO-MONDAY-DISTRATOS.md` |
+| Retomadas | `18413057491` | não iniciada — mesma tabela de Distratos, perfil já corrigido |
 | Honorários Extrajudiciais | `7231876117` | não iniciada — sem destino de ingestão |
 | Controle de Entrega Carpe Diem | `18410779605` | não iniciada — sem destino de ingestão |
 
