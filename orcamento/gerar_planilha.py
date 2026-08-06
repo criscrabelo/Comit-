@@ -131,35 +131,35 @@ LINHAS = [
 ]
 
 # ---------------------------------------------------------------------------
-# Realizado do Juridico informado pela gestora (05/08/2026).
-# Lancado apenas em mai, jun e jul/26 — os tres meses efetivamente fechados.
-# Ago em diante fica em branco ate o mes fechar. None = sem lancamento.
+# Realizado informado pela gestora (05/08/2026): valores constantes de jan a jul,
+# os sete meses ja fechados. Ago a dez ficam em branco e serao confirmados no
+# decorrer do ano. None = sem lancamento.
 # ---------------------------------------------------------------------------
 FONTE_JUR = "Gestora, 05/08/26"
-# mai, jun e jul sao os indices 4, 5 e 6 na base de 12 meses.
-# Jan a abr ficam em branco: nao foram informados.
-_r3 = lambda v: [None] * 4 + [v] * 3 + [None] * 5
+_r7 = lambda v: [v] * 7 + [None] * 5
 
 REALIZADO = {
-    "JUR-E01": (_r3(8818.00), FONTE_JUR, "Valor cheio da nota — R$ 1.182/mês abaixo do contratado"),
+    "JUR-E01": (_r7(8818.00), FONTE_JUR, "Valor cheio da nota — R$ 1.182/mês abaixo do contratado"),
     # Bruto informado (R$ 2.886,91) nao e lancavel contra um orcado de custo total:
     # lancar so ele produziria economia de R$ 1.938,61/mes que nao existe.
     "JUR-E02": ([None] * 12, "",
                 "PREENCHER com o CUSTO TOTAL. Bruto informado: R$ 2.886,91/mês — "
                 "faltam encargos e benefícios"),
-    "JUR-E03": (_r3(5500.00), FONTE_JUR, "Reajuste permanente aplicado desde mai/26"),
-    "JUR-D01": (_r3(0.00), FONTE_JUR, "Ainda não iniciado — sem cobrança"),
-    "JUR-D02": (_r3(136.00), FONTE_JUR, "Acima do orçado (R$ 104,90) — conferir contrato"),
-    "JUR-D03": (_r3(0.00), FONTE_JUR, "Cancelado — sem cobrança"),
-    "JUR-D04": (_r3(970.00), FONTE_JUR, ""),
-    "JUR-D05": (_r3(0.00), FONTE_JUR, "Sem gasto no período"),
-    "JUR-D06": ([None] * 12, "", "Bonificação de ago/26 a confirmar"),
+    "JUR-E03": (_r7(5500.00), FONTE_JUR, "Reajuste permanente aplicado desde mai/26"),
+    "JUR-D01": (_r7(0.00), FONTE_JUR, "Ainda não iniciado — sem cobrança"),
+    "JUR-D02": (_r7(136.00), FONTE_JUR, "Acima do orçado (R$ 104,90) — conferir contrato"),
+    "JUR-D03": (_r7(0.00), FONTE_JUR, "Cancelado — sem cobrança"),
+    "JUR-D04": (_r7(970.00), FONTE_JUR, ""),
+    "JUR-D05": (_r7(0.00), FONTE_JUR, "Sem gasto no período"),
+    "JUR-D06": ([0.00] * 7 + [None] * 5, FONTE_JUR,
+                "Sem parcela no 1º semestre; bonificação de ago/26 a confirmar"),
     # Equipe de TI — informado pela gestora em 05/08/26. Despesas ainda pendentes.
     "TI-E01": ([None] * 12, "",
                "PREENCHER com o CUSTO TOTAL. Bruto: R$ 2.570,52/mês até jul e "
                "R$ 3.070,52 de ago — faltam encargos e benefícios"),
-    "TI-E02": (_r3(0.00), FONTE_JUR, "Sem acionamento no período — confirmar se o contrato segue ativo"),
-    "TI-E03": (_r3(6300.00), FONTE_JUR, "R$ 3.700/mês abaixo do contratado — confirmar escopo"),
+    "TI-E02": (_r7(0.00), FONTE_JUR, "Sem acionamento no período — confirmar se o contrato segue ativo"),
+    "TI-E03": ([0.00] * 3 + [6300.00] * 4 + [None] * 5, FONTE_JUR,
+               "Entrada em abr/26. R$ 3.700/mês abaixo do contratado — confirmar escopo"),
 }
 
 PLANOS = [
