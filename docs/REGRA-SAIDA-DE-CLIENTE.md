@@ -113,8 +113,8 @@ Enquanto isso não for feito, não há resposta para *"quantas recompras estão
 abertas e há quanto tempo"* — que é justamente a pergunta que a diretoria faz
 sobre unidade parada em estoque.
 
-**Encaminhamento:** alimentar `distratos.data_venda` na homologação do quadro
-de Distratos e Retomadas, e derivar dali o tempo de ciclo da recompra.
+**A Coevo confirmou que precisa desse dado** (06/08/2026). O encaminhamento
+está na seção 7.
 
 ---
 
@@ -144,3 +144,65 @@ na etapa de indicadores:
 
 O que **não** existe: campo para valor devolvido, campo para financiamento
 assumido, e segmentação de recompra nos indicadores de tempo.
+
+---
+
+## 7. Como medir recompras abertas e por quanto tempo
+
+A pergunta — *"quantas recompras estão em aberto e há quanto tempo"* — precisa
+de três informações. Duas já existem; a terceira é a incógnita.
+
+| Informação | Onde está | Situação |
+| --- | --- | --- |
+| Quando a recompra começou | `distratos.data_solicitacao` | mapeada nos dois quadros |
+| Que é recompra | `distratos.categoria` | classificada pelo grupo do Monday |
+| **Quando terminou (revenda)** | `distratos.data_venda` | **é o que falta descobrir** |
+
+Enquanto a data de venda não for conhecida, não há como distinguir recompra
+aberta de recompra concluída — e o indicador contaria as duas juntas.
+
+### Passo 1 — feito: procurar a coluna nos dois quadros
+
+Recompra tem grupo próprio **no quadro de Retomadas**, e aquele mapa não
+procurava data de venda nenhuma. Os candidatos foram acrescentados aos dois
+quadros: `DATA DA VENDA`, `DATA VENDA`, `DATA DA REVENDA`, `REVENDA`,
+`NOVA VENDA`.
+
+Procurar não inventa dado: se nenhuma existir, `resolverMapa` reporta em
+`ausentes` e o campo fica nulo.
+
+### Passo 2 — a homologação de Distratos e Retomadas responde
+
+É o próximo quadro da fila, e ele decide o caminho:
+
+- **A coluna existe e está preenchida** → o indicador sai direto, sem nada novo.
+- **A coluna existe mas está vazia nas recompras** → é preenchimento, não
+  código: alguém precisa registrar a revenda no quadro.
+- **A coluna não existe** → duas saídas: criar uma no Monday (mais barato, o
+  quadro é da equipe), ou esperar o Sienge e detectar o fechamento pelo novo
+  contrato na unidade — mais tarde e mais frágil.
+
+### Passo 3 — a forma do indicador
+
+Três cuidados, os três decorrentes de regras já estabelecidas no projeto:
+
+**É indicador de posição, não de movimentação.** "Recompras abertas hoje" não
+pode ser somado entre dias. Segue a regra registrada em `versoes_regras`, e a
+função `agregar_indicador` já recusa somar posição.
+
+**Precisa de fotografia diária para ter série.** Sem `fotografias_diarias`,
+existe só o número de hoje — e a diretoria pergunta se está melhorando ou
+piorando, que é uma pergunta sobre a série.
+
+**Faixa de envelhecimento vale mais que média.** Uma média de 400 dias não diz
+o que fazer. O que diz é:
+
+| Faixa | O que significa |
+| --- | --- |
+| 0–6 meses | dentro do esperado |
+| 6–12 meses | acompanhar |
+| 12–24 meses | atenção |
+| acima de 24 meses | fora do ciclo normal declarado pela própria regra |
+
+A cauda é o que importa: três unidades acima de dois anos é uma informação
+acionável; a média que as esconde, não.

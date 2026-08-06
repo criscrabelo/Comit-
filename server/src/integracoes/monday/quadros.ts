@@ -143,7 +143,7 @@ export const QUADROS: Record<ChaveQuadro, DefinicaoQuadro> = {
       motivo: ['MOTIVO', 'MOTIVO DO DISTRATO'],
       equipe: ['EQUIPE', 'RESPONSÁVEL', 'RESPONSAVEL'],
       data_solicitacao: ['DATA DA SOLICITAÇÃO', 'DATA DA SOLICITACAO', 'DATA SOLICITAÇÃO'],
-      data_venda: ['DATA DA VENDA', 'DATA VENDA'],
+      data_venda: ['DATA DA VENDA', 'DATA VENDA', 'DATA DA REVENDA', 'REVENDA', 'NOVA VENDA'],
       data_conclusao: ['DATA DO DISTRATO', 'DATA DISTRATO', 'DATA DA CONCLUSÃO', 'CONCLUSÃO'],
       tempo_dias: ['TEMPO', 'DIAS', 'TOTAL DE DIAS'],
     },
@@ -165,6 +165,14 @@ export const QUADROS: Record<ChaveQuadro, DefinicaoQuadro> = {
       equipe: ['EQUIPE', 'RESPONSÁVEL', 'RESPONSAVEL'],
       data_solicitacao: ['DATA DA SOLICITAÇÃO', 'DATA SOLICITAÇÃO'],
       data_conclusao: ['DATA DA RETOMADA', 'DATA RETOMADA', 'DATA DA CONCLUSÃO'],
+      // Recompra tem grupo proprio NESTE quadro, e so termina quando a unidade
+      // e revendida. Sem procurar a data de venda aqui, nao ha como responder
+      // "quantas recompras estao abertas e ha quanto tempo" — pergunta da
+      // diretoria sobre unidade parada em estoque.
+      //
+      // Se a coluna nao existir no quadro real, `resolverMapa` a reporta em
+      // `ausentes` e nada e preenchido por suposicao. Procurar nao inventa dado.
+      data_venda: ['DATA DA VENDA', 'DATA VENDA', 'DATA DA REVENDA', 'REVENDA', 'NOVA VENDA'],
       tempo_dias: ['TEMPO', 'DIAS', 'TOTAL DE DIAS'],
     },
   },
