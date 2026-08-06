@@ -75,8 +75,17 @@ describe('nenhum endpoint foi confirmado', () => {
 describe('verificacao de configuracao nao vaza credencial', () => {
   it('informa o que falta pelo NOME da variavel, nunca pelo valor', () => {
     const r = verificarConfiguracao();
-    expect(r.completa).toBe(false);
-    expect(r.faltando).toEqual(['SIENGE_SUBDOMAIN', 'SIENGE_USER', 'SIENGE_PASSWORD']);
+
+    // O que esta presente depende do AMBIENTE em que a suite roda — com as
+    // credenciais reais configuradas, `completa` e true e isso e correto.
+    // O teste nao fixa o cenario; fixa o INVARIANTE: cada variavel aparece em
+    // exatamente uma das listas, e nada alem de nomes conhecidos aparece.
+    const NOMES = ['SIENGE_SUBDOMAIN', 'SIENGE_USER', 'SIENGE_PASSWORD'];
+    for (const nome of NOMES) {
+      const declarada = [...r.faltando, ...r.presentes].filter((n) => n === nome);
+      expect(declarada, nome).toHaveLength(1);
+    }
+    expect(r.completa).toBe(r.faltando.length === 0);
 
     // O resultado contem SOMENTE nomes de variavel conhecidos — nada mais.
     // Verificar ausencia de /password/i seria errado: SIENGE_PASSWORD e o nome

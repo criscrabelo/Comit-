@@ -2091,3 +2091,35 @@ Notas de ambiente que valem para as próximas execuções:
   efêmera. Ao implantar no ambiente definitivo (produção/fly.io), rodar o
   script de novo contra o `DATABASE_URL` real — as sondas custam 10
   requisições e o registro nasce no banco certo, com nova evidência.
+
+## B19.2 — A limitação do §4.4 não existe: a carga de títulos é 100× mais barata
+
+**Data:** 2026-08-06 · Sonda de 2 requisições GET, executada após a homologação
+para resolver a divergência que o próprio relatório apontou.
+
+O levantamento (§4.4) afirmava que `customerId` era obrigatório em
+`/accounts-receivable/receivable-bills` — "não permite listar todos os títulos
+sem cliente". A homologação notou que a API **aceitou** a consulta sem o
+parâmetro; a sonda confirmou e quantificou:
+
+- **Listagem geral existe**: `count = 5.142` títulos no ambiente.
+- Carga completa de títulos: **26 requisições** (5.142 ÷ 200 por página) — e
+  não as 3.257+ do desenho anterior (um cliente por vez).
+- O medo de "3+ dias de franquia" caiu: **a primeira carga completa
+  (empresas + empreendimentos + clientes + títulos) cabe em ~46 requisições**,
+  um único dia com folga enorme.
+
+**Segunda descoberta, negativa e igualmente importante:** `defaulting=true`
+como filtro devolveu o MESMO count (5.142) — o parâmetro é ignorado em
+silêncio pela API. Filtrar inadimplentes no servidor não funciona; a seleção é
+nossa, depois da carga. Isso também é um aviso geral: parâmetro desconhecido
+não dá erro, dá resultado errado com cara de certo — nunca inferir filtro novo
+sem sonda.
+
+**O que continua caro:** parcelas são por título ({receivableBillId}) —
+5.142 requisições para o conjunto todo, acima da franquia. Estratégia para o
+desenho da carga: parcelas apenas dos títulos que interessam à inadimplência
+(os `defaulting`, contados na nossa base após a carga de títulos), e sob
+demanda para os demais.
+
+Consumo do dia após a sonda: 12 requisições das 1.000 (10 da homologação + 2).
