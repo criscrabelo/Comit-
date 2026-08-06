@@ -522,3 +522,20 @@ por nenhum mascaramento de coluna.
 8. relatórios e apresentações mensais.
 
 Nenhum quadro adicional é ligado antes da aprovação de Processos Judiciais.
+
+### Andamento dos demais quadros
+
+| Quadro | Board | Situação |
+| --- | --- | --- |
+| Processos Judiciais | `5959705266` | ✅ **aprovada** em 06/08/2026 |
+| Notificações a Clientes | `5630368737` | ⏳ homologada em 06/08/2026, **aguardando aprovação** — `docs/HOMOLOGACAO-MONDAY-NOTIFICACOES.md` |
+| Distratos e Desistências | `18404493605` | não iniciada |
+| Retomadas | `18413057491` | não iniciada |
+| Honorários Extrajudiciais | `7231876117` | não iniciada — sem destino de ingestão |
+| Controle de Entrega Carpe Diem | `18410779605` | não iniciada — sem destino de ingestão |
+
+A homologação de Notificações encontrou **três defeitos que esta aqui não podia
+encontrar** — entre eles um que recusava a carga inteira no banco. Os três estão
+descritos em `docs/HOMOLOGACAO-MONDAY-NOTIFICACOES.md`, seção 2, e a correção de
+um deles (títulos repetidos) protege justamente a coluna `'MEU TRABALHO'` que
+alimenta a situação dos processos.

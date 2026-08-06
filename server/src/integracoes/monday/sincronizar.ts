@@ -25,7 +25,7 @@ import {
   type Politica,
 } from '../../juridico/judicializacao.js';
 import { lerColunas, lerTodosOsItens, type ItemMonday } from './cliente.js';
-import { QUADROS, resolverMapa, type ChaveQuadro } from './quadros.js';
+import { QUADROS, resolverMapa, type ChaveQuadro, type TituloAmbiguo } from './quadros.js';
 import {
   classificarCategoriaDistrato,
   competenciaDoGrupo,
@@ -60,7 +60,67 @@ export interface OpcoesSincronizacao {
     porCampo: Map<string, string>;
     titulosPorId: Map<string, { titulo: string; tipo: string }>;
     ausentes: string[];
+    ambiguos: TituloAmbiguo[];
   }) => void;
+}
+
+const ROTULO_MES = [
+  'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+  'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
+];
+
+/**
+ * Garante que as competencias referenciadas pela carga existam.
+ *
+ * `competencia_ref` e chave estrangeira para `competencias(ref)` em TODAS as
+ * tabelas de negocio, e nada no fluxo de ingestao criava a linha. Em processos
+ * o defeito nunca apareceu: os grupos daquele quadro (`CJ (REGRESSO)`,
+ * `TETUS LOCACAO`, …) nao derivam competencia nenhuma, e o campo ficava nulo —
+ * nulo nao viola chave estrangeira. Em notificacoes os grupos sao meses
+ * (`AGOSTO/ 2026`, `JULHO/ 2025`), a competencia e derivada de cada um, e a
+ * carga inteira era recusada pelo banco. Descoberto na homologacao do board
+ * 5630368737 (B17.1).
+ *
+ * A competencia e criada com a janela do mes e rotulo legivel. Nao e fechada:
+ * fechar competencia e ato de gestao, e uma carga automatica nao pode praticar
+ * esse ato. `ON CONFLICT DO NOTHING` preserva o que ja existir — inclusive o
+ * `fechada_em` de uma competencia encerrada.
+ */
+async function garantirCompetencias(refs: Array<string | null>): Promise<string[]> {
+  const distintas = [...new Set(refs.filter((r): r is string => Boolean(r)))].sort();
+  if (!distintas.length) return [];
+
+  const existentes = await db
+    .selectFrom('competencias')
+    .select('ref')
+    .where('ref', 'in', distintas)
+    .execute();
+  const jaExistem = new Set(existentes.map((e) => e.ref));
+
+  const criar = distintas.filter((r) => !jaExistem.has(r));
+  if (!criar.length) return [];
+
+  await db
+    .insertInto('competencias')
+    .values(
+      criar.map((ref) => {
+        const [ano, mes] = ref.split('-') as [string, string];
+        const numeroMes = Number(mes);
+        // Dia 0 do mes seguinte e o ultimo dia deste mes, sem tabela de dias.
+        const fim = new Date(Date.UTC(Number(ano), numeroMes, 0));
+        return {
+          ref,
+          rotulo: `${ROTULO_MES[numeroMes - 1]} ${ano}`,
+          inicio: `${ref}-01`,
+          fim: fim.toISOString().slice(0, 10),
+        };
+      }),
+    )
+    .onConflict((oc) => oc.column('ref').doNothing())
+    .execute();
+
+  logger.info({ criadas: criar }, 'Competencias derivadas dos grupos foram criadas pela carga');
+  return criar;
 }
 
 /** Resolve o empreendimento por identificador de origem, nunca por texto solto. */
@@ -371,6 +431,12 @@ export async function sincronizarQuadro(opcoes: OpcoesSincronizacao): Promise<Re
   const def = QUADROS[opcoes.quadro];
   const destino = DESTINO[opcoes.quadro];
 
+  // A competencia pedida tambem e chave estrangeira — em `execucoes_importacao`.
+  // Garantida ANTES de abrir a execucao, senao `--competencia 2026-07` falharia
+  // ao registrar a propria execucao, e sem execucao aberta nao ha onde
+  // contabilizar a falha.
+  await garantirCompetencias([opcoes.competenciaRef]);
+
   const execucao = await iniciarExecucao({
     fonte: 'monday',
     escopo: opcoes.quadro,
@@ -399,6 +465,7 @@ export async function sincronizarQuadro(opcoes: OpcoesSincronizacao): Promise<Re
         porCampo: mapa.porCampo,
         titulosPorId: new Map(colunas.map((c) => [c.id, { titulo: c.title, tipo: c.type }])),
         ausentes: mapa.ausentes,
+        ambiguos: mapa.ambiguos,
       });
     }
 
@@ -406,6 +473,23 @@ export async function sincronizarQuadro(opcoes: OpcoesSincronizacao): Promise<Re
       logger.warn(
         { quadro: def.nome, ausentes: mapa.ausentes },
         'Campos nao encontrados no quadro: serao gravados como nulos, nunca presumidos',
+      );
+    }
+
+    // Titulo repetido nao interrompe a carga: a coluna escolhida pode ser a
+    // certa. Mas a escolha deixa de ser silenciosa — e o que separa "resolvido
+    // por titulo" de "resolvido por acaso de ordenacao".
+    if (mapa.ambiguos.length > 0) {
+      logger.warn(
+        {
+          quadro: def.nome,
+          ambiguos: mapa.ambiguos.map((a) => ({
+            titulo: a.titulo,
+            colunas: a.colunas.map((c) => `${c.id}:${c.tipo}`),
+            vencedora: a.vencedora,
+          })),
+        },
+        'Titulos repetidos no quadro: a resolucao por titulo escolheu uma coluna; confira o mapa',
       );
     }
 
@@ -476,6 +560,14 @@ export async function sincronizarQuadro(opcoes: OpcoesSincronizacao): Promise<Re
     }
 
     execucao.registrarNormalizados(paraGravar.length);
+
+    // 4b. Competencias referenciadas pelos registros.
+    //
+    // Antes do upsert, e nao durante a transformacao: aqui o conjunto e
+    // conhecido inteiro, e as ~38 competencias de um quadro de tres anos custam
+    // uma consulta e uma insercao — nao 1072 idas ao banco para obter sempre a
+    // mesma resposta.
+    await garantirCompetencias(paraGravar.map((r) => r.campos.competencia_ref as string | null));
 
     // Data de referencia do CONJUNTO: a mais recente entre os registros lidos.
     // E o que responde "ate quando este dado esta atualizado", que nao e a

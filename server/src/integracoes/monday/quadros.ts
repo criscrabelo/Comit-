@@ -108,12 +108,20 @@ export const QUADROS: Record<ChaveQuadro, DefinicaoQuadro> = {
       // Rotulo bruto; a normalizacao para Resolvida/Em Andamento e derivada.
       estagio: ['ESTÁGIOS', 'ESTAGIOS', 'ESTÁGIO', 'ESTAGIO', 'ESTÁGIO-SITUAÇÃO'],
       situacao: ['SITUAÇÃO', 'SITUACAO', 'STATUS'],
-      modelo: ['MODELO', 'TIPO DE NOTIFICAÇÃO', 'TIPO'],
+      // O board real usa o plural. Os valores da coluna sao os modelos em si
+      // (PARCELAS REGULARES EM ATRASO, FINANCIAMENTO EM ATRASO, …), o que nao
+      // deixa duvida sobre o campo que ela alimenta.
+      modelo: ['MODELO', 'MODELOS DE NOTIFICAÇÃO', 'TIPO DE NOTIFICAÇÃO', 'TIPO'],
       resolucao: ['RESOLUÇÃO', 'RESOLUCAO'],
       acordo: ['ACORDO'],
       data_notificacao: ['DATA DA NOTIFICAÇÃO', 'DATA DA NOTIFICACAO', 'DATA'],
-      data_solucao: ['DATA DA SOLUÇÃO', 'DATA DA SOLUCAO', 'DATA DE SOLUÇÃO'],
-      total_dias: ['TOTAL DE DIAS', 'DIAS'],
+      // `RESOLUÇÃO` e a data de solucao do board real. Nao e suposicao: a
+      // formula da coluna TOTAL DIAS e `DAYS({RESOLUÇÃO},{DATA DA NOTIFICAÇÃO})`,
+      // ou seja, o proprio quadro declara que RESOLUÇÃO fecha o intervalo que
+      // comeca na notificacao. Fica DEPOIS dos titulos explicitos: se alguem
+      // criar `DATA DA SOLUÇÃO`, ela vence.
+      data_solucao: ['DATA DA SOLUÇÃO', 'DATA DA SOLUCAO', 'DATA DE SOLUÇÃO', 'RESOLUÇÃO'],
+      total_dias: ['TOTAL DE DIAS', 'TOTAL DIAS', 'DIAS'],
       saldo_vencido: ['SALDO VENCIDO', 'VALOR VENCIDO'],
       saldo_atualizado: ['SALDO ATUALIZADO', 'VALOR ATUALIZADO'],
       dias_atraso: ['DIAS DE ATRASO', 'DIAS EM ATRASO'],
@@ -302,6 +310,61 @@ export interface MapaResolvido {
   porCampo: Map<string, string>;
   /** campos que o quadro nao tem — reportados, nunca preenchidos por suposicao */
   ausentes: string[];
+  /** titulos que aparecem em mais de uma coluna do quadro — ver `titulosAmbiguos` */
+  ambiguos: TituloAmbiguo[];
+}
+
+export interface TituloAmbiguo {
+  titulo: string;
+  colunas: Array<{ id: string; tipo: string }>;
+  /** Coluna que a resolucao por titulo escolhe hoje. */
+  vencedora: string;
+}
+
+/**
+ * Titulos que designam mais de uma coluna no mesmo quadro.
+ *
+ * A resolucao por titulo pressupoe que o titulo identifique a coluna. Quando
+ * duas colunas tem o mesmo titulo, a regra de desempate — a primeira que nao
+ * for `mirror` — decide em silencio, e o silencio e o problema: nada no
+ * relatorio diria que houve escolha.
+ *
+ * O board de notificacoes tem exatamente isso: DUAS colunas chamadas
+ * `'MEU TRABALHO'`, uma `date` (quase toda vazia) e uma `status`
+ * (ACOMPANHANDO/FEITO). Em processos, `'MEU TRABALHO'` e a coluna que alimenta
+ * `situacao`. Se aquele quadro ganhar uma segunda coluna com o mesmo titulo, a
+ * situacao de 250 processos muda de coluna sem nenhum aviso — e a taxa de
+ * judicializacao muda junto. Descoberto na homologacao do board 5630368737
+ * (B17.2).
+ *
+ * Isto nao decide nada: apenas declara a ambiguidade, para que ela apareca no
+ * relatorio e seja resolvida por quem conhece o quadro.
+ */
+export function titulosAmbiguos(
+  colunas: Array<{ id: string; title: string; type: string }>,
+): TituloAmbiguo[] {
+  const porChave = new Map<string, Array<{ id: string; title: string; type: string }>>();
+  for (const coluna of colunas) {
+    const chave = chaveDeColuna(coluna.title);
+    if (!chave) continue;
+    const lista = porChave.get(chave) ?? [];
+    lista.push(coluna);
+    porChave.set(chave, lista);
+  }
+
+  const mapa = montarMapaColunas(colunas);
+  const ambiguos: TituloAmbiguo[] = [];
+
+  for (const [chave, lista] of porChave) {
+    if (lista.length < 2) continue;
+    ambiguos.push({
+      titulo: lista[0]!.title,
+      colunas: lista.map((c) => ({ id: c.id, tipo: c.type })),
+      vencedora: mapa.get(chave)?.id ?? lista[0]!.id,
+    });
+  }
+
+  return ambiguos;
 }
 
 /**
@@ -324,5 +387,5 @@ export function resolverMapa(
     else ausentes.push(campo);
   }
 
-  return { porCampo, ausentes };
+  return { porCampo, ausentes, ambiguos: titulosAmbiguos(colunas) };
 }

@@ -962,3 +962,103 @@ A sessão em que esta generalização foi escrita **não alcança `api.monday.co
 ela nasceu antes da liberação do domínio na política de rede do ambiente, e a
 política é aplicada quando a sessão é criada. As duas sincronizações reais de
 Notificações rodam numa sessão nova, com o comando já pronto.
+
+---
+
+## B17.1 — Homologação de Notificações a Clientes: três defeitos que Processos não podia revelar
+
+**Data:** 2026-08-06
+**Board:** `5630368737` — `(JUR) NOTIFICAÇÕES CLIENTES`
+**Resultado:** 1072 lidos, 1072 incluídos, 0 erros; **7 de 7 provas**.
+Relatório em `docs/evidencias/homologacao-monday-notificacoes.md`; documentação
+em `docs/HOMOLOGACAO-MONDAY-NOTIFICACOES.md`.
+
+### O que a segunda homologação comprou
+
+A generalização do runner (B17) foi verificada com dublê e passou nos dois
+quadros. Contra o quadro vivo, a primeira execução **gravou zero registros**. O
+ensaio não tinha como pegar: o defeito estava numa chave estrangeira que os
+grupos de processos nunca acionavam.
+
+É a segunda vez que o rito paga o próprio custo — em B16.3 foi o título com
+apóstrofos, aqui foram três defeitos de uma vez. Fica registrado como argumento
+a favor de homologar **um quadro por vez, contra o dado real**, e não extrapolar
+a aprovação de um quadro para os demais.
+
+### 1. Competência derivada nunca era criada (bloqueante)
+
+`competencia_ref` é chave estrangeira para `competencias(ref)` em todas as
+tabelas de negócio, e nenhum ponto da ingestão criava a linha. Em processos o
+campo ficava nulo — aqueles grupos (`CJ (REGRESSO)`, `TETUS LOCAÇÃO`) não
+derivam competência, e nulo não viola chave estrangeira. Em notificações os
+grupos são meses: a carga inteira foi recusada pelo PostgreSQL.
+
+**Decisão:** `garantirCompetencias` cria as competências do conjunto antes do
+upsert, com a janela do mês e rótulo legível. Três regras dentro dela:
+
+- **nasce aberta** — `fechada_em` nulo; fechar competência é ato de gestão, e
+  uma carga automática não pratica esse ato;
+- **`ON CONFLICT DO NOTHING`** — não reabre, não renomeia, não sobrescreve o que
+  a gestão já definiu;
+- **uma vez por carga** — o conjunto é conhecido inteiro antes do upsert; 38
+  competências custam uma consulta, não 1072.
+
+A competência de `--competencia` é garantida antes de `iniciarExecucao`, porque
+`execucoes_importacao.competencia` tem a mesma chave estrangeira — e sem execução
+aberta não haveria onde contabilizar a falha.
+
+### 2. Três títulos de coluna errados no mapa
+
+`MODELOS DE NOTIFICAÇÃO` (plural), `TOTAL DIAS` (sem o "DE") e `RESOLUÇÃO` como
+data de solução. Sem correção, `modelo`, `total_dias` e `data_solucao` ficariam
+nulos em 1072 registros, sem erro nenhum — o mesmo sintoma silencioso de B16.3.
+
+**`RESOLUÇÃO` não foi inferida do nome.** A fórmula da coluna `TOTAL DIAS` é
+`DAYS({RESOLUÇÃO},{DATA DA NOTIFICAÇÃO})`: o próprio quadro declara que a
+resolução fecha o intervalo aberto pela notificação. O título entrou **depois**
+dos explícitos na lista de preferência — se alguém criar `DATA DA SOLUÇÃO`, ela
+vence. Título real de hoje não vira definição do campo.
+
+### 3. Títulos repetidos desempatavam em silêncio
+
+O board tem duas colunas `'MEU TRABALHO'` (uma `date` quase vazia, uma `status`
+com FEITO/ACOMPANHANDO) e três `link to (JUR) RETOMADAS`. A resolução por título
+escolhia a primeira não-espelho sem deixar rastro.
+
+Não afeta a carga de notificações — nenhum campo mapeia esse título. **Afeta
+processos:** lá `'MEU TRABALHO'` alimenta `situacao`, e uma segunda coluna
+homônima trocaria a fonte da situação de 250 processos sem aviso, levando junto
+a taxa de judicialização.
+
+**Decisão:** `titulosAmbiguos` **declara** a ambiguidade, não a resolve. A carga
+segue — a coluna escolhida pode ser a certa —, mas o relatório traz o título, as
+colunas concorrentes e qual venceu. Separar "resolvido por título" de "resolvido
+por acaso de ordenação" é o mínimo para que a resolução por título continue
+sendo uma regra, e não uma sorte.
+
+### O que ficou aberto, e por quê
+
+- **`situacao` sem coluna de origem** — 0 de 1072. O candidato é o
+  `'MEU TRABALHO'` do tipo `status`, mesmo título que alimenta `situacao` em
+  processos e mesmo vocabulário (`ACOMPANHANDO`). **Não foi mapeado:** com
+  `ESTÁGIOS` já alimentando `estagio`, é preciso decidir qual das duas manda nos
+  indicadores; e mapear antes de resolver a ambiguidade gravaria datas dentro de
+  `situacao`.
+- **Sete itens terminais perdem a data de resolução** — `Distratado` (6) e
+  `A Retomar` (1) têm `RESOLUÇÃO` na origem mas não contam como `Resolvida`, e a
+  transformação não grava `data_solucao` para item não resolvido. Se esses
+  estágios encerram a notificação, entram na regra — e o tempo médio de solução
+  muda. Indicador de comitê: decisão do jurídico, não heurística.
+- **3 CPF em campo de texto livre da ORIGEM**, removidos da amostra publicada.
+  Informação para o jurídico: documento digitado em campo livre não é protegido
+  por mascaramento de coluna.
+
+### Verificação
+
+`test/monday-notificacoes.test.ts` — **14 testes** fixando os três defeitos
+contra PostgreSQL real: competência criada, mês bissexto, competência fechada
+preservada, competência de argumento, títulos reais resolvidos, título explícito
+vencendo `RESOLUÇÃO`, restrição `notificacao_solucao_coerente` respeitada,
+ambiguidade declarada, processos sem ambiguidade, e idempotência.
+
+Suíte completa: **371 testes passando** (eram 336 em B16.3).

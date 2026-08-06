@@ -28,7 +28,12 @@ import { promises as fs } from 'node:fs';
 import { sql } from 'kysely';
 import { db, fecharBanco } from '../src/db/pool.js';
 import { config } from '../src/config.js';
-import { QUADROS, mesmoTitulo, type ChaveQuadro } from '../src/integracoes/monday/quadros.js';
+import {
+  QUADROS,
+  mesmoTitulo,
+  type ChaveQuadro,
+  type TituloAmbiguo,
+} from '../src/integracoes/monday/quadros.js';
 import { sincronizarQuadro } from '../src/integracoes/monday/sincronizar.js';
 import { recusarEscrita, testarConexao } from '../src/integracoes/monday/cliente.js';
 import {
@@ -90,7 +95,11 @@ const PERFIS: Record<string, PerfilHomologacao> = {
       'fonte', 'versao', 'data_referencia', 'extraido_em',
     ],
     textoLivre: ['situacao', 'estagio_detalhe', 'modelo'],
-    campoDeTeste: 'situacao',
+    // `situacao` NAO serve aqui: o board 5630368737 nao tem coluna SITUAÇÃO, e
+    // um campo nulo em todos os registros faz a prova 5 comparar null com null.
+    // `estagio_detalhe` guarda o rotulo bruto de ESTÁGIOS, preenchido em toda a
+    // carga — a ida e volta passa a provar alguma coisa.
+    campoDeTeste: 'estagio_detalhe',
   },
   distratos: {
     board: '18404493605',
@@ -520,7 +529,11 @@ function mascararProcesso(numero: string | null): string | null {
  * Sai de `registros_brutos`, que tem todas as colunas — inclusive as que
  * ninguem mapeou. E como `responsavel` aparece sem ter sido previsto.
  */
-function relatarRotulos(l: LevantamentoRotulos, ausentes: string[]): void {
+function relatarRotulos(
+  l: LevantamentoRotulos,
+  ausentes: string[],
+  ambiguos: TituloAmbiguo[],
+): void {
   escrever('## Rótulos reais encontrados');
   escrever();
   escrever(`Levantados de ${l.itens} item(ns) da primeira leitura, a partir do payload`);
@@ -532,6 +545,22 @@ function relatarRotulos(l: LevantamentoRotulos, ausentes: string[]): void {
       `> **Colunas do mapa não encontradas no quadro:** ${ausentes.join(', ')}. ` +
         'Gravadas como nulas, nunca presumidas.',
     );
+    escrever();
+  }
+
+  // Titulo repetido: a resolucao por titulo escolheu, e a escolha aparece.
+  if (ambiguos.length) {
+    escrever('> **Títulos repetidos no quadro.** A resolução por título pressupõe que o');
+    escrever('> título identifique a coluna. Aqui ele não identifica, e o desempate');
+    escrever('> — a primeira coluna que não for espelho — decidiu. A escolha está');
+    escrever('> declarada abaixo para conferência, não para ser aceita em silêncio.');
+    escrever();
+    escrever('| Título | Colunas com esse título | Escolhida hoje |');
+    escrever('| --- | --- | --- |');
+    for (const a of ambiguos) {
+      const lista = a.colunas.map((c) => `\`${c.id}\` (${c.tipo})`).join(' · ');
+      escrever(`| \`${a.titulo}\` | ${lista} | \`${a.vencedora}\` |`);
+    }
     escrever();
   }
 
@@ -955,6 +984,7 @@ async function principal(): Promise<void> {
     porCampo: Map<string, string>;
     titulosPorId: Map<string, { titulo: string; tipo: string }>;
     ausentes: string[];
+    ambiguos: TituloAmbiguo[];
   } | null = null;
 
   const primeira = await sincronizarQuadro({
@@ -977,7 +1007,7 @@ async function principal(): Promise<void> {
       mapaResolvido.porCampo,
       mapaResolvido.titulosPorId,
     );
-    relatarRotulos(levantamento, mapaResolvido.ausentes);
+    relatarRotulos(levantamento, mapaResolvido.ausentes, mapaResolvido.ambiguos);
   }
 
   if (temFlag('simular')) {
