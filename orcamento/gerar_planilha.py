@@ -586,6 +586,24 @@ def gerar(DEPTO, OUT):
             if col == 16:
                 c.number_format = "General"
                 c.font = Font(size=8, color="BFBFBF")
+        # Coluna Q: desvio COMPARAVEL. Linha em base divergente fica vazia para nao
+        # contaminar os totais de economia — e o unico jeito de o numero levado a
+        # diretoria se sustentar quando questionado.
+        # Coluna R: chave de ranking das economias (espelho da O, sinal invertido).
+        if LIN[i][0] in BASE_DIF:
+            wc.cell(row=rc, column=17, value=None)
+        else:
+            # P=0 significa linha sem nenhum lancamento: desvio dela e ausencia de
+            # dado, nao economia. Deixar de fora e o que faz o numero se sustentar.
+            wc.cell(row=rc, column=17,
+                    value='=IF(P{0}=0,"",K{0})'.format(rc))
+        wc.cell(row=rc, column=18,
+                value='=IF(AND(Q{0}<>"",Q{0}<-1),-Q{0}+ROW()/1000000,"")'.format(rc))
+        wc.cell(row=rc, column=19, value='=IF(Q{0}="","",I{0})'.format(rc))
+        for cc in (17, 18, 19):
+            wc.cell(row=rc, column=cc).font = Font(size=8, color="BFBFBF")
+            wc.cell(row=rc, column=cc).number_format = MOEDA
+
         # Coluna O (oculta): chave de ordenacao do ranking de estouros.
         # Piso de R$ 1,00 para o ranking nao ser poluido por centavos de
         # arredondamento (o rateio mensal da folha CLT tem meio centavo).
@@ -635,6 +653,12 @@ def gerar(DEPTO, OUT):
                 "O": 10})
     wc.column_dimensions["O"].hidden = True
     wc.column_dimensions["P"].hidden = True
+    wc.column_dimensions["Q"].hidden = True
+    wc.column_dimensions["R"].hidden = True
+    wc.column_dimensions["S"].hidden = True
+    wc.cell(row=CH, column=19, value="(aux planejado comparável)").font = Font(size=8, color="BFBFBF")
+    wc.cell(row=CH, column=17, value="(aux desvio comparável)").font = Font(size=8, color="BFBFBF")
+    wc.cell(row=CH, column=18, value="(aux ranking economia)").font = Font(size=8, color="BFBFBF")
     wc.cell(row=CH, column=15, value="(aux ranking)").font = Font(size=8, color="BFBFBF")
     wc.cell(row=CH, column=16, value="(aux meses lançados)").font = Font(size=8, color="BFBFBF")
     wc.freeze_panes = "F6"
@@ -767,6 +791,118 @@ def gerar(DEPTO, OUT):
         r += 1
 
     # Destaques / alertas
+    # ------------------------------------------------------------------
+    # Bloco de economia. So entra desvio COMPARAVEL (coluna Q do Comparativo):
+    # linha em base divergente fica de fora, senao o numero nao resiste a
+    # questionamento na diretoria.
+    # ------------------------------------------------------------------
+    r += 2
+    QQ = "Comparativo!$Q${0}:$Q${1}".format(CF, CF_END)
+    wp.merge_cells(start_row=r, start_column=1, end_row=r, end_column=9)
+    c = wp.cell(row=r, column=1,
+                value="ECONOMIA GERADA — acumulado de janeiro até o mês de referência")
+    c.font = Font(bold=True, size=12, color=BRANCO)
+    c.fill = PatternFill("solid", fgColor="1E6B3A")
+    c.alignment = Alignment(indent=1, vertical="center")
+    wp.row_dimensions[r].height = 24
+    r += 1
+
+    eco_ini = r
+    kpis = [
+        ("Economia bruta", '=-SUMIF({0},"<0")'.format(QQ),
+         "Soma de tudo que ficou abaixo do orçado"),
+        ("(−) Gastos acima do orçado", '=-SUMIF({0},">0")'.format(QQ),
+         "Estouros que consomem parte da economia"),
+        ("= ECONOMIA LÍQUIDA", '=-SUM({0})'.format(QQ),
+         "O número defensável: só linhas comparáveis"),
+        ("Projeção para o ano",
+         '=IFERROR(-SUM({0})/Comparativo!$D$3*12,"")'.format(QQ),
+         "Extrapolação linear, se o padrão dos meses fechados se mantiver"),
+        ("% sobre o orçado do período",
+         '=IFERROR(-SUM({0})/SUM(Comparativo!$S${1}:$S${2}),"")'.format(QQ, CF, CF_END),
+         "Economia líquida ÷ planejado das linhas que entram na conta"),
+    ]
+    for lab, formula, nota in kpis:
+        destaque = lab.startswith("=")
+        wp.cell(row=r, column=1, value=lab)
+        wp.merge_cells(start_row=r, start_column=1, end_row=r, end_column=2)
+        cv = wp.cell(row=r, column=3, value=formula)
+        cv.number_format = PCT if lab.startswith("%") else MOEDA
+        wp.cell(row=r, column=4, value=nota)
+        wp.merge_cells(start_row=r, start_column=4, end_row=r, end_column=9)
+        for col in range(1, 10):
+            cc = wp.cell(row=r, column=col)
+            cc.border = BORDA
+            cc.fill = PatternFill("solid", fgColor="E2EFDA" if destaque else BRANCO)
+            if col <= 2:
+                cc.font = Font(bold=True, size=12 if destaque else 10)
+            elif col == 3:
+                cc.font = Font(bold=True, size=14 if destaque else 11,
+                               color="1E6B3A" if destaque else "000000")
+                cc.alignment = Alignment(horizontal="right", vertical="center")
+            else:
+                cc.font = Font(size=9, italic=True, color="595959")
+                cc.alignment = Alignment(vertical="center", indent=1)
+        wp.row_dimensions[r].height = 26 if destaque else 20
+        r += 1
+
+    fora = [a for a, _ in avisos]
+    if True:
+        wp.merge_cells(start_row=r, start_column=1, end_row=r, end_column=9)
+        txt_fora = ("Fora desta conta: linhas sem nenhum lançamento"
+                    + ("; " + "; ".join(fora) + " (base diferente)" if fora else "")
+                    + ". Só entra o que foi efetivamente lançado e é comparável.")
+        cn = wp.cell(row=r, column=1, value=txt_fora)
+        cn.font = Font(size=9, italic=True, color="9C0006")
+        cn.alignment = Alignment(vertical="center", indent=1)
+        wp.row_dimensions[r].height = 18
+        r += 1
+
+    # Top 5 economias — espelho do ranking de estouros
+    r += 1
+    wp.merge_cells(start_row=r, start_column=1, end_row=r, end_column=9)
+    c = wp.cell(row=r, column=1, value="DE ONDE VEIO A ECONOMIA (top 5)")
+    c.font = Font(bold=True, size=11, color=BRANCO)
+    c.fill = PatternFill("solid", fgColor="1E6B3A")
+    c.alignment = Alignment(indent=1, vertical="center")
+    wp.row_dimensions[r].height = 22
+    r += 1
+    header(wp, r, ["#", "Item", "Departamento", "Planejado acum.",
+                   "Realizado acum.", "Economia (R$)", "% da linha", "", ""])
+    eco_hdr = r
+
+    def eco_formula(target_col, rr):
+        return (
+            '=IFERROR(INDEX(Comparativo!${2}${0}:${2}${1},'
+            'MATCH(LARGE(Comparativo!$R${0}:$R${1},A{3}),'
+            'Comparativo!$R${0}:$R${1},0)),"")'
+        ).format(CF, CF_END, target_col, rr)
+
+    for k in range(1, 6):
+        rr = eco_hdr + k
+        wp.cell(row=rr, column=1, value=k)
+        wp.cell(row=rr, column=2, value=eco_formula("D", rr))
+        wp.cell(row=rr, column=3, value=eco_formula("B", rr))
+        wp.cell(row=rr, column=4, value=eco_formula("I", rr))
+        wp.cell(row=rr, column=5, value=eco_formula("J", rr))
+        wp.cell(row=rr, column=6, value='=IFERROR(-{0},"")'.format(
+            eco_formula("K", rr).lstrip("=")))
+        wp.cell(row=rr, column=7, value='=IFERROR(F{0}/D{0},"")'.format(rr))
+        for col in range(1, 8):
+            cc = wp.cell(row=rr, column=col)
+            cc.font = Font(size=9)
+            cc.border = BORDA
+            if col in (4, 5, 6):
+                cc.number_format = MOEDA
+            if col == 6:
+                cc.font = Font(size=9, bold=True, color="1E6B3A")
+            if col == 7:
+                cc.number_format = PCT
+            if col == 1:
+                cc.alignment = Alignment(horizontal="center")
+
+    r = eco_hdr + 6
+
     r += 2
     wp.merge_cells(start_row=r, start_column=1, end_row=r, end_column=8)
     c = wp.cell(row=r, column=1, value="MAIORES DESVIOS DO ACUMULADO (top 5 acima do orçado)")
