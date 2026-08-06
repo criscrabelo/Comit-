@@ -1666,24 +1666,81 @@ def gerar(DEPTO, OUT):
             r += 1
 
         blocos = [
-            ("CRISTIANE — decisão, negociação e representação", AZUL, [
-                ("Negociação de contratos",
-                 "Fechar valor e condições com fornecedores e prestadores. É o que gerou "
-                 "as economias do ano: Jonathan de R$ 10.000 para R$ 6.300 e Elias de "
-                 "R$ 1.065 para R$ 603,30 (43% de redução)."),
-                ("O que entra e sai do orçamento",
-                 "Aprovar inclusão de linha nova, cancelamento e revisão de valor. "
-                 "Exemplos do período: cancelamento do Astrea, inclusão da Dra. Michele, "
-                 "decisão sobre a sala de reunião."),
+            ("CRISTIANE — gestora de TI e Jurídico", AZUL, [
+                ("ESCOPO",
+                 "Responde pelas duas áreas: TI (R$ 284.971,50 orçados em 2026) e "
+                 "Jurídico (R$ 324.730,42), num total de R$ 609.701,92. Equipe direta "
+                 "de sete pessoas entre CLT e PJ."),
+
+                ("— ORÇAMENTO —", ""),
+                ("Montar e revisar o orçamento",
+                 "Definir as linhas do ano, os valores e a base de meses de cada "
+                 "contrato. Revisar quando houver reajuste, entrada ou saída — como o "
+                 "aumento da Thamar, o do Vinicius e a inclusão da Dra. Michele."),
+                ("Aprovar o que entra e sai",
+                 "Nenhuma linha nova ou cancelamento sem passar por ela. Exemplos do "
+                 "período: cancelamento do Astrea, criação das linhas de IA, entrada do "
+                 "AnyDesk, decisão sobre a sala de reunião."),
+                ("Validar o fechamento mensal",
+                 "Conferir o que o analista lançou antes de o número virar informação "
+                 "oficial. Olhar a coluna 'Linhas lançadas' do Painel: desvio negativo em "
+                 "linha não lançada é ausência de dado, não economia."),
+                ("Responder pelo desvio",
+                 "Explicar cada estouro e cada economia — o que foi decisão de gestão, o "
+                 "que foi erro de origem do orçamento e o que é só falta de lançamento."),
+
+                ("— CONTRATOS E FORNECEDORES —", ""),
+                ("Negociar valor e condições",
+                 "É o que gerou as economias do ano: Jonathan de R$ 10.000 para R$ 6.300 "
+                 "e Elias de R$ 1.065 para R$ 603,30, 43% de redução. Só a negociação "
+                 "responde por boa parte dos R$ 56.946 economizados no TI."),
+                ("Decidir contratar, manter ou cancelar",
+                 "Avaliar necessidade real antes de assinar e cortar o que não entrega. "
+                 "No período: Jusfy cancelado antes de iniciar, Astrea em cancelamento, "
+                 "contratação do Jonathan segurada por três meses."),
+                ("Controlar prazos de renovação",
+                 "Contratos anuais renovam sozinhos. O Astrea cobra em cartão e o ciclo "
+                 "vira em 01/11 — se o cancelamento não estiver confirmado até lá, entra "
+                 "anuidade de cerca de R$ 7.400 sem previsão orçamentária."),
+
+                ("— PESSOAS —", ""),
+                ("Dimensionar a equipe",
+                 "Definir quem é CLT, quem é PJ, quantas horas e com que escopo. Decidir "
+                 "quando segurar uma contratação, como fez de jan a mar com o consultor."),
+                ("Alocar o trabalho por custo",
+                 "Manter a rotina com o analista e a capacidade cara reservada para o que "
+                 "só ela resolve. A hora do consultor custa o dobro e são só 104 por mês."),
+                ("Reajustes e bonificações",
+                 "Aprovar aumentos e decidir sobre as bonificações previstas em ago e "
+                 "dez, que somam R$ 29.160,60 nas duas áreas."),
+
+                ("— POLÍTICAS E GOVERNANÇA —", ""),
+                ("Definir regras de uso",
+                 "Troca 1x1 de equipamento, estoque reserva para empréstimo, quem pode "
+                 "gerar chave de API, quem tem licença de IA e sob qual login."),
                 ("Rateio e centro de custo",
-                 "Definir com a controladoria o que é do TI e o que é corporativo — "
-                 "softwares de uso transversal, ferramentas de IA, reclassificações."),
-                ("Apresentação à diretoria",
-                 "Levar o Painel, defender os números e as pautas em aberto. Responder "
-                 "por desvio e por economia."),
-                ("Aprovação de compra acima do saldo",
-                 "Quando a solicitação de uma área levar ao estouro, decidir com a "
-                 "diretoria se aprova ou segura."),
+                 "Definir com a controladoria o que é do TI e o que é corporativo: oito "
+                 "linhas de uso transversal estão marcadas como RATEIO A DEFINIR, e o "
+                 "Adapta está classificado na área errada."),
+                ("Zelar pelo sigilo",
+                 "Num escritório de advocacia, licença de IA compartilhada expõe o "
+                 "histórico de um cliente a quem não atua no caso. É risco de sigilo "
+                 "profissional, não só de custo."),
+
+                ("— RELACIONAMENTO —", ""),
+                ("Diretoria",
+                 "Apresentar o Painel, defender os números e levar as pautas em aberto. "
+                 "Hoje são seis: sala de reunião, meta das IAs, notebooks, despesas fora "
+                 "do orçamento, reclassificação do Adapta e erro de origem do Astrea."),
+                ("Financeiro e controladoria",
+                 "Abertura do centro de custo no SIENGE, escolha do regime (competência "
+                 "ou caixa), reclassificações e separação entre custo e repasse."),
+                ("RH e Administrativo",
+                 "Custo total dos CLT para o comparativo, e o que sai do TI por não ser "
+                 "dele — papelaria e treinamento corporativo."),
+                ("Outras áreas",
+                 "Avisar antes do estouro quando uma solicitação de equipamento passar "
+                 "do saldo da rubrica delas."),
             ]),
             ("VINICIUS — suporte, rotina e apoio ao desenvolvimento", AZUL_MED, [
                 ("Suporte ao usuário",
@@ -1747,6 +1804,15 @@ def gerar(DEPTO, OUT):
             wy.row_dimensions[r].height = 22
             r += 1
             for lab, txt in itens:
+                if not txt:      # subtitulo de secao dentro do bloco
+                    wy.merge_cells(start_row=r, start_column=1, end_row=r, end_column=5)
+                    cs = wy.cell(row=r, column=1, value=lab)
+                    cs.font = Font(bold=True, size=9, color=cor)
+                    cs.fill = PatternFill("solid", fgColor=CINZA_L)
+                    cs.alignment = Alignment(vertical="center", indent=1)
+                    wy.row_dimensions[r].height = 18
+                    r += 1
+                    continue
                 wy.cell(row=r, column=1, value=lab).font = Font(bold=True, size=9)
                 wy.cell(row=r, column=1).alignment = Alignment(
                     vertical="top", wrap_text=True)
