@@ -1627,6 +1627,152 @@ def gerar(DEPTO, OUT):
     widths(wn, {"A": 5, "B": 30, "C": 52, "D": 52, "E": 22, "F": 14})
 
     # ===========================================================================
+    # ABA - PAPEIS E RESPONSABILIDADES (so no TI)
+    # ===========================================================================
+    if DEPTO in (None, "TI"):
+        wy = wb.create_sheet("Papéis e Responsabilidades")
+        titulo(wy, "PAPÉIS E RESPONSABILIDADES — equipe de TI",
+               "Quem faz o quê no acompanhamento orçamentário e na operação. O critério "
+               "é custo por hora: tarefa recorrente vai para quem custa menos, e a "
+               "capacidade cara fica reservada para o que só ela resolve.", 5)
+
+        r = 4
+        header(wy, r, ["Pessoa", "Função", "Vínculo", "Capacidade", "Custo/hora"])
+        equipe = [
+            ("Cristiane Rabelo", "Gestora de TI e Jurídico", "—", "—", None),
+            ("Vinicius Di Franco", "Analista Administrativo", "CLT",
+             "173 h/mês (5x8h)", 31.25),
+            ("Jonathan (J H Alves)", "Consultor / Desenvolvedor", "PJ",
+             "104 h/mês (3x8h)", 60.58),
+            ("Elias Benedito", "Suporte Técnico Terceirizado", "PJ",
+             "Sob demanda", None),
+        ]
+        r += 1
+        for nome, func, vinc, cap, ch in equipe:
+            wy.cell(row=r, column=1, value=nome).font = Font(bold=True, size=9)
+            wy.cell(row=r, column=2, value=func)
+            wy.cell(row=r, column=3, value=vinc)
+            wy.cell(row=r, column=4, value=cap)
+            c = wy.cell(row=r, column=5, value=ch)
+            c.number_format = MOEDA
+            for col in range(1, 6):
+                cc = wy.cell(row=r, column=col)
+                cc.border = BORDA
+                if col > 1:
+                    cc.font = Font(size=9)
+                cc.alignment = Alignment(vertical="center",
+                                         horizontal="center" if col in (3, 4, 5) else "left")
+            wy.row_dimensions[r].height = 20
+            r += 1
+
+        blocos = [
+            ("CRISTIANE — decisão, negociação e representação", AZUL, [
+                ("Negociação de contratos",
+                 "Fechar valor e condições com fornecedores e prestadores. É o que gerou "
+                 "as economias do ano: Jonathan de R$ 10.000 para R$ 6.300 e Elias de "
+                 "R$ 1.065 para R$ 603,30 (43% de redução)."),
+                ("O que entra e sai do orçamento",
+                 "Aprovar inclusão de linha nova, cancelamento e revisão de valor. "
+                 "Exemplos do período: cancelamento do Astrea, inclusão da Dra. Michele, "
+                 "decisão sobre a sala de reunião."),
+                ("Rateio e centro de custo",
+                 "Definir com a controladoria o que é do TI e o que é corporativo — "
+                 "softwares de uso transversal, ferramentas de IA, reclassificações."),
+                ("Apresentação à diretoria",
+                 "Levar o Painel, defender os números e as pautas em aberto. Responder "
+                 "por desvio e por economia."),
+                ("Aprovação de compra acima do saldo",
+                 "Quando a solicitação de uma área levar ao estouro, decidir com a "
+                 "diretoria se aprova ou segura."),
+            ]),
+            ("VINICIUS — suporte, rotina e apoio ao desenvolvimento", AZUL_MED, [
+                ("Suporte ao usuário",
+                 "Atendimento do dia a dia às áreas: equipamento, acesso, software."),
+                ("Fechamento mensal do orçamento",
+                 "Extrair o relatório do centro de custo no SIENGE e lançar o realizado "
+                 "na aba Realizado, preenchendo a coluna Fonte do dado com a data da "
+                 "extração. Item sem gasto no mês recebe 0, não fica em branco."),
+                ("Controle de equipamentos",
+                 "Registrar solicitações e empréstimos na aba própria, cobrar a "
+                 "devolução do item quebrado na troca 1x1 e controlar o estoque reserva."),
+                ("Saldo por área",
+                 "Acompanhar quanto resta na rubrica de cada área e avisar ANTES de "
+                 "comprar quando a solicitação for levar ao estouro."),
+                ("Conferência de faturas",
+                 "Bater o valor cobrado contra o contrato. Foi assim que apareceram o "
+                 "Jusbrasil 30% acima e o Astrea a 5x o orçado."),
+                ("Padrão de descrição no SIENGE",
+                 "Em rubricas genéricas, detalhar o item na descrição do lançamento "
+                 "('Peças – mouse', 'Peças – tela'), para a análise sair por filtro."),
+                ("Apoio operacional ao desenvolvimento",
+                 "Assumir as tarefas operacionais do que o Jonathan conduz. Cada hora "
+                 "que sai das mãos dele a R$ 31,25 libera uma hora de R$ 60,58 — é o "
+                 "que multiplica a capacidade limitada do consultor."),
+            ]),
+            ("JONATHAN — técnico e pontual, nunca rotina", "1E6B3A", [
+                ("Desenvolvimento",
+                 "O trabalho de projeto para o qual foi contratado, 3 dias por semana."),
+                ("Automatizar a extração do SIENGE",
+                 "Entrega de maior retorno: gasta algumas horas uma vez e devolve tempo "
+                 "do analista todo mês."),
+                ("Avaliar AnyDesk",
+                 "Definir necessidade, plano e valor da licença de acesso remoto."),
+                ("Avaliar Claude x GPT e planos de equipe",
+                 "Subsidiar a decisão do Vitor e resolver o compartilhamento de login, "
+                 "que hoje expõe histórico de cliente entre usuários."),
+                ("Investigar o consumo de API",
+                 "O gasto da OpenAI saltou de R$ 322 em mar para R$ 5.394 em abr, padrão "
+                 "de consumo por uso. Configurar limite rígido de gasto e definir quem "
+                 "pode gerar chave."),
+                ("NÃO fazer",
+                 "Rotina administrativa, lançamento de planilha, controle de estoque. "
+                 "São 104 h/mês a R$ 60,58 — se ele aparecer na rotina mensal, é sinal "
+                 "de que algo deveria ter sido automatizado."),
+            ]),
+            ("ELIAS — suporte técnico sob demanda", "7B3F00", [
+                ("Acionamento pontual",
+                 "Contrato ativo, acionado conforme a necessidade. Sem acionamento de "
+                 "jan a jul/26. Valor renegociado de R$ 1.065 para R$ 603,30 a partir "
+                 "de set/26."),
+            ]),
+        ]
+
+        for titulo_bloco, cor, itens in blocos:
+            r += 1
+            wy.merge_cells(start_row=r, start_column=1, end_row=r, end_column=5)
+            c = wy.cell(row=r, column=1, value=titulo_bloco)
+            c.font = Font(bold=True, size=11, color=BRANCO)
+            c.fill = PatternFill("solid", fgColor=cor)
+            c.alignment = Alignment(indent=1, vertical="center")
+            wy.row_dimensions[r].height = 22
+            r += 1
+            for lab, txt in itens:
+                wy.cell(row=r, column=1, value=lab).font = Font(bold=True, size=9)
+                wy.cell(row=r, column=1).alignment = Alignment(
+                    vertical="top", wrap_text=True)
+                wy.merge_cells(start_row=r, start_column=2, end_row=r, end_column=5)
+                cc = wy.cell(row=r, column=2, value=txt)
+                cc.font = Font(size=9)
+                cc.alignment = Alignment(wrap_text=True, vertical="top")
+                for col in range(1, 6):
+                    wy.cell(row=r, column=col).border = BORDA
+                wy.row_dimensions[r].height = 42
+                r += 1
+
+        r += 1
+        wy.merge_cells(start_row=r, start_column=1, end_row=r, end_column=5)
+        c = wy.cell(row=r, column=1, value=(
+            "CRITÉRIO: a hora do consultor custa o dobro da hora do analista, e são só "
+            "104 por mês. Tarefa recorrente vai para quem custa menos; capacidade cara "
+            "fica reservada para o que só ela resolve. Consultor em rotina "
+            "administrativa é o recurso mais caro na tarefa mais barata."))
+        c.font = Font(size=9, italic=True, color="595959")
+        c.alignment = Alignment(wrap_text=True, vertical="center", indent=1)
+        wy.row_dimensions[r].height = 32
+
+        widths(wy, {"A": 34, "B": 30, "C": 12, "D": 18, "E": 14})
+
+    # ===========================================================================
     # ABA DE CONTROLE - EQUIPAMENTOS (so no TI)
     # ===========================================================================
     if DEPTO in (None, "TI"):
