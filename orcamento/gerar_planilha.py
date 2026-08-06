@@ -550,12 +550,13 @@ PEND = [
      "Afeta o valor orçado da linha e a projeção de crescimento.",
      "Cristiane", "EM ABERTO", "TI"),
     ("7", "Competência x caixa — DECIDIR O REGIME",
-     "Confirmado pela gestora: TODOS os PJs prestam o serviço e recebem no mês "
-     "seguinte. O que foi pago em jan/26 é serviço de dez/2025, e o serviço de "
-     "dez/26 só será pago em jan/2027. Hoje o realizado está lançado por CAIXA "
-     "(mês do pagamento), que é como os valores foram informados, enquanto o "
-     "orçamento foi montado por COMPETÊNCIA (mês do serviço). São bases "
-     "diferentes no mesmo comparativo.",
+     "Confirmado pela gestora: TODOS os PJs das duas áreas prestam o serviço e "
+     "recebem no mês seguinte — no Jurídico, Miguel, Thamar e Dra. Michele; no "
+     "TI, Elias e Jonathan. O que foi pago em jan/26 é serviço de dez/2025, e o "
+     "serviço de dez/26 só será pago em jan/2027. Hoje o realizado está lançado "
+     "por CAIXA (mês do pagamento), que é como os valores foram informados, "
+     "enquanto o orçamento foi montado por COMPETÊNCIA (mês do serviço). São "
+     "bases diferentes no mesmo comparativo.",
      "RECOMENDAÇÃO: migrar para competência, deslocando os PJs um mês para trás. "
      "Motivos: (1) o orçamento já é de competência, então acaba a comparação de "
      "bases diferentes; (2) por caixa, o ano de 2026 carrega um mês de 2025 e "
@@ -563,7 +564,12 @@ PEND = [
      "Miguel, R$ 47.250 por caixa contra R$ 49.318 por competência em jan–jul, "
      "R$ 2.068 de diferença; (3) o SIENGE gera os dois regimes, então é escolha "
      "de configuração. Contra: caixa é mais fácil de bater com o extrato "
-     "bancário. Decidir UMA vez e manter, senão o histórico mistura critérios.",
+     "bancário. Decidir UMA vez e manter, senão o histórico mistura critérios. "
+     "ATENÇÃO NO JONATHAN: o planejado dele começa em abr/26 (competência) e o "
+     "realizado também foi lançado a partir de abr (caixa) — se ele recebe no mês "
+     "seguinte, o pagamento de abril é serviço de março, e ou a entrada dele foi "
+     "em março, ou o realizado de abril deveria ser zero. Conferir junto com a "
+     "decisão do regime.",
      "Cristiane + Financeiro", "DECIDIR", ""),
 ]
 
