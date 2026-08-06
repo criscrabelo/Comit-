@@ -108,10 +108,12 @@ LINHAS = [
      "CLT", "Pessoal - CLT", _12(VIN)),
     ("TI-E02", "TI", "Equipe", "Elias Benedito", "Suporte Técnico Terceirizado", "PJ",
      "Pessoal - PJ", _12(1065.00)),
-    # 9 meses (abr-dez) = R$ 90.000, o total da ficha original.
+    # Orcado desde jan/26 pelos 12 meses, conforme a gestora. A ficha trazia
+    # R$ 90.000 (9 meses), valor que nao refletia o orcamento aprovado.
     ("TI-E03", "TI", "Equipe", "Jonathan",
-     "Consultor — entrada em abr/26 (9 meses), conforme o total da ficha original",
-     "PJ", "Pessoal - PJ", [0] * 3 + [10000.00] * 9),
+     "Consultor — orçado desde jan/26. As atividades só começaram em abr/26: a "
+     "contratação foi segurada por três meses",
+     "PJ", "Pessoal - PJ", _12(10000.00)),
     # TI - DESPESAS
     ("TI-D01", "TI", "Despesas", "Peças de Manutenção",
      "Tela, teclado, carcaça, mouses de reposição, carregadores etc.", "",
@@ -210,7 +212,8 @@ REALIZADO = {
                "R$ 3.070,52 de ago — faltam encargos e benefícios"),
     "TI-E02": (_r7(0.00), FONTE_JUR, "Sem acionamento no período — confirmar se o contrato segue ativo"),
     "TI-E03": ([0.00] * 3 + [6300.00] * 4 + [None] * 5, FONTE_JUR,
-               "Entrada em abr/26. R$ 3.700/mês abaixo do contratado — confirmar escopo"),
+               "Sem custo em jan–mar (contratação segurada). R$ 6.300/mês a partir "
+               "de abr, contra R$ 10.000 orçados"),
 }
 
 # Linhas cujo realizado esta numa base diferente do orcado (bruto x custo total).
@@ -398,12 +401,16 @@ PEND = [
      "O realizado de agosto ainda não foi informado.",
      "É a maior despesa isolada do Jurídico no segundo semestre.",
      "Cristiane", "EM ABERTO", "Jurídico"),
-    ("F", "Jonathan R$ 3.700/mês abaixo do contratado",
-     "Orçado R$ 10.000/mês, realizado R$ 6.300/mês em mai, jun e jul.",
-     "Maior desvio em reais de todo o orçamento: R$ 11.100 em três meses. "
-     "Se o valor menor for o novo padrão, o planejado de ago a dez deve ser "
-     "revisado para baixo — sobrariam R$ 18.500 no orçamento do TI.",
-     "Cristiane", "EM ABERTO", "TI"),
+    ("F", "Jonathan — economia de R$ 44.800 até julho",
+     "Orçado R$ 10.000/mês desde jan/26. A contratação foi segurada e as "
+     "atividades só começaram em abr/26, a R$ 6.300/mês. Resultado: três meses "
+     "sem custo (R$ 30.000) e quatro meses a R$ 3.700 abaixo do orçado "
+     "(R$ 14.800).",
+     "É de longe a maior economia das duas áreas: R$ 44.800 em sete meses, e "
+     "decorre de decisão de gestão, não de erro de orçamento. Se o valor de "
+     "R$ 6.300 se mantiver até dez, somam-se outros R$ 18.500 — total de "
+     "R$ 63.300 no ano. Vale destacar na apresentação à diretoria.",
+     "Cristiane", "RESOLVIDO", "TI"),
     ("G", "Elias Benedito zerado nos três meses",
      "Orçado R$ 1.065/mês como suporte técnico terceirizado, realizado R$ 0 "
      "em mai, jun e jul.",
@@ -447,14 +454,14 @@ PEND = [
      "São R$ 89.040 orçados no ano, 35% do orçamento do TI. Sem lançamento, o "
      "departamento aparece com desvio negativo que é ausência de dado.",
      "Cristiane", "A LANÇAR", "TI"),
-    ("1", "Base de meses — reconciliada com a ficha original",
-     "A ficha trazia a coluna TOTAL do TI digitada à mão em bases diferentes por "
-     "pessoa (Vinicius e Elias em 12 meses, Jonathan em 9) enquanto o grid mensal "
-     "tinha só 8 colunas. Com o período em jan–dez os três totais batem exatamente: "
-     "R$ 64.998,30 + R$ 12.780,00 + R$ 90.000,00 = R$ 167.778,30, o valor da ficha. "
-     "Não era erro de digitação — era o grid que estava incompleto.",
-     "Equipe de TI no valor original de R$ 167.778,30. Jonathan lançado com "
-     "entrada em abr/26 (9 meses), que é o que explica os R$ 90.000.",
+    ("1", "Base de meses do TI — Jonathan corrigido para 12 meses",
+     "A ficha trazia os totais do TI digitados à mão: Vinicius e Elias em 12 meses "
+     "(R$ 64.998,30 e R$ 12.780,00, ambos confirmados) e Jonathan em 9 meses "
+     "(R$ 90.000). A gestora confirmou que o orçamento dele valia desde jan/26, ou "
+     "seja, 12 meses — os R$ 90.000 da ficha não refletiam o orçamento aprovado.",
+     "Equipe de TI passa de R$ 167.778,30 para R$ 197.778,30 (+R$ 30.000). "
+     "Os R$ 167.778,30 da ficha continuam batendo com Vinicius e Elias, mas a "
+     "linha do Jonathan estava subdimensionada em 3 meses.",
      "Cristiane", "RESOLVIDO", "TI"),
     ("2", "Origem do valor realizado — DEFINIDA: SIENGE",
      "Será aberto um centro de custo próprio no SIENGE e todos os valores do "
