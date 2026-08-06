@@ -1940,3 +1940,64 @@ comando é quem executa o ato, e fica gravado com data.
 `revisao_necessaria`, taxa de judicialização indisponível com motivo declarado.
 Não é pendência esquecida — é o estado correto de um sistema que ainda não foi
 instalado.
+
+## B19 — O checklist do Sienge voltou preenchido
+
+**Data:** 2026-08-06 · Documento consolidado pela Coevo/Tetus com consultas
+reais executadas na API. Cópia versionada em
+`docs/SIENGE-INFORMACOES-PREENCHIDAS.md` (exemplos anonimizados: nome de
+cliente e corretor com CPF embutido foram mascarados).
+
+### O que a espera comprou
+
+Os caminhos que a documentação genérica sugeria — e que o conector guardou
+como hipótese desligada — **estavam errados**. O real é
+`/accounts-receivable/receivable-bills`, não `/receivable-bills`. Se a regra
+"não invente endpoints" tivesse sido violada, a integração teria nascido
+apontando para caminhos inexistentes e a primeira carga teria falhado em
+produção.
+
+### Confirmado
+
+- Base: `https://api.sienge.com.br/tetus/public/api/v1` · Basic Auth ·
+  usuário de integração `tetus-patrono`, somente leitura, senha não expira
+- Endpoints: companies, enterprises (+groupings), customers,
+  accounts-receivable/receivable-bills (+installments),
+  total-current-debit-balance, commissions
+- Paginação: `limit`/`offset` com `resultSetMetadata.count` (máx 200)
+- Carga incremental de clientes: `modifiedAfter`/`modifiedBefore`
+- Volumes reais: 43 empresas, 285 empreendimentos, 3.257 clientes ativos
+- `defaulting` e `subjudice` vêm prontos por título
+- Acréscimos vêm AGREGADOS (`totalAdditionalValue`): juros, multa e correção
+  não têm separação confirmada
+
+### O achado que muda o desenho da carga
+
+**A franquia diária do plano Start é 1.000 requisições REST** (200/min).
+`receivable-bills` exige `customerId` — não há como listar títulos sem passar
+cliente por cliente. Com 3.257 clientes ativos, uma carga completa de títulos
+custa no mínimo 3.257 requisições: **três dias de franquia, ou custo excedente
+contratual ainda não conhecido**.
+
+Consequência: a carga do Sienge NÃO pode ser "ler tudo, todo dia". O desenho
+precisa ser incremental por construção — clientes via `modifiedAfter`, títulos
+apenas dos clientes que mudaram, saldo por CPF/CNPJ sob demanda — com
+orçamento diário de requisições explícito e monitorado.
+
+### Pendências que o documento declara (não bloqueiam o início)
+
+Técnicas: juros/multa/correção separados, endpoint de pagamentos, contratos e
+unidades estruturados, frequência de atualização, fuso.
+De negócio: carteira ativa exigível, renegociação, acordo, distrato, retomada,
+recompra, cessão, cobrança judicial — como aparecem no Sienge da Coevo.
+
+### Próximos passos
+
+1. Cristiane configura `SIENGE_SUBDOMAIN=tetus`, `SIENGE_USER=tetus-patrono` e
+   `SIENGE_PASSWORD` no ambiente (mesmo caminho do MONDAY_TOKEN; senha nunca
+   em chat/arquivo)
+2. Atualizar o catálogo de endpoints do conector para os caminhos reais
+3. Homologação endpoint por endpoint (`POST /api/sienge/homologar`), começando
+   por companies/enterprises — baratos e pequenos
+4. Desenho da carga incremental com orçamento diário ANTES da primeira carga
+   de títulos
