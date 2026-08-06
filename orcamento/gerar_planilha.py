@@ -180,8 +180,12 @@ REALIZADO = {
     "JUR-D01": (_r7(0.00), FONTE_JUR, "Ainda não iniciado — sem cobrança"),
     "JUR-D02": (_r7(136.00), FONTE_JUR,
                 "R$ 136,00/mês contra R$ 104,90 orçados. Erro no orçamento original"),
-    "JUR-D03": (_r7(346.00), FONTE_JUR,
-                "R$ 346,00/mês — 3x o orçado (R$ 112,07). Erro no orçamento original"),
+    # Anuidade 2026 em 5 parcelas de R$ 1.346,28. Por caixa: 1 parcela em jan e as
+    # outras 4 em fev (R$ 150 + R$ 1.196,28 + R$ 4.038,84 de antecipacao). Por
+    # competencia as parcelas vao de dez/25 a abr/26. Sem cobranca de mar em diante.
+    "JUR-D03": ([1346.28, 5385.12] + [0.00] * 5 + [None] * 5, "Extrato do financeiro",
+                "Anuidade 2026 = R$ 6.731,40 em 5x de R$ 1.346,28, quitada em fev "
+                "(competência até abr). Sem cobrança de mar em diante"),
     "JUR-D04": (_r7(970.00), FONTE_JUR, ""),
     "JUR-D05": (_r7(0.00), FONTE_JUR, "Sem gasto no período"),
     "JUR-D06": ([0.00] * 7 + [None] * 5, FONTE_JUR,
@@ -375,22 +379,21 @@ PEND = [
      "Confirmar se o contrato segue ativo (acionamento sob demanda) ou se foi "
      "encerrado. Se encerrado, são R$ 12.780 a liberar no orçamento do ano.",
      "Cristiane", "EM ABERTO", "TI"),
-    ("H", "Planejado de jan a abr — CONFERIR",
+    ("H", "Planejado de jan a abr — conferido",
      "O 1º quadrimestre foi preenchido replicando os valores mensais conhecidos, "
      "porque a ficha original só trazia o grid de mai a dez. Exceções tratadas: "
      "Jonathan começa em abr, Thamar a R$ 5.000 (pré-reajuste), Vinicius com bruto "
      "de R$ 2.570,52 e Adapta a R$ 1.300 (valor até jun).",
-     "Se algum contrato tinha valor diferente no 1º quadrimestre, ou se houve "
-     "bonificação nesse período, o planejado de jan a abr precisa ser corrigido "
-     "antes de comparar com o realizado.",
-     "Cristiane", "CONFERIR", ""),
+     "Conferido e validado pela gestora: os valores replicados estão corretos, "
+     "nenhum ajuste necessário.",
+     "Cristiane", "APLICADO", ""),
     ("I", "Realizado de ago a dez — a lançar no decorrer do ano",
      "Jan a jul estão lançados. Ago a dez ficam em branco e serão preenchidos "
      "conforme os meses fecharem, com a extração do SIENGE.",
      "Enquanto isso, o mês de referência do Comparativo deve ficar no último mês "
      "fechado (hoje Jul/26) — assim o acumulado compara períodos iguais dos dois "
      "lados.",
-     "Cristiane", "EM ANDAMENTO", ""),
+     "Cristiane", "APLICADO", ""),
     ("M", "Despesas fora do orçamento identificadas no extrato",
      "O extrato do financeiro traz gastos relevantes sem linha na ficha. "
      "Jurídico: Carneiro Rabelo (R$ 107.742) e Cristiane Carneiro Rabelo "
@@ -430,23 +433,35 @@ PEND = [
      "resumo é o rascunho dele; (2) definir se a extração sai por regime de caixa "
      "ou de competência, ver item 7.",
      "Cristiane + Financeiro", "RESOLVIDO", ""),
-    ("3", "Jusfy x Astrea",
-     "O Astrea NÃO foi cancelado: custa R$ 346,00/mês e segue ativo. O Jusfy está "
-     "em R$ 0 — ainda não iniciado. A informação anterior de que o Astrea estava "
-     "zerado foi corrigida pela gestora.",
-     "O Astrea sozinho consome R$ 4.152/ano. Se o Jusfy entrar e o objetivo era "
-     "substituí-lo, essa é a economia em jogo — e ela é maior do que parecia, "
-     "porque o custo real do Astrea é 3x o que estava orçado.",
-     "Cristiane", "EM ABERTO", "Jurídico"),
+    ("3", "Jusfy — nunca iniciado",
+     "O Jusfy entrou na ficha porque o orçamento foi montado em nov/dez de 2025, "
+     "durante a fase de experimento. Em janeiro a decisão foi cancelar, e o "
+     "serviço nunca chegou a ser iniciado. Custo zero o ano todo.",
+     "Os R$ 1.200 orçados no ano nunca serão usados. Não é economia de gestão: é "
+     "item que já nasceu fora do escopo e deve sair na revisão do orçamento.",
+     "Cristiane", "RESOLVIDO", "Jurídico"),
+    ("N", "Astrea — anuidade quitada e cancelamento em curso",
+     "A anuidade 2026 custou R$ 6.731,40, parcelada em 5x de R$ 1.346,28. Pelo "
+     "extrato, uma parcela foi paga em jan e as outras quatro em fev (incluindo "
+     "R$ 4.038,84 de antecipação); por competência as parcelas vão até abr/26. "
+     "Não há e não haverá cobrança de mar em diante. O cancelamento formal foi "
+     "solicitado em ago/26 e aguarda confirmação por e-mail do fornecedor.",
+     "O realizado das linhas de mar a dez é zero de fato, não falta de "
+     "lançamento. Guardar a confirmação por e-mail do cancelamento para não haver "
+     "renovação automática da anuidade 2027.",
+     "Cristiane", "EM ANDAMENTO", "Jurídico"),
     ("K", "ORÇAMENTO VEIO ERRADO — Astrea e Jusbrasil",
-     "Os dois valores já chegaram errados na ficha de orçamento que a gestora "
-     "recebeu. Astrea: orçado R$ 112,07/mês, custo real R$ 346,00 (3,1x). "
-     "Jusbrasil: orçado R$ 104,90/mês, custo real R$ 136,00 (1,3x). "
-     "PAUTA PARA A REUNIÃO COM A DIRETORIA.",
-     "O planejado dessas duas linhas foi mantido como está na ficha, para o erro "
-     "ficar visível no comparativo. Subdimensionamento de R$ 3.180,36 no ano "
-     "(R$ 2.807,16 do Astrea + R$ 373,20 do Jusbrasil). Não é estouro de gestão: "
-     "é erro na origem do orçamento, e precisa de correção formal.",
+     "ASTREA: orçado R$ 112,07/mês, o que dá R$ 1.344,84 no ano — praticamente o "
+     "valor de UMA das cinco parcelas (R$ 1.346,28). Quem montou a ficha tomou uma "
+     "parcela pelo custo total do ano. O custo real da anuidade foi R$ 6.731,40, "
+     "5x o orçado. JUSBRASIL: orçado R$ 104,90/mês contra R$ 136,00 reais (1,3x), "
+     "R$ 373,20 no ano. PAUTA PARA A REUNIÃO COM A DIRETORIA.",
+     "Subdimensionamento de R$ 5.759,76 no ano (R$ 5.386,56 do Astrea + R$ 373,20 "
+     "do Jusbrasil). O planejado das duas linhas foi mantido como veio na ficha, "
+     "de propósito, para o erro aparecer no comparativo em vez de ser corrigido "
+     "em silêncio. Não é estouro de gestão: é erro na origem. Como o Astrea será "
+     "cancelado, o efeito prático é só de 2026 — mas o método de orçar serviços "
+     "parcelados precisa ser revisto para o ano que vem.",
      "Cristiane + Diretoria", "PAUTA REUNIÃO", "Jurídico"),
     ("L", "Ferramentas de IA sem orçamento — DEFINIR META",
      "Claude, GPT, Adapta One e Adapta Skip são gastos que existem hoje e não "
@@ -488,6 +503,10 @@ PEND = [
      "definir isso UMA vez e manter, para o histórico não misturar critérios.",
      "Cristiane + Financeiro", "DECIDIR", ""),
 ]
+
+_ruins = [p[0] for p in PEND if len(p) != 7]
+assert not _ruins, "pendencias com nº de campos errado: {0}".format(_ruins)
+
 
 def gerar(DEPTO, OUT):
     LIN = [l for l in LINHAS if DEPTO is None or l[1] == DEPTO]
