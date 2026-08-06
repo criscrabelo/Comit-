@@ -56,14 +56,13 @@ LINHAS = [
     # JURIDICO - EQUIPE
     ("JUR-E01", "Jurídico", "Equipe", "Miguel Clepf", "Advogado Júnior", "PJ",
      "Pessoal - PJ", _12(10000.00)),
-    # A linha da Geovanna foi dividida em duas: o orçamento original (R$ 4.825,515)
-    # era custo total, mas o realizado que o RH fornece é o salário bruto. Separar
-    # mantém o total idêntico e deixa os encargos num campo próprio para lançamento.
-    ("JUR-E02", "Jurídico", "Equipe", "Geovanna — salário bruto",
-     "Analista Administrativo", "CLT", "Pessoal - CLT", _12(2886.91)),
-    ("JUR-E02B", "Jurídico", "Equipe", "Geovanna — encargos e benefícios",
-     "INSS patronal, FGTS, provisões de 13º e férias, benefícios — PREENCHER",
-     "CLT", "Encargos e Benefícios - CLT", _12(V - 2886.91)),
+    # Planejado = o valor orcado na ficha (custo total com encargos e beneficios).
+    # O realizado tem que ser lancado na mesma base, senao a comparacao mistura
+    # custo total com salario bruto e inventa economia.
+    ("JUR-E02", "Jurídico", "Equipe", "Geovanna",
+     "Analista Administrativo — orçada pelo custo total (encargos de folha + benefícios). "
+     "Salário bruto informado: R$ 2.886,91/mês",
+     "CLT", "Pessoal - CLT", _12(V)),
     # Reajuste permanente de R$ 500 confirmado pela gestora. Mantido em R$ 5.000
     # nos meses já realizados para o desvio ficar visível; revisado de out em diante.
     ("JUR-E03", "Jurídico", "Equipe", "Thamar Victória",
@@ -91,16 +90,11 @@ LINHAS = [
     # Envelope de custo total fixo em R$ 5.416,525/mes x 12 = R$ 64.998,30, exatamente
     # o total digitado a mao na ficha original. O aumento de 05/08 (bruto de 2.570,52
     # para 3.070,52) e absorvido pela folga: o planejado de encargos e o residuo.
-    ("TI-E01", "TI", "Equipe", "Vinicius Di Franco — salário bruto",
-     "Analista Administrativo — aumento de R$ 2.570,52 para R$ 3.070,52 a partir de "
-     "05/08/26, absorvido pela folga do envelope orçado (custo total segue R$ 5.416,525/mês)",
-     "CLT", "Pessoal - CLT", [2570.52] * 7 + [3070.52] * 5),
-    ("TI-E01B", "TI", "Equipe", "Vinicius Di Franco — encargos e benefícios",
-     "INSS patronal, FGTS, provisões de 13º e férias, benefícios — PREENCHER. "
-     "Planejado = resíduo do envelope de R$ 5.416,525/mês, que já previa o aumento. "
-     "A folga não é economia estrutural: com o bruto de agosto ela quase se esgota.",
-     "CLT", "Encargos e Benefícios - CLT",
-     [VIN - 2570.52] * 7 + [VIN - 3070.52] * 5),
+    ("TI-E01", "TI", "Equipe", "Vinicius Di Franco",
+     "Analista Administrativo — orçado pelo custo total (encargos de folha + benefícios). "
+     "Salário bruto: R$ 2.570,52/mês até jul/26 e R$ 3.070,52 a partir de 05/08/26, "
+     "aumento absorvido pela folga do envelope",
+     "CLT", "Pessoal - CLT", _12(VIN)),
     ("TI-E02", "TI", "Equipe", "Elias Benedito", "Suporte Técnico Terceirizado", "PJ",
      "Pessoal - PJ", _12(1065.00)),
     # 9 meses (abr-dez) = R$ 90.000, o total da ficha original.
@@ -148,8 +142,11 @@ _r3 = lambda v: [None] * 4 + [v] * 3 + [None] * 5
 
 REALIZADO = {
     "JUR-E01": (_r3(8818.00), FONTE_JUR, "Valor cheio da nota — R$ 1.182/mês abaixo do contratado"),
-    "JUR-E02": (_r3(2886.91), FONTE_JUR, "Salário bruto"),
-    "JUR-E02B": ([None] * 12, "", "PREENCHER — encargos e benefícios sobre o bruto"),
+    # Bruto informado (R$ 2.886,91) nao e lancavel contra um orcado de custo total:
+    # lancar so ele produziria economia de R$ 1.938,61/mes que nao existe.
+    "JUR-E02": ([None] * 12, "",
+                "PREENCHER com o CUSTO TOTAL. Bruto informado: R$ 2.886,91/mês — "
+                "faltam encargos e benefícios"),
     "JUR-E03": (_r3(5500.00), FONTE_JUR, "Reajuste permanente aplicado desde mai/26"),
     "JUR-D01": (_r3(0.00), FONTE_JUR, "Ainda não iniciado — sem cobrança"),
     "JUR-D02": (_r3(136.00), FONTE_JUR, "Acima do orçado (R$ 104,90) — conferir contrato"),
@@ -158,15 +155,15 @@ REALIZADO = {
     "JUR-D05": (_r3(0.00), FONTE_JUR, "Sem gasto no período"),
     "JUR-D06": ([None] * 12, "", "Bonificação de ago/26 a confirmar"),
     # Equipe de TI — informado pela gestora em 05/08/26. Despesas ainda pendentes.
-    "TI-E01": (_r3(2570.52), FONTE_JUR, "Salário bruto vigente até jul; sobe para R$ 3.070,52 em ago"),
-    "TI-E01B": ([None] * 12, "", "PREENCHER — encargos e benefícios sobre o bruto"),
+    "TI-E01": ([None] * 12, "",
+               "PREENCHER com o CUSTO TOTAL. Bruto: R$ 2.570,52/mês até jul e "
+               "R$ 3.070,52 de ago — faltam encargos e benefícios"),
     "TI-E02": (_r3(0.00), FONTE_JUR, "Sem acionamento no período — confirmar se o contrato segue ativo"),
     "TI-E03": (_r3(6300.00), FONTE_JUR, "R$ 3.700/mês abaixo do contratado — confirmar escopo"),
 }
 
 PLANOS = [
     "Pessoal - CLT",
-    "Encargos e Benefícios - CLT",
     "Pessoal - PJ",
     "Licenças de Softwares",
     "Custeio de Treinamento",
@@ -223,24 +220,24 @@ def widths(ws, mapping):
 # (#, Tema, Em aberto, Impacto, Responsavel, Status, Departamento)
 # ---------------------------------------------------------------------------
 PEND = [
-    ("A", "Encargos da Geovanna — CAMPO A PREENCHER",
-     "A linha JUR-E02B recebe os encargos e benefícios sobre o salário bruto "
-     "(INSS patronal, FGTS, provisões de 13º e férias, VT/VR, plano de saúde). "
-     "Hoje está em branco.",
-     "Enquanto não for preenchida, a folha do Jurídico aparece R$ 1.938,61/mês "
-     "abaixo do orçado — economia que não existe, é só encargo não lançado.",
-     "Cristiane + RH", "PREENCHER", "Jurídico"),
-    ("B", "Encargos do Vinicius — CAMPO A PREENCHER",
-     "A linha TI-E01B recebe os encargos e benefícios sobre o salário bruto, "
-     "mesmo tratamento dado à Geovanna. Hoje está em branco. Brutos confirmados "
-     "pela gestora: R$ 2.570,52 até jul/26 e R$ 3.070,52 a partir de 05/08/26. "
-     "O envelope orçado permanece em R$ 5.416,525/mês — o aumento foi absorvido "
-     "pela folga, não somado ao orçamento.",
-     "A folga do orçado NÃO é economia estrutural: o custo total foi dimensionado "
-     "prevendo um aumento maior, ainda não concedido. Com o bruto de agosto, o "
-     "orçado de encargos (R$ 2.346,01) equivale a 76% sobre o bruto — dentro da "
-     "faixa normal (67% a 80%), então pode sobrar ou estourar.",
-     "Cristiane + RH", "PREENCHER", "TI"),
+    ("A", "Custo total da Geovanna — A LANÇAR",
+     "O planejado dela é R$ 4.825,52/mês, que é o custo total orçado na ficha "
+     "(salário + encargos de folha + benefícios). O dado disponível hoje é só o "
+     "salário bruto, R$ 2.886,91/mês. O realizado está em branco.",
+     "Lançar só o bruto contra um orçado de custo total mostraria economia de "
+     "R$ 1.938,61/mês que não existe. Peça ao RH o custo total mensal dela, ou o "
+     "bruto mais os encargos para somar antes de lançar.",
+     "Cristiane + RH", "A LANÇAR", "Jurídico"),
+    ("B", "Custo total do Vinicius — A LANÇAR",
+     "Mesmo caso da Geovanna. O planejado é R$ 5.416,525/mês (custo total). Brutos "
+     "confirmados: R$ 2.570,52 até jul/26 e R$ 3.070,52 a partir de 05/08/26 — o "
+     "aumento é absorvido pela folga do envelope, que já previa reajuste, então o "
+     "orçado não muda. O realizado está em branco.",
+     "A folga do orçado NÃO é economia estrutural. Com o bruto de agosto, sobram "
+     "R$ 2.346,01 para encargos, o que equivale a 76% sobre o bruto — dentro da "
+     "faixa normal (67% a 80%), então pode sobrar ou estourar. Só o custo total "
+     "real vai dizer.",
+     "Cristiane + RH", "A LANÇAR", "TI"),
     ("C", "Reajuste da Thamar — revisão orçamentária",
      "Reajuste permanente de R$ 5.000 para R$ 5.500/mês, em vigor desde mai/26. "
      "O planejado foi mantido em R$ 5.000 nos meses já realizados (para o desvio "
