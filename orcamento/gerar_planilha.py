@@ -289,6 +289,23 @@ def de_para(credor):
     return ""
 
 
+# Conciliacao Astrea: cobrancas na plataforma do fornecedor x pagamentos no SIENGE.
+# Mesmo total, datas divergentes — duas parcelas debitadas no cartao em 2025 so
+# aparecem lancadas no SIENGE em 2026.
+CONC_ASTREA_PLAT = [
+    ("01/11/25", "Parcela 1/5 — anuidade 2025/26", 1346.28),
+    ("01/12/25", "Parcela 2/5 — anuidade 2025/26", 1346.28),
+    ("01/01/26", "Parcela 3/5 — anuidade 2025/26", 1346.28),
+    ("01/02/26", "Parcela 4/5 — anuidade 2025/26", 1346.28),
+    ("01/03/26", "Parcela 5/5 — anuidade 2025/26", 1346.28),
+]
+CONC_ASTREA_SIENGE = [
+    ("05/01/26", "AV.Mens_1225", 1346.28),
+    ("04/02/26", "NF.Men_0126", 150.00),
+    ("04/02/26", "NF.Men_0126", 1196.28),
+    ("10/02/26", "AV.Anuidade_2026", 4038.84),
+]
+
 EXTRATO_LANC, EXTRATO_MESES = carrega_extrato()
 # O extrato usa "Júridico" e "T.I"; o orcamento usa "Jurídico" e "TI".
 CC_DO_DEPTO = {"Jurídico": "Júridico", "TI": "T.I"}
@@ -532,16 +549,21 @@ PEND = [
      "não fecham entre si.",
      "Afeta o valor orçado da linha e a projeção de crescimento.",
      "Cristiane", "EM ABERTO", "TI"),
-    ("7", "Competência x caixa — DEFASAGEM CONFIRMADA",
-     "O pagamento do Miguel de 01/08/26 refere-se a julho, então há pelo menos um "
-     "prestador cujo pagamento cai no mês seguinte ao da prestação. Todo o "
-     "realizado está lançado por CAIXA (mês em que o pagamento saiu), que é como "
-     "os valores foram informados.",
-     "Consequência: o valor lançado em jan/26 pode ser referente a dez/2025, e o "
-     "serviço de dez/26 só aparecerá em jan/2027 — o ano fecha com 12 pagamentos, "
-     "mas defasados em relação ao orçamento, que é de competência. Com a extração "
-     "vindo do SIENGE, basta escolher o regime na hora de gerar o relatório: "
-     "definir isso UMA vez e manter, para o histórico não misturar critérios.",
+    ("7", "Competência x caixa — DECIDIR O REGIME",
+     "Confirmado pela gestora: TODOS os PJs prestam o serviço e recebem no mês "
+     "seguinte. O que foi pago em jan/26 é serviço de dez/2025, e o serviço de "
+     "dez/26 só será pago em jan/2027. Hoje o realizado está lançado por CAIXA "
+     "(mês do pagamento), que é como os valores foram informados, enquanto o "
+     "orçamento foi montado por COMPETÊNCIA (mês do serviço). São bases "
+     "diferentes no mesmo comparativo.",
+     "RECOMENDAÇÃO: migrar para competência, deslocando os PJs um mês para trás. "
+     "Motivos: (1) o orçamento já é de competência, então acaba a comparação de "
+     "bases diferentes; (2) por caixa, o ano de 2026 carrega um mês de 2025 e "
+     "perde dez/26, o que distorce sempre que o valor muda no meio do ano — no "
+     "Miguel, R$ 47.250 por caixa contra R$ 49.318 por competência em jan–jul, "
+     "R$ 2.068 de diferença; (3) o SIENGE gera os dois regimes, então é escolha "
+     "de configuração. Contra: caixa é mais fácil de bater com o extrato "
+     "bancário. Decidir UMA vez e manter, senão o histórico mistura critérios.",
      "Cristiane + Financeiro", "DECIDIR", ""),
 ]
 
@@ -1383,6 +1405,91 @@ def gerar(DEPTO, OUT):
         wn.row_dimensions[rr].height = 58
 
     widths(wn, {"A": 5, "B": 30, "C": 52, "D": 52, "E": 22, "F": 14})
+
+    # ===========================================================================
+    # ABA DE APOIO - CONCILIACAO ASTREA
+    # ===========================================================================
+    if DEPTO in (None, "Jurídico"):
+        wk = wb.create_sheet("Conciliação Astrea")
+        titulo(wk, "CONCILIAÇÃO ASTREA — plataforma do fornecedor x SIENGE",
+               "O valor total confere nos dois lados (R$ 6.731,40), mas as datas não. "
+               "Duas parcelas debitadas no cartão em 2025 só foram lançadas no SIENGE "
+               "em 2026 — conferir com o financeiro.", 6)
+
+        r = 4
+        header(wk, r, ["Vencimento / débito no cartão", "Descrição", "Valor",
+                       "", "", ""], fill="1F3864")
+        wk.cell(row=r, column=1, value="PLATAFORMA ASTREA — cartão Visa 4957")
+        r += 1
+        for d, desc, v in CONC_ASTREA_PLAT:
+            wk.cell(row=r, column=1, value=d)
+            wk.cell(row=r, column=2, value=desc)
+            c = wk.cell(row=r, column=3, value=v)
+            c.number_format = MOEDA
+            for col in range(1, 4):
+                wk.cell(row=r, column=col).font = Font(size=9)
+                wk.cell(row=r, column=col).border = BORDA
+            r += 1
+        wk.cell(row=r, column=2, value="TOTAL PLATAFORMA").font = Font(bold=True, size=9)
+        c = wk.cell(row=r, column=3, value="=SUM(C5:C{0})".format(r - 1))
+        c.number_format = MOEDA
+        c.font = Font(bold=True, size=10)
+        c.border = BORDA
+        r += 2
+
+        header(wk, r, ["Data de pagamento", "Documento", "Valor", "", "", ""],
+               fill="7B3F00")
+        wk.cell(row=r, column=1, value="SIENGE — contas pagas")
+        r += 1
+        ini_si = r
+        for d, doc, v in CONC_ASTREA_SIENGE:
+            wk.cell(row=r, column=1, value=d)
+            wk.cell(row=r, column=2, value=doc)
+            c = wk.cell(row=r, column=3, value=v)
+            c.number_format = MOEDA
+            for col in range(1, 4):
+                wk.cell(row=r, column=col).font = Font(size=9)
+                wk.cell(row=r, column=col).border = BORDA
+            r += 1
+        wk.cell(row=r, column=2, value="TOTAL SIENGE").font = Font(bold=True, size=9)
+        c = wk.cell(row=r, column=3, value="=SUM(C{0}:C{1})".format(ini_si, r - 1))
+        c.number_format = MOEDA
+        c.font = Font(bold=True, size=10)
+        c.border = BORDA
+        r += 2
+
+        wk.merge_cells(start_row=r, start_column=1, end_row=r, end_column=6)
+        c = wk.cell(row=r, column=1, value="O QUE NÃO BATE")
+        c.font = Font(bold=True, size=11, color=BRANCO)
+        c.fill = PatternFill("solid", fgColor="9C0006")
+        c.alignment = Alignment(indent=1, vertical="center")
+        wk.row_dimensions[r].height = 22
+        r += 1
+        notas = [
+            ("Total", "Confere: R$ 6.731,40 nos dois lados. O problema é só de data."),
+            ("Exercício", "Na plataforma, 2 das 5 parcelas (R$ 2.692,56) foram debitadas "
+                          "em nov e dez/2025. No SIENGE, as 5 aparecem lançadas em 2026."),
+            ("Concentração", "A plataforma cobra 1 parcela por mês, de nov/25 a mar/26. "
+                             "O SIENGE registra 3 pagamentos, todos em jan e fev/26 — "
+                             "sendo R$ 4.038,84 (3 parcelas) num único lançamento em 10/02."),
+            ("Provável causa", "O financeiro lança pela data da fatura do cartão, não pela "
+                               "data do débito de cada parcela. Confirmar com o financeiro."),
+            ("Impacto", "Nenhum no total do ano nem no valor da linha. Afeta a distribuição "
+                        "mês a mês e, se o critério for competência, o exercício de "
+                        "R$ 2.692,56 que pertence a 2025."),
+        ]
+        for lab, txt in notas:
+            wk.cell(row=r, column=1, value=lab).font = Font(bold=True, size=9)
+            wk.merge_cells(start_row=r, start_column=2, end_row=r, end_column=6)
+            cc = wk.cell(row=r, column=2, value=txt)
+            cc.font = Font(size=9)
+            cc.alignment = Alignment(wrap_text=True, vertical="top")
+            for col in range(1, 7):
+                wk.cell(row=r, column=col).border = BORDA
+            wk.row_dimensions[r].height = 30
+            r += 1
+
+        widths(wk, {"A": 30, "B": 30, "C": 16, "D": 16, "E": 16, "F": 16})
 
     # ===========================================================================
     # ABAS DE APOIO - CONTAS PAGAS (extrato do financeiro)
