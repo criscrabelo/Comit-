@@ -71,6 +71,10 @@ LINHAS = [
      "(aumento de R$ 1.000), contra R$ 5.000 orçados. Planejado revisado para "
      "R$ 5.500 a partir de ago/26",
      "PJ", "Pessoal - PJ", [5000.00] * 7 + [5500.00] * 5),
+    ("JUR-E04", "Jurídico", "Equipe", "Dra. Michele de Oliveira Silva",
+     "Advogada — NÃO CONSTAVA NA FICHA. R$ 2.750/mês fixos desde jul/26. "
+     "Planejado a definir com a diretoria",
+     "PJ", "Pessoal - PJ", _12(0.00)),
     # JURIDICO - DESPESAS
     ("JUR-D01", "Jurídico", "Despesas", "JUSFY",
      "Fase de teste com objetivo de eliminar o Astrea", "",
@@ -175,6 +179,12 @@ REALIZADO = {
                 "então o desvio desta linha NÃO é economia: faltam encargos e "
                 "benefícios (~R$ 1.938,61/mês)"),
     # R$ 4.500 de jan a mar; aumento de R$ 1.000 a partir de abr/26.
+    # So o fixo mensal e custo do departamento. Os demais lancamentos em nome dela
+    # no extrato sao repasse: o cliente paga a empresa e a empresa repassa a ela.
+    "JUR-E04": ([0.00] * 6 + [2750.00] + [None] * 5, "Extrato do financeiro",
+                "R$ 2.750/mês fixos a partir de jul/26. Os demais lançamentos em "
+                "nome dela no extrato são REPASSE de honorários pagos pelo cliente "
+                "— não são custo do departamento"),
     "JUR-E03": ([4500.00] * 3 + [5500.00] * 4 + [None] * 5, FONTE_JUR,
                 "R$ 4.500/mês em jan–mar; aumento de R$ 1.000 a partir de abr/26"),
     "JUR-D01": ([0.00] * 12, FONTE_JUR,
@@ -406,9 +416,11 @@ PEND = [
      "infraestrutura de cerca de R$ 15.700 (Claro, TIM, Telefônica, Locaweb, "
      "Web Mobile, Sabha, Intelbras, VC1, Alfama).",
      "Só os dois primeiros credores do Jurídico superam o orçamento anual inteiro "
-     "do departamento. Decidir na reunião quais entram no centro de custo da área "
-     "— e, para os que entrarem, criar linha no orçamento, senão aparecerão como "
-     "'Não orçado' e distorcerão o comparativo.",
+     "do departamento. ATENÇÃO: parte desses valores pode ser repasse ou custa "
+     "reembolsável pelo cliente, e não custo da área — foi o caso da Dra. Michele "
+     "(ver item P). Separar o que é custo antes de decidir. Para os que entrarem "
+     "no centro de custo, criar linha no orçamento, senão aparecerão como 'Não "
+     "orçado' e distorcerão o comparativo.",
      "Cristiane + Diretoria", "PAUTA REUNIÃO", ""),
     ("J", "Despesas do TI — A LANÇAR",
      "As 9 linhas de despesas do TI (peças, backup, Adapta, antivírus, Office, "
@@ -456,6 +468,24 @@ PEND = [
      "sairia por volta de R$ 7.400. O responsável financeiro cadastrado no "
      "fornecedor é a Thamar. Guardar a confirmação por escrito.",
      "Cristiane + Thamar", "PRAZO 01/11", "Jurídico"),
+    ("O", "Dra. Michele fora do orçamento — INCLUIR",
+     "Advogada que presta serviço ao departamento e não foi incluída na ficha. "
+     "Recebe R$ 2.750/mês fixos desde jul/26. A linha foi criada com planejado "
+     "zerado, à espera da definição.",
+     "A R$ 2.750/mês são R$ 33.000/ano, que hoje não têm previsão. Enquanto o "
+     "planejado for zero, a linha aparece como 'Não orçado' e o valor entra "
+     "inteiro como estouro. Definir o valor a orçar e a partir de quando.",
+     "Cristiane + Diretoria", "PAUTA REUNIÃO", "Jurídico"),
+    ("P", "Extrato contém REPASSES, não só custo",
+     "Os lançamentos em nome da Dra. Michele até jun/26 (R$ 20.821,53) são "
+     "repasse: o cliente paga à empresa e a empresa repassa a ela. Não são custo "
+     "do departamento e por isso não foram lançados no realizado.",
+     "Vale a mesma checagem nos outros credores das abas 'Contas Pagas' antes de "
+     "usá-los como custo — em especial custas processuais e honorários de "
+     "terceiros, que podem ser reembolsados pelo cliente. O total de R$ 446.577,92 "
+     "do centro de custo Jurídico no extrato NÃO é despesa líquida do "
+     "departamento.",
+     "Cristiane + Financeiro", "CONFERIR", "Jurídico"),
     ("K", "ORÇAMENTO VEIO ERRADO — Astrea e Jusbrasil",
      "ASTREA: orçado R$ 112,07/mês, o que dá R$ 1.344,84 no ano — praticamente o "
      "valor de UMA das cinco parcelas (R$ 1.346,28). Quem montou a ficha tomou uma "
