@@ -9,7 +9,16 @@ from openpyxl.formatting.rule import CellIsRule
 
 OUT = "/home/user/Comit-/orcamento/Orcamento_Planejado_x_Realizado_2026.xlsx"
 
-MESES = ["Mai/26", "Jun/26", "Jul/26", "Ago/26", "Set/26", "Out/26", "Nov/26", "Dez/26"]
+MESES = ["Jan/26", "Fev/26", "Mar/26", "Abr/26", "Mai/26", "Jun/26",
+         "Jul/26", "Ago/26", "Set/26", "Out/26", "Nov/26", "Dez/26"]
+
+NM = len(MESES)          # numero de meses
+M0 = 8                   # primeira coluna de mes (H)
+MZ = M0 + NM - 1         # ultima coluna de mes
+C_TOT = MZ + 1           # coluna do total
+L_M0 = "H"
+L_MZ = "S"               # ultima coluna de mes com 12 meses
+L_TOT = "T"              # coluna do total
 
 # Paleta
 AZUL = "1F3864"
@@ -28,93 +37,100 @@ thin = Side(style="thin", color="BFBFBF")
 BORDA = Border(left=thin, right=thin, top=thin, bottom=thin)
 
 # ---------------------------------------------------------------------------
-# Dados do planejado (base mai-dez/2026 = 8 meses, conforme decidido)
-# ID, Depto, Bloco, Descricao, Detalhe, Vinculo, Plano de contas, [8 valores]
+# Dados do planejado (base jan-dez/2026 = 12 meses)
+# ID, Depto, Bloco, Descricao, Detalhe, Vinculo, Plano de contas, [12 valores]
+#
+# A base de 12 meses reconcilia os totais digitados a mao na ficha original:
+# Vinicius R$ 64.998,30 (5.416,525 x 12), Elias R$ 12.780 (1.065 x 12) e
+# Jonathan R$ 90.000 (10.000 x 9, entrada em abril). Somados dao exatamente
+# os R$ 167.778,30 da ficha.
 # ---------------------------------------------------------------------------
 V = 4825.515
+VIN = 5416.525          # envelope de custo total do Vinicius
+_12 = lambda v: [v] * 12
+
 LINHAS = [
     # JURIDICO - EQUIPE
     ("JUR-E01", "Jurídico", "Equipe", "Miguel Clepf", "Advogado Júnior", "PJ",
-     "Pessoal - PJ", [10000.00] * 8),
+     "Pessoal - PJ", _12(10000.00)),
     # A linha da Geovanna foi dividida em duas: o orçamento original (R$ 4.825,515)
     # era custo total, mas o realizado que o RH fornece é o salário bruto. Separar
     # mantém o total idêntico e deixa os encargos num campo próprio para lançamento.
     ("JUR-E02", "Jurídico", "Equipe", "Geovanna — salário bruto",
-     "Analista Administrativo", "CLT", "Pessoal - CLT", [2886.91] * 8),
+     "Analista Administrativo", "CLT", "Pessoal - CLT", _12(2886.91)),
     ("JUR-E02B", "Jurídico", "Equipe", "Geovanna — encargos e benefícios",
      "INSS patronal, FGTS, provisões de 13º e férias, benefícios — PREENCHER",
-     "CLT", "Encargos e Benefícios - CLT", [V - 2886.91] * 8),
+     "CLT", "Encargos e Benefícios - CLT", _12(V - 2886.91)),
     # Reajuste permanente de R$ 500 confirmado pela gestora. Mantido em R$ 5.000
     # nos meses já realizados para o desvio ficar visível; revisado de out em diante.
     ("JUR-E03", "Jurídico", "Equipe", "Thamar Victória",
      "Advogada — reajuste permanente de R$ 5.000 para R$ 5.500 (revisado a partir de out/26)",
-     "PJ", "Pessoal - PJ", [5000.00] * 5 + [5500.00] * 3),
+     "PJ", "Pessoal - PJ", [5000.00] * 9 + [5500.00] * 3),
     # JURIDICO - DESPESAS
     ("JUR-D01", "Jurídico", "Despesas", "JUSFY",
      "Fase de teste com objetivo de eliminar o Astrea", "",
-     "Licenças de Softwares", [100.00] * 8),
+     "Licenças de Softwares", _12(100.00)),
     ("JUR-D02", "Jurídico", "Despesas", "JUSBRASIL", "", "",
-     "Licenças de Softwares", [104.90] * 8),
+     "Licenças de Softwares", _12(104.90)),
     ("JUR-D03", "Jurídico", "Despesas", "ASTREA",
-     "Previsto sair quando o Jusfy for homologado — definir mês de corte", "",
-     "Licenças de Softwares", [112.07] * 8),
+     "Cancelado — realizado zerado desde mai/26", "",
+     "Licenças de Softwares", _12(112.07)),
     ("JUR-D04", "Jurídico", "Despesas", "LEME", "", "",
-     "Licenças de Softwares", [1030.00] * 8),
+     "Licenças de Softwares", _12(1030.00)),
     ("JUR-D05", "Jurídico", "Despesas", "Cursos / Eventos / Network", "", "",
-     "Custeio de Treinamento", [1000.00] * 8),
+     "Custeio de Treinamento", _12(1000.00)),
     ("JUR-D06", "Jurídico", "Despesas",
      "Bonificações trimestrais/semestrais do time",
-     "Participação em projetos e atingimento de resultados", "",
-     "Prêmios", [0, 0, 0, 10293.60, 0, 0, 0, 12867.00]),
+     "Participação em projetos e atingimento de resultados — CONFIRMAR se houve "
+     "parcela no 1º quadrimestre",
+     "", "Prêmios", [0] * 7 + [10293.60] + [0] * 3 + [12867.00]),
     # TI - EQUIPE
-    # Mesmo tratamento da Geovanna: o orcado (R$ 5.416,525) era custo total, mas o
-    # dado disponivel e o bruto. Aumento permanente de R$ 500 a partir de 05/08:
-    # bruto de R$ 2.570,52 para R$ 3.070,52. Encargos mantidos constantes — o valor
-    # real entra pelo lancamento manual.
+    # Envelope de custo total fixo em R$ 5.416,525/mes x 12 = R$ 64.998,30, exatamente
+    # o total digitado a mao na ficha original. O aumento de 05/08 (bruto de 2.570,52
+    # para 3.070,52) e absorvido pela folga: o planejado de encargos e o residuo.
     ("TI-E01", "TI", "Equipe", "Vinicius Di Franco — salário bruto",
      "Analista Administrativo — aumento de R$ 2.570,52 para R$ 3.070,52 a partir de "
      "05/08/26, absorvido pela folga do envelope orçado (custo total segue R$ 5.416,525/mês)",
-     "CLT", "Pessoal - CLT", [2570.52] * 3 + [3070.52] * 5),
-    # O envelope orcado do Vinicius e fixo em R$ 5.416,525/mes: a folga ja previa
-    # o aumento, entao ele e absorvido, nao somado (ao contrario da Thamar, cujo
-    # reajuste estourou o orcado). Por isso o planejado de encargos e o residuo do
-    # envelope — cai R$ 500 em ago, exatamente o que o bruto subiu.
+     "CLT", "Pessoal - CLT", [2570.52] * 7 + [3070.52] * 5),
     ("TI-E01B", "TI", "Equipe", "Vinicius Di Franco — encargos e benefícios",
      "INSS patronal, FGTS, provisões de 13º e férias, benefícios — PREENCHER. "
      "Planejado = resíduo do envelope de R$ 5.416,525/mês, que já previa o aumento. "
      "A folga não é economia estrutural: com o bruto de agosto ela quase se esgota.",
      "CLT", "Encargos e Benefícios - CLT",
-     [5416.525 - 2570.52] * 3 + [5416.525 - 3070.52] * 5),
+     [VIN - 2570.52] * 7 + [VIN - 3070.52] * 5),
     ("TI-E02", "TI", "Equipe", "Elias Benedito", "Suporte Técnico Terceirizado", "PJ",
-     "Pessoal - PJ", [1065.00] * 8),
-    ("TI-E03", "TI", "Equipe", "Jonathan", "Consultor", "PJ",
-     "Pessoal - PJ", [10000.00] * 8),
+     "Pessoal - PJ", _12(1065.00)),
+    # 9 meses (abr-dez) = R$ 90.000, o total da ficha original.
+    ("TI-E03", "TI", "Equipe", "Jonathan",
+     "Consultor — entrada em abr/26 (9 meses), conforme o total da ficha original",
+     "PJ", "Pessoal - PJ", [0] * 3 + [10000.00] * 9),
     # TI - DESPESAS
     ("TI-D01", "TI", "Despesas", "Peças de Manutenção",
      "Tela, teclado, carcaça, mouses de reposição, carregadores etc.", "",
-     "Equipamentos Eletrônicos Diversos", [810.00] * 8),
+     "Equipamentos Eletrônicos Diversos", _12(810.00)),
     ("TI-D02", "TI", "Despesas", "Backup em Nuvem",
      "Serviço de backup em nuvem para servidor — RATEIO A DEFINIR", "",
-     "Licenças de Softwares", [825.00] * 8),
+     "Licenças de Softwares", _12(825.00)),
     ("TI-D03", "TI", "Despesas", "Inteligência Artificial (Adapta)",
      "Plataforma de IA para utilização de agentes — RATEIO A DEFINIR", "",
-     "Licenças de Softwares", [1300, 1300, 1600, 1600, 1600, 1600, 1600, 1600]),
+     "Licenças de Softwares", [1300.00] * 6 + [1600.00] * 6),
     ("TI-D04", "TI", "Despesas", "Antivírus",
      "Proteção para equipamentos — RATEIO A DEFINIR", "",
-     "Licenças de Softwares", [240.00] * 8),
+     "Licenças de Softwares", _12(240.00)),
     ("TI-D05", "TI", "Despesas", "Pacote Office 365",
      "Licenças de software (conferir nº de licenças x usuários) — RATEIO A DEFINIR", "",
-     "Licenças de Softwares", [375.00] * 8),
+     "Licenças de Softwares", _12(375.00)),
     ("TI-D06", "TI", "Despesas", "Projeto Melhoria de Infraestrutura - Sala de Reunião",
      "Cadeiras, cafeteira, copos, canetas, blocos personalizados, câmeras, microfones etc.", "",
-     "Móveis e Utensílios", [2800.00] * 8),
+     "Móveis e Utensílios", _12(2800.00)),
     ("TI-D07", "TI", "Despesas", "Cursos e Treinamentos", "", "",
-     "Custeio de Treinamento", [200.00] * 8),
+     "Custeio de Treinamento", _12(200.00)),
     ("TI-D08", "TI", "Despesas", "Aplicativo de Gravação de Reunião", "", "",
-     "Licenças de Softwares", [220.00] * 8),
+     "Licenças de Softwares", _12(220.00)),
     ("TI-D09", "TI", "Despesas", "Bonificação do time",
-     "Cumprimento de prazos e participação em projetos", "",
-     "Prêmios", [0, 0, 0, 2400.00, 0, 0, 0, 3600.00]),
+     "Cumprimento de prazos e participação em projetos — CONFIRMAR se houve "
+     "parcela no 1º quadrimestre",
+     "", "Prêmios", [0] * 7 + [2400.00] + [0] * 3 + [3600.00]),
 ]
 
 # ---------------------------------------------------------------------------
@@ -123,22 +139,24 @@ LINHAS = [
 # Ago em diante fica em branco ate o mes fechar. None = sem lancamento.
 # ---------------------------------------------------------------------------
 FONTE_JUR = "Gestora, 05/08/26"
-_r3 = lambda v: [v] * 3 + [None] * 5
+# mai, jun e jul sao os indices 4, 5 e 6 na base de 12 meses.
+# Jan a abr ficam em branco: nao foram informados.
+_r3 = lambda v: [None] * 4 + [v] * 3 + [None] * 5
 
 REALIZADO = {
     "JUR-E01": (_r3(8818.00), FONTE_JUR, "Valor cheio da nota — R$ 1.182/mês abaixo do contratado"),
     "JUR-E02": (_r3(2886.91), FONTE_JUR, "Salário bruto"),
-    "JUR-E02B": ([None] * 8, "", "PREENCHER — encargos e benefícios sobre o bruto"),
+    "JUR-E02B": ([None] * 12, "", "PREENCHER — encargos e benefícios sobre o bruto"),
     "JUR-E03": (_r3(5500.00), FONTE_JUR, "Reajuste permanente aplicado desde mai/26"),
     "JUR-D01": (_r3(0.00), FONTE_JUR, "Ainda não iniciado — sem cobrança"),
     "JUR-D02": (_r3(136.00), FONTE_JUR, "Acima do orçado (R$ 104,90) — conferir contrato"),
     "JUR-D03": (_r3(0.00), FONTE_JUR, "Cancelado — sem cobrança"),
     "JUR-D04": (_r3(970.00), FONTE_JUR, ""),
     "JUR-D05": (_r3(0.00), FONTE_JUR, "Sem gasto no período"),
-    "JUR-D06": ([None] * 8, "", "Bonificação de ago/26 a confirmar"),
+    "JUR-D06": ([None] * 12, "", "Bonificação de ago/26 a confirmar"),
     # Equipe de TI — informado pela gestora em 05/08/26. Despesas ainda pendentes.
     "TI-E01": (_r3(2570.52), FONTE_JUR, "Salário bruto vigente até jul; sobe para R$ 3.070,52 em ago"),
-    "TI-E01B": ([None] * 8, "", "PREENCHER — encargos e benefícios sobre o bruto"),
+    "TI-E01B": ([None] * 12, "", "PREENCHER — encargos e benefícios sobre o bruto"),
     "TI-E02": (_r3(0.00), FONTE_JUR, "Sem acionamento no período — confirmar se o contrato segue ativo"),
     "TI-E03": (_r3(6300.00), FONTE_JUR, "R$ 3.700/mês abaixo do contratado — confirmar escopo"),
 }
@@ -196,16 +214,16 @@ wb = openpyxl.Workbook()
 # ===========================================================================
 ws = wb.active
 ws.title = "Planejado"
-NCOL_P = 16  # A..P
+NCOL_P = C_TOT  # A..T
 
 titulo(ws, "ORÇAMENTO PLANEJADO 2026  —  Jurídico e TI",
-       "Base: maio a dezembro/2026 (8 meses). CLT com encargos de folha + benefícios inclusos. "
+       "Base: janeiro a dezembro/2026 (12 meses). CLT com encargos de folha + benefícios inclusos. "
        "Esta aba é a referência — altere aqui apenas se o orçamento for oficialmente revisado.",
        NCOL_P)
 
 header(ws, HDR_ROW,
        ["ID", "Departamento", "Bloco", "Descrição", "Detalhe / Observação",
-        "Vínculo", "Plano de Contas"] + MESES + ["TOTAL 8 MESES"])
+        "Vínculo", "Plano de Contas"] + MESES + ["TOTAL DO ANO"])
 
 for i, (lid, dep, bloco, desc, det, vinc, plano, vals) in enumerate(LINHAS):
     r = FIRST + i
@@ -224,7 +242,7 @@ for i, (lid, dep, bloco, desc, det, vinc, plano, vals) in enumerate(LINHAS):
         c.font = Font(size=9)
         c.fill = PatternFill("solid", fgColor=base)
         c.border = BORDA
-    t = ws.cell(row=r, column=16, value="=SUM(H{0}:O{0})".format(r))
+    t = ws.cell(row=r, column=C_TOT, value="=SUM({1}{0}:{2}{0})".format(r, L_M0, L_MZ))
     t.number_format = MOEDA
     t.font = Font(size=9, bold=True)
     t.fill = PatternFill("solid", fgColor=CINZA_H)
@@ -238,7 +256,7 @@ for col in range(1, NCOL_P + 1):
     c.font = Font(bold=True, size=10, color=BRANCO)
     c.fill = PatternFill("solid", fgColor=AZUL)
     c.border = BORDA
-for col in range(8, NCOL_P + 1):
+for col in range(M0, NCOL_P + 1):
     L = get_column_letter(col)
     c = ws.cell(row=TOT_ROW, column=col,
                 value="=SUM({0}{1}:{0}{2})".format(L, FIRST, LAST))
@@ -247,17 +265,18 @@ for col in range(8, NCOL_P + 1):
     c.fill = PatternFill("solid", fgColor=AZUL)
     c.border = BORDA
 
-widths(ws, {"A": 10, "B": 13, "C": 11, "D": 34, "E": 42, "F": 8, "G": 26, "P": 16})
-for col in range(8, 16):
-    ws.column_dimensions[get_column_letter(col)].width = 13
+widths(ws, {"A": 10, "B": 13, "C": 11, "D": 34, "E": 42, "F": 8, "G": 26})
+ws.column_dimensions[L_TOT].width = 16
+for col in range(M0, C_TOT):
+    ws.column_dimensions[get_column_letter(col)].width = 12
 ws.freeze_panes = "H5"
-ws.auto_filter.ref = "A{0}:P{1}".format(HDR_ROW, LAST)
+ws.auto_filter.ref = "A{0}:{2}{1}".format(HDR_ROW, LAST, L_TOT)
 
 # ===========================================================================
 # ABA 2 - REALIZADO
 # ===========================================================================
 wr = wb.create_sheet("Realizado")
-NCOL_R = 18  # A..R
+NCOL_R = C_TOT + 2  # A..V
 
 titulo(wr, "REALIZADO 2026  —  Jurídico e TI",
        "Preencha SOMENTE as células amarelas (meses). As colunas de identificação vêm da aba Planejado. "
@@ -288,12 +307,12 @@ for i in range(len(LINHAS)):
         c.font = Font(size=9)
         c.fill = PatternFill("solid", fgColor=INPUT_BG)
         c.border = BORDA
-    t = wr.cell(row=r, column=16, value="=SUM(H{0}:O{0})".format(r))
+    t = wr.cell(row=r, column=C_TOT, value="=SUM({1}{0}:{2}{0})".format(r, L_M0, L_MZ))
     t.number_format = MOEDA
     t.font = Font(size=9, bold=True)
     t.fill = PatternFill("solid", fgColor=CINZA_H)
     t.border = BORDA
-    for col, txt in ((17, fonte), (18, obs)):
+    for col, txt in ((C_TOT + 1, fonte), (C_TOT + 2, obs)):
         c = wr.cell(row=r, column=col, value=txt or None)
         c.font = Font(size=8)
         c.fill = PatternFill("solid", fgColor=INPUT_BG)
@@ -307,7 +326,7 @@ for col in range(1, NCOL_R + 1):
     c.font = Font(bold=True, size=10, color=BRANCO)
     c.fill = PatternFill("solid", fgColor="7B3F00")
     c.border = BORDA
-for col in range(8, 17):
+for col in range(M0, C_TOT + 1):
     L = get_column_letter(col)
     c = wr.cell(row=TOT_ROW, column=col,
                 value="=SUM({0}{1}:{0}{2})".format(L, FIRST, LAST))
@@ -316,10 +335,12 @@ for col in range(8, 17):
     c.fill = PatternFill("solid", fgColor="7B3F00")
     c.border = BORDA
 
-widths(wr, {"A": 10, "B": 13, "C": 11, "D": 34, "E": 42, "F": 8, "G": 26,
-            "P": 16, "Q": 22, "R": 34})
-for col in range(8, 16):
-    wr.column_dimensions[get_column_letter(col)].width = 13
+widths(wr, {"A": 10, "B": 13, "C": 11, "D": 34, "E": 42, "F": 8, "G": 26})
+wr.column_dimensions[L_TOT].width = 16
+wr.column_dimensions[get_column_letter(C_TOT + 1)].width = 22
+wr.column_dimensions[get_column_letter(C_TOT + 2)].width = 34
+for col in range(M0, C_TOT):
+    wr.column_dimensions[get_column_letter(col)].width = 12
 wr.freeze_panes = "H5"
 
 # ===========================================================================
@@ -345,7 +366,7 @@ wc.add_data_validation(dv)
 dv.add(sel)
 
 wc.cell(row=3, column=3, value="Mês nº:").font = Font(size=9, color="808080")
-idx = wc.cell(row=3, column=4, value="=MATCH($B$3,Planejado!$H$4:$O$4,0)")
+idx = wc.cell(row=3, column=4, value="=MATCH($B$3,Planejado!$H$4:$S$4,0)")
 idx.font = Font(size=9, color="808080")
 idx.alignment = Alignment(horizontal="center")
 
@@ -372,13 +393,13 @@ for i in range(len(LINHAS)):
         c.alignment = Alignment(vertical="center", wrap_text=(col == 4),
                                 horizontal="left")
     formulas = {
-        6:  "=INDEX(Planejado!$H{0}:$O{0},$D$3)".format(rp),
-        7:  "=INDEX(Realizado!$H{0}:$O{0},$D$3)".format(rp),
+        6:  "=INDEX(Planejado!$H{0}:$S{0},$D$3)".format(rp),
+        7:  "=INDEX(Realizado!$H{0}:$S{0},$D$3)".format(rp),
         8:  "=G{0}-F{0}".format(rc),
-        9:  ("=SUMPRODUCT((COLUMN(Planejado!$H$4:$O$4)-COLUMN(Planejado!$H$4)"
-             "+1<=$D$3)*Planejado!$H{0}:$O{0})").format(rp),
-        10: ("=SUMPRODUCT((COLUMN(Realizado!$H$4:$O$4)-COLUMN(Realizado!$H$4)"
-             "+1<=$D$3)*Realizado!$H{0}:$O{0})").format(rp),
+        9:  ("=SUMPRODUCT((COLUMN(Planejado!$H$4:$S$4)-COLUMN(Planejado!$H$4)"
+             "+1<=$D$3)*Planejado!$H{0}:$S{0})").format(rp),
+        10: ("=SUMPRODUCT((COLUMN(Realizado!$H$4:$S$4)-COLUMN(Realizado!$H$4)"
+             "+1<=$D$3)*Realizado!$H{0}:$S{0})").format(rp),
         11: "=J{0}-I{0}".format(rc),
         12: '=IFERROR(K{0}/I{0},"")'.format(rc),
         13: '=IFERROR(J{0}/I{0},"")'.format(rc),
@@ -389,8 +410,8 @@ for i in range(len(LINHAS)):
              'IF(I{0}=0,"Não orçado",'
              'IF(K{0}>0.05*I{0},"Acima do orçado",'
              'IF(K{0}<-0.05*I{0},"Abaixo do orçado","Dentro do orçado")))))').format(rc),
-        16: ('=SUMPRODUCT((COLUMN(Realizado!$H$4:$O$4)-COLUMN(Realizado!$H$4)'
-             '+1<=$D$3)*(Realizado!$H{0}:$O{0}<>""))').format(rp),
+        16: ('=SUMPRODUCT((COLUMN(Realizado!$H$4:$S$4)-COLUMN(Realizado!$H$4)'
+             '+1<=$D$3)*(Realizado!$H{0}:$S{0}<>""))').format(rp),
     }
     for col, f in formulas.items():
         c = wc.cell(row=rc, column=col, value=f)
@@ -475,7 +496,7 @@ m.alignment = Alignment(horizontal="center")
 wp.cell(row=3, column=3, value="(altere na aba Comparativo)").font = Font(size=9, italic=True, color="808080")
 
 PH = 5
-header(wp, PH, ["Departamento", "Bloco", "Orçado 8 meses",
+header(wp, PH, ["Departamento", "Bloco", "Orçado do ano",
                 "Planejado acum.", "Realizado acum.", "Desvio (R$)",
                 "Desvio (%)", "% Executado do ano", "Linhas lançadas"])
 
@@ -519,7 +540,7 @@ def sumifs_comp(col, dep, bloco):
 
 
 def sumifs_plan(dep, bloco):
-    rng = "{0}$P${1}:$P${2}".format(PREF, FIRST, LAST)
+    rng = "{0}${3}${1}:${3}${2}".format(PREF, FIRST, LAST, L_TOT)
     crits = []
     if dep:
         crits.append('{0}$B${1}:$B${2},"{3}"'.format(PREF, FIRST, LAST, dep))
@@ -635,7 +656,7 @@ PCH = 4
 header(wpc, PCH, ["Plano de Contas", "Jurídico — Plan.", "Jurídico — Real.",
                   "TI — Plan.", "TI — Real.", "Total Planejado acum.",
                   "Total Realizado acum.", "Desvio (R$)", "Desvio (%)",
-                  "Orçado 8 meses"])
+                  "Orçado do ano"])
 
 for i, plano in enumerate(PLANOS):
     rr = PCH + 1 + i
@@ -658,7 +679,7 @@ for i, plano in enumerate(PLANOS):
     wpc.cell(row=rr, column=8, value="=G{0}-F{0}".format(rr))
     wpc.cell(row=rr, column=9, value='=IFERROR(H{0}/F{0},"")'.format(rr))
     wpc.cell(row=rr, column=10, value=(
-        '=SUMIFS(Planejado!$P${0}:$P${1},Planejado!$G${0}:$G${1},$A{2})'
+        '=SUMIFS(Planejado!$T${0}:$T${1},Planejado!$G${0}:$G${1},$A{2})'
     ).format(FIRST, LAST, rr))
     for col in range(1, 11):
         c = wpc.cell(row=rr, column=col)
@@ -866,13 +887,31 @@ PEND = [
      "É a maior despesa isolada do Jurídico no segundo semestre. Sem confirmação, "
      "o acumulado de agosto fica distorcido.",
      "Cristiane", "EM ABERTO"),
-    ("1", "Base de meses do time de TI",
-     "A ficha original trazia a coluna TOTAL do TI em bases diferentes por pessoa "
-     "(Vinicius e Elias em 12 meses, Jonathan em 9), enquanto o grid mensal tem 8 (mai–dez). "
-     "Definido: vale mai–dez para todos.",
-     "Orçamento de equipe do TI passou de R$ 167.778,30 para R$ 131.852,20 "
-     "(−R$ 35.926,10). Total geral: R$ 394.352,68.",
+    ("1", "Base de meses — reconciliada com a ficha original",
+     "A ficha trazia a coluna TOTAL do TI digitada à mão em bases diferentes por "
+     "pessoa (Vinicius e Elias em 12 meses, Jonathan em 9) enquanto o grid mensal "
+     "tinha só 8 colunas. Com o período estendido para jan–dez, os três totais "
+     "batem exatamente: R$ 64.998,30 + R$ 12.780,00 + R$ 90.000,00 = R$ 167.778,30, "
+     "o valor original da ficha. Não era erro de digitação — era o grid que estava "
+     "incompleto.",
+     "Equipe de TI volta ao valor original de R$ 167.778,30. Jonathan lançado com "
+     "entrada em abr/26 (9 meses), que é o que explica os R$ 90.000 da ficha.",
      "Cristiane", "RESOLVIDO"),
+    ("H", "Planejado de jan a abr — CONFERIR",
+     "O 1º quadrimestre foi preenchido replicando os valores mensais já conhecidos, "
+     "porque a ficha original só trazia o grid de mai a dez. Exceções tratadas: "
+     "Jonathan começa em abr, Thamar a R$ 5.000 (pré-reajuste), Vinicius com bruto "
+     "de R$ 2.570,52 e Adapta a R$ 1.300 (valor até jun).",
+     "Se algum contrato tinha valor diferente no 1º quadrimestre, ou se houve "
+     "bonificação nesse período, o planejado de jan a abr precisa ser corrigido "
+     "antes de comparar com o realizado.",
+     "Cristiane", "CONFERIR"),
+    ("I", "Realizado de jan a abr — A LANÇAR",
+     "As colunas de jan a abr estão em branco na aba Realizado. Só mai, jun e jul "
+     "foram informados.",
+     "São 4 dos 7 meses já fechados do ano. Sem eles o acumulado e o Painel "
+     "refletem menos da metade do período decorrido.",
+     "Cristiane", "A LANÇAR"),
     ("2", "Origem do valor realizado",
      "Ainda não definido se o realizado virá de lançamento manual, de relatório do "
      "financeiro/ERP por centro de custo, ou misto.",
@@ -921,7 +960,8 @@ for i, row in enumerate(PEND):
         c.alignment = Alignment(vertical="top", wrap_text=True,
                                 horizontal="center" if col in (1, 6) else "left")
         if col == 6:
-            cores = {"RESOLVIDO": VERDE, "APLICADO": VERDE, "PREENCHER": "F8CBAD"}
+            cores = {"RESOLVIDO": VERDE, "APLICADO": VERDE, "PREENCHER": "F8CBAD",
+                     "A LANÇAR": "F8CBAD", "CONFERIR": "FFE699"}
             c.fill = PatternFill("solid", fgColor=cores.get(val, LARANJA))
         else:
             c.fill = PatternFill("solid", fgColor=BRANCO if i % 2 == 0 else CINZA_L)

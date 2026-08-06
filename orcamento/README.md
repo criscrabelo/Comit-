@@ -4,21 +4,21 @@ Planilha de acompanhamento orçamentário dos departamentos Jurídico e TI,
 construída a partir da ficha de orçamento (`ficha_CRIS`).
 
 **Arquivo:** `Orcamento_Planejado_x_Realizado_2026.xlsx`
-**Período:** maio a dezembro/2026 (8 meses)
-**Total orçado:** R$ 395.852,68 (revisado — inclui o reajuste da Thamar)
+**Período:** janeiro a dezembro/2026 (12 meses)
+**Total orçado:** R$ 547.548,72
 
 | Departamento | Equipe | Despesas | Total |
 |---|---:|---:|---:|
-| Jurídico | 160.104,12 | 41.936,36 | **202.040,48** |
-| TI | 131.852,20 | 61.960,00 | **193.812,20** |
-| **Total** | **291.956,32** | **103.896,36** | **395.852,68** |
+| Jurídico | 239.406,18 | 51.324,24 | **290.730,42** |
+| TI | 167.778,30 | 89.040,00 | **256.818,30** |
+| **Total** | **407.184,48** | **140.364,24** | **547.548,72** |
 
 ### Realizado lançado
 
-Mai–jul/26 (3 meses fechados): R$ 81.544,29 realizado contra R$ 136.572,03 planejado.
-Jurídico completo; do TI, só a equipe — as despesas ainda não foram lançadas.
-A coluna **Linhas lançadas** do Painel mostra a cobertura (11 de 23) — desvio negativo
-em linha não lançada é ausência de dado, não economia.
+Mai–jul/26: R$ 81.544,29 realizado contra R$ 60.996,08 planejado no mesmo trimestre.
+Jan–abr ainda não foi lançado, e do TI só a equipe. A coluna **Linhas lançadas** do
+Painel mostra a cobertura (11 de 23) — desvio negativo em linha não lançada é ausência
+de dado, não economia.
 
 Colaboradores CLT (Geovanna e Vinicius) estão divididos em duas linhas, salário bruto
 e encargos/benefícios, porque o orçamento foi feito em custo total mas o dado
@@ -62,15 +62,25 @@ Dois aumentos foram tratados de formas diferentes, e a distinção importa:
   o rateio mensal da folha CLT tem meio centavo).
 - Colaboradores CLT estão orçados pelo custo total (encargos de folha + benefícios).
 
-## Base de meses do time de TI
+## Base de meses
 
-A ficha original trazia a coluna TOTAL do time de TI com valores digitados
-manualmente, em bases de meses diferentes de pessoa para pessoa (Vinicius e Elias
-em 12 meses, Jonathan em 9), enquanto o grid mensal cobria 8 meses (mai–dez).
-As demais linhas da ficha usavam `=SOMA()` sobre os meses.
+A ficha original trazia a coluna TOTAL do time de TI digitada manualmente, em bases
+diferentes de pessoa para pessoa, enquanto o grid mensal cobria apenas 8 colunas
+(mai–dez). Com o período estendido para o ano inteiro, os três totais se reconciliam
+exatamente:
 
-Ficou definido que **vale mai–dez (8 meses) para todos**, o que leva o orçamento
-de equipe do TI de R$ 167.778,30 para **R$ 131.852,20** (−R$ 35.926,10).
+| Pessoa | Valor/mês | Meses | Total | Confere com a ficha |
+|---|---:|---:|---:|---|
+| Vinicius | 5.416,525 | 12 (jan–dez) | 64.998,30 | sim |
+| Elias | 1.065,00 | 12 (jan–dez) | 12.780,00 | sim |
+| Jonathan | 10.000,00 | 9 (abr–dez) | 90.000,00 | sim |
+| | | | **167.778,30** | **sim** |
+
+Não era erro de digitação: o grid mensal é que estava incompleto. A entrada do
+Jonathan em abril é o que explica os 9 meses.
+
+O 1º quadrimestre foi preenchido replicando os valores mensais conhecidos, já que
+a ficha não o cobria — ver a pendência "Planejado de jan a abr" na planilha.
 
 ## Manutenção
 
