@@ -225,14 +225,23 @@ export type EstagioNotificacao = 'Resolvida' | 'Encerrada' | 'Em Andamento';
  * `Unidade retomada` (passado) continua como resolucao, e nao como encerramento:
  * ali a retomada se concretizou. `A Retomar` (futuro) e o caso encaminhado.
  *
- * `Recompra` NAO entra aqui, e a decisao e deliberada. A recompra so termina
- * quando a unidade encontra um NOVO comprador e aquele processo de compra se
- * conclui — o que leva de seis meses a dois anos. Ate la a Coevo continua
- * acompanhando o caso, e a unidade segue vinculada ao numero do cliente
- * anterior. Trata-la como terminal encerraria na origem um processo em curso.
+ * `Recompra` TAMBEM encerra — e a distincao que sustenta isso e entre dois
+ * objetos diferentes:
+ *
+ *   - a NOTIFICACAO e o ciclo de cobranca com o cliente inadimplente. Quando a
+ *     recompra e acordada, esse ciclo acabou: nao ha mais o que cobrar dele.
+ *   - a RECOMPRA e o processo da unidade ate a revenda, que leva de seis meses
+ *     a dois anos. Ele continua, e e acompanhado no quadro de distratos e
+ *     retomadas, com `categoria = 'recompra'`.
+ *
+ * Deixar a notificacao aberta durante todo o processo de recompra inflaria o
+ * prazo de notificacao ate um numero sem sentido — um caso de cobranca de tres
+ * dias e um de setecentos ficariam na mesma media. Encerrar aqui nao encerra a
+ * recompra; encerra a cobranca, que e do que a notificacao trata.
+ *
  * Regra em docs/REGRA-SAIDA-DE-CLIENTE.md.
  */
-const ESTAGIOS_ENCERRAM_SEM_RESOLVER = [/distratad/i, /^\s*a\s+retomar/i];
+const ESTAGIOS_ENCERRAM_SEM_RESOLVER = [/distratad/i, /^\s*a\s+retomar/i, /re-?compra/i];
 
 /**
  * Normaliza o estagio para os valores usados nos indicadores.

@@ -1134,13 +1134,34 @@ Verificado no relatório de evidências: o board 5959705266 tem **uma única**
 coluna `'MEU TRABALHO'`. A homologação aprovada está correta; a detecção de
 ambiguidade é proteção prospectiva.
 
-## B17.3 — Recompra: por que ela NÃO é estágio terminal
+## B17.3 — Recompra encerra a notificação, não a recompra
 
 **Data:** 2026-08-06 · Regra de negócio explicada pela Cristiane Rabelo.
 
-Eu havia proposto incluir `Recompra` entre os estágios que encerram a
-notificação, junto com `Distratado` e `A Retomar`. **A proposta estava
-errada**, e a explicação do negócio mostrou por quê.
+Esta seção passou por duas correções na mesma conversa, e as duas ficam
+registradas porque o caminho até a regra certa é parte dela.
+
+**Primeira volta.** Propus incluir `Recompra` entre os estágios terminais. A
+resposta foi que a recompra continua sendo acompanhada por até dois anos — o
+que parecia invalidar a proposta.
+
+**Segunda volta, e a regra final.** A distinção que faltava é que **notificação
+e recompra são objetos diferentes**:
+
+| | A que se refere | Quando termina |
+| --- | --- | --- |
+| Notificação | o ciclo de **cobrança** com o cliente | **no acordo de recompra** |
+| Recompra | o processo da **unidade** até a revenda | na conclusão da compra pelo novo comprador |
+
+O estágio `Recompra` na notificação é **`Encerrada`**. O motivo, nas palavras da
+Cristiane: *"se a gente deixar com uma notificação, acaba que esse prazo de
+notificação ele fica gigantesco"*. Um caso de cobrança de três dias e um de
+setecentos entrariam na mesma média.
+
+`Encerrada` e não `Resolvida`: recompra não é cobrança bem-sucedida, é saída do
+cliente.
+
+O contexto de negócio que sustenta a regra:
 
 Recompra não é uma variação do distrato — é um terceiro caminho, com gatilho,
 responsável e ciclo próprios. A Coevo assume o financiamento do cliente,
@@ -1150,13 +1171,9 @@ devolve um valor avaliado caso a caso, e a unidade retorna. Mas:
 > unidade, e esse novo comprador tem que encerrar todo o processo de compra —
 > o que pode demorar seis meses, um ano ou até dois anos.
 
-Ou seja: registrar a recompra é o **começo** do acompanhamento, não o fim.
-Tratá-la como terminal tiraria a unidade do acompanhamento justamente durante
-o período em que ela precisa ser acompanhada.
-
-`Recompra` continua `Em Andamento`. Nenhuma alteração de comportamento — o que
-mudou foi o *motivo* estar registrado, com teste que falha se alguém repetir a
-proposta.
+Ou seja: registrar a recompra é o começo do acompanhamento **da unidade** — que
+segue no quadro de Distratos e Retomadas, com `categoria = 'recompra'`. O que
+termina ali é a cobrança.
 
 Regra completa em `docs/REGRA-SAIDA-DE-CLIENTE.md`, incluindo a árvore de
 decisão entre distrato, retomada e recompra.
@@ -1171,12 +1188,13 @@ decisão entre distrato, retomada e recompra.
    certos, são representações diferentes do mesmo fato. Precisa estar
    registrado como não-inconsistência antes do cruzamento, ou a Central abre um
    caso por recompra.
-2. **Recompra envelhece de forma diferente.** Um caso em `Aguardando pagamento`
-   há 400 dias é problema; em `Recompra` há 400 dias é normal. Hoje os dois
-   ficam juntos em `Em Andamento`, então o tempo médio de notificações abertas
-   sobe por causa das recompras, e um caso de cobrança realmente esquecido fica
-   escondido no meio delas. Proposta de segmentar nos indicadores — não
-   aplicada, depende de quem lê o indicador no comitê.
+2. **O tempo da recompra não é medido em lugar nenhum.** Fechar a notificação
+   resolveu o prazo de cobrança — era o problema, e está resolvido. Mas o tempo
+   do acordo até a revenda passa a não ter dono: a notificação fechou, e a
+   ingestão de distratos ainda não alimenta `data_venda`. Não há resposta para
+   *"quantas recompras estão abertas e há quanto tempo"*, que é a pergunta da
+   diretoria sobre unidade parada. **Encaminhamento:** alimentar `data_venda`
+   na homologação do quadro de Distratos e Retomadas.
 
 ### Campos que o modelo não tem
 

@@ -53,17 +53,27 @@ registrada, porque para finalizá-la é preciso:
 
 Isso pode levar **seis meses, um ano ou até dois anos**.
 
-Consequência direta no modelo: uma notificação em estágio `Recompra` fica
-**`Em Andamento`**, e é correto que fique. Ela não é um caso encerrado
-aguardando fechamento burocrático — ela está genuinamente em curso.
+### A notificação e a recompra são dois objetos diferentes
 
-### Por que isto foi registrado
+É a distinção que resolve o modelo, e ela precisa ficar explícita porque os dois
+falam da mesma unidade:
 
-Na homologação do quadro de Notificações (board 5630368737), `Recompra`
-apareceu com 7 ocorrências e foi cogitado tratá-la como estágio terminal, junto
-com `Distratado` e `A Retomar`. Seria errado: encerraria na origem um processo
-que continua por até dois anos, e a unidade sairia do acompanhamento justamente
-durante o período em que ela precisa ser acompanhada.
+| | A que se refere | Quando termina |
+| --- | --- | --- |
+| **Notificação** | o ciclo de **cobrança** com o cliente inadimplente | **quando a recompra é acordada** — não há mais o que cobrar dele |
+| **Recompra** | o processo da **unidade** até a revenda | quando um novo comprador conclui a compra: seis meses a dois anos |
+
+Por isso o estágio `Recompra` na notificação é **`Encerrada`**: encerra a
+cobrança, que é do que a notificação trata. A recompra em si continua sendo
+acompanhada no quadro de **Distratos e Retomadas**, com
+`categoria = 'recompra'`.
+
+**O motivo de fechar** é concreto: se a notificação ficasse aberta durante todo
+o processo de recompra, o prazo de notificação viraria um número sem sentido —
+um caso de cobrança de três dias e um de setecentos entrariam na mesma média.
+
+`Encerrada` e não `Resolvida`, porque recompra não é cobrança bem-sucedida: é
+saída do cliente. Contar como resolução inflaria a taxa de resolução.
 
 ---
 
@@ -92,19 +102,19 @@ Isso **não é inconsistência**, e precisa estar registrado antes de chegarmos 
 cruzamento — senão a Central de Inconsistências vai abrir um caso para cada
 recompra, e alguém vai "corrigir" uma das pontas.
 
-### 4.2 Recompra envelhece de forma diferente das demais
+### 4.2 O tempo da recompra ainda não é medido em lugar nenhum
 
-Um caso em `Aguardando pagamento` há 400 dias é problema. Um caso em
-`Recompra` há 400 dias é **normal**.
+Fechar a notificação no acordo resolve o prazo de **cobrança** — era esse o
+problema, e está resolvido. Mas o tempo da **recompra**, do acordo até a
+revenda, passa a não ser medido por ninguém: a notificação já fechou, e a
+ingestão do quadro de distratos ainda não alimenta `data_venda`.
 
-Hoje os dois ficam juntos em `Em Andamento`, então qualquer indicador de tempo
-médio de notificações abertas, ou qualquer alerta de caso parado, vai tratar os
-dois do mesmo jeito. O tempo médio sobe por causa das recompras, e um caso de
-cobrança realmente esquecido fica escondido no meio delas.
+Enquanto isso não for feito, não há resposta para *"quantas recompras estão
+abertas e há quanto tempo"* — que é justamente a pergunta que a diretoria faz
+sobre unidade parada em estoque.
 
-**Proposta, não aplicada:** segmentar recompra nos indicadores de tempo — ou
-como série própria, ou excluída do tempo médio de cobrança, com o número dela
-reportado à parte. Depende de decisão de quem lê o indicador no comitê.
+**Encaminhamento:** alimentar `distratos.data_venda` na homologação do quadro
+de Distratos e Retomadas, e derivar dali o tempo de ciclo da recompra.
 
 ---
 
@@ -129,7 +139,7 @@ na etapa de indicadores:
 | --- | --- |
 | `distratos.categoria` | `distrato`, `desistencia`, `retomada`, `recompra` — os quatro já são distintos, com CHECK no banco |
 | `classificarCategoriaDistrato()` | separa pelo título do grupo no Monday; recompra tem grupo próprio |
-| `normalizarEstagio()` | `Recompra` → `Em Andamento`, **confirmado correto** por esta regra |
+| `normalizarEstagio()` | `Recompra` → `Encerrada`: fecha a cobrança, não a recompra |
 | `distratos.data_venda` | data disponível para registrar a revenda — ainda não alimentada pela ingestão |
 
 O que **não** existe: campo para valor devolvido, campo para financiamento
