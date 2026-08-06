@@ -305,13 +305,17 @@ export const QUADROS: Record<ChaveQuadro, DefinicaoQuadro> = {
       cliente: ['CLIENTE', 'NOME DO CLIENTE', 'NOME'],
       cpf_cnpj: ['CPF/CNPJ', 'CPF-CNPJ', 'CPF', 'CNPJ', 'DOCUMENTO'],
       empreendimento: ['EMPREENDIMENTO', 'OBRA'],
-      categoria: ['CATEGORIA', 'TIPO'],
+      // O board real usa emoji no titulo. A comparacao e por titulo exato, e o
+      // emoji faz parte dele — nao e decoracao removivel como as aspas.
+      categoria: ['CATEGORIA', '📋 TIPO DE HONORÁRIO', 'TIPO'],
       valor_principal: ['VALOR PRINCIPAL', 'PRINCIPAL'],
       valor_honorarios: ['HONORÁRIOS', 'HONORARIOS', 'VALOR DOS HONORÁRIOS'],
       valor_oab: ['OAB', 'VALOR OAB'],
       status: ['STATUS', 'SITUAÇÃO'],
       cliente_novo: ['CLIENTE NOVO', 'NOVO CLIENTE'],
       data_evento: ['DATA', 'DATA DO PAGAMENTO', 'DATA DE PAGAMENTO'],
+      data_pagamento: ['✅ DATA PAGAMENTO EFETIVO', 'DATA DE PAGAMENTO EFETIVO'],
+      notificacoes: TITULOS_LIGACAO_NOTIFICACOES,
     },
   },
 
@@ -327,12 +331,19 @@ export const QUADROS: Record<ChaveQuadro, DefinicaoQuadro> = {
       unidade: ['UNIDADE', 'APARTAMENTO'],
       torre: ['TORRE'],
       bloco: ['BLOCO'],
-      situacao: ['SITUAÇÃO', 'SITUACAO', 'STATUS'],
-      status_juridico: ['STATUS JURÍDICO', 'STATUS JURIDICO'],
+      situacao: ['SITUAÇÃO', 'SITUACAO'],
+      status_juridico: ['STATUS JURÍDICO', 'STATUS JURIDICO', 'LIBERAÇÃO JURÍDICO'],
       tipo_financiamento: ['FINANCIAMENTO', 'TIPO DE FINANCIAMENTO'],
       prazo_habite_se: ['HABITE-SE', 'PRAZO HABITE-SE'],
+      // `CARÊNCIA (180 DIAS)` do board 18410779605 NAO entra aqui: e uma coluna
+      // de STATUS com rotulos de mes (`DEZEMBRO 2025`, `ESTOQUE`, `VENDA NOVA`),
+      // nao uma data. Converter "DEZEMBRO 2025" em data exigiria escolher um dia
+      // do mes — invencao. Fica ausente ate a origem ter uma data de verdade.
       prazo_180: ['PRAZO 180', 'PRAZO 180 DIAS'],
-      previsao_entrega: ['PREVISÃO DE ENTREGA', 'PREVISAO DE ENTREGA', 'ENTREGA'],
+      // `ENTREGA DAS CHAVES` e a entrega REALIZADA, nao a previsao. Sao coisas
+      // diferentes num quadro cujo proposito e acompanhar prazo de entrega.
+      previsao_entrega: ['PREVISÃO DE ENTREGA', 'PREVISAO DE ENTREGA'],
+      entrega_chaves: ['ENTREGA DAS CHAVES'],
     },
   },
 };
@@ -360,6 +371,27 @@ function chaveSemAspas(titulo: string): string {
 }
 
 /**
+ * Remove emoji do comeco do titulo.
+ *
+ * O quadro de Honorarios usa emoji como prefixo em oito colunas:
+ * `📋 Tipo de Honorário`, `✅ Data Pagamento Efetivo`, `📅 Data Solicitação`…
+ * Emoji e decoracao de quem digitou, igual as aspas — e pior de casar, porque
+ * `📋` pode vir com seletor de variacao (U+FE0F) invisivel, que faz a
+ * comparacao exata falhar sem que nada apareca errado no texto.
+ *
+ * Foi o que aconteceu: `categoria` saiu NULA nos 890 honorarios, com o titulo
+ * escrito identico no mapa. Descoberto na homologacao do board 7231876117.
+ *
+ * So remove pictogramas — pontuacao ASCII fica. `(JUR) NOTIFICAÇÕES CLIENTES` e
+ * `Nº PROCESSO` continuam intactos, e sao titulos que existem.
+ */
+function chaveSemEmoji(titulo: string): string {
+  return chaveSemAspas(titulo)
+    .replace(/^[\p{Extended_Pictographic}\uFE0F\u200D\s]+/u, '')
+    .trim();
+}
+
+/**
  * Forma canonica para comparar titulo de coluna: maiusculas, sem espaco nas
  * pontas e sem aspas em volta.
  *
@@ -368,7 +400,7 @@ function chaveSemAspas(titulo: string): string {
  * `'MEU TRABALHO'` e `STATUS (para comitê)` deixaram de ser reconhecidos.
  */
 export function chaveDeColuna(titulo: string): string {
-  return chaveSemAspas(titulo);
+  return chaveSemEmoji(titulo);
 }
 
 /** Dois titulos designam a mesma coluna, ignorando caixa e aspas em volta. */
@@ -407,7 +439,7 @@ export function montarMapaColunas(
   }
 
   for (const coluna of colunas) {
-    const alias = chaveSemAspas(coluna.title);
+    const alias = chaveSemEmoji(coluna.title);
     if (!alias || exatos.has(alias)) continue;
 
     const anterior = mapa.get(alias);
@@ -425,7 +457,10 @@ export function resolverColuna(
   titulos: string[],
 ): { id: string; type: string } | null {
   for (const titulo of titulos) {
-    const achado = mapa.get(chaveTitulo(titulo)) ?? mapa.get(chaveSemAspas(titulo));
+    const achado =
+      mapa.get(chaveTitulo(titulo)) ??
+      mapa.get(chaveSemAspas(titulo)) ??
+      mapa.get(chaveSemEmoji(titulo));
     if (achado) return achado;
   }
   return null;

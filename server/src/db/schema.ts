@@ -628,6 +628,34 @@ export interface TabelaDistratos extends Proveniencia {
 }
 
 /** Cadastro manual do comite: fatos relevantes do mes. */
+/**
+ * Honorarios extrajudiciais e judiciais.
+ *
+ * `especie` e NOT NULL e vem do QUADRO de origem, nao de coluna: o board
+ * `7231876117` e o de extrajudiciais inteiro. Valores monetarios sao `string`
+ * porque `numeric` do PostgreSQL nao cabe em `number` sem perda — a mesma
+ * convencao de `processos_judiciais.valor_causa`.
+ */
+export interface TabelaHonorarios extends Proveniencia {
+  id: Auto<string>;
+  comite_id: string | null;
+  competencia_ref: string | null;
+  cliente_id: string | null;
+  processo_id: string | null;
+  empreendimento_id: string | null;
+  especie: string;
+  parte: string | null;
+  categoria: string | null;
+  numero_processo: string | null;
+  valor_principal: string | null;
+  valor_honorarios: string | null;
+  valor_oab: string | null;
+  custos_advogado: string | null;
+  cliente_novo: boolean | null;
+  status: string | null;
+  data_evento: Dia | null;
+}
+
 export interface TabelaFatos extends Proveniencia {
   id: Auto<string>;
   comite_id: string | null;
@@ -905,6 +933,7 @@ export interface Database {
   notificacoes: TabelaNotificacoes;
   processos_judiciais: TabelaProcessosJudiciais;
   distratos: TabelaDistratos;
+  honorarios: TabelaHonorarios;
   fatos: TabelaFatos;
   riscos: TabelaRiscos;
   regulatorios: TabelaRegulatorios;

@@ -219,7 +219,12 @@ export function extrairLocalizacao(
   const bruto = (nomeEmpreendimento || '').trim();
 
   // Remove o sufixo de torre do nome do empreendimento.
-  const base = bruto.replace(/\s+TORRE\s+[A-Z]$/i, '').trim();
+  //
+  // Aceita separador antes de TORRE: o quadro de Honorarios escreve
+  // `AURORA - Torre B`, e sem tratar o hifen a base ficaria `AURORA -`, com o
+  // travessao pendurado — o que criaria um empreendimento `AURORA -` ao lado do
+  // `AURORA` legitimo. Descoberto no board 7231876117.
+  const base = bruto.replace(/\s*[-–—]?\s*TORRE\s+[A-Z]\s*$/i, '').trim();
 
   const casaTorre = bruto.match(/\bTORRE\s+([A-Z])\b/i);
   const torre = casaTorre ? `TORRE ${casaTorre[1]!.toUpperCase()}` : null;

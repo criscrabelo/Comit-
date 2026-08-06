@@ -157,21 +157,25 @@ const PERFIS: Record<string, PerfilHomologacao> = {
     board: '7231876117',
     rotulo: 'Honorários Extrajudiciais',
     colunasAmostra: [
-      'id_origem', 'tipo', 'motivo', 'situacao', 'unidade', 'grupo',
+      'id_origem', 'especie', 'categoria', 'status', 'cliente_novo',
+      'valor_principal', 'valor_honorarios', 'valor_oab', 'data_evento',
       'fonte', 'versao', 'data_referencia', 'extraido_em',
     ],
-    textoLivre: ['motivo', 'situacao', 'tipo'],
-    campoDeTeste: 'situacao',
+    textoLivre: ['categoria', 'status'],
+    campoDeTeste: 'status',
   },
   entregas: {
     board: '18410779605',
     rotulo: 'Controle de Entrega Carpe Diem',
     colunasAmostra: [
-      'id_origem', 'tipo', 'situacao', 'unidade', 'grupo',
+      'id_origem', 'unidade', 'torre', 'bloco', 'situacao', 'status_juridico',
+      'tipo_financiamento', 'prazo_habite_se', 'prazo_180', 'previsao_entrega',
       'fonte', 'versao', 'data_referencia', 'extraido_em',
     ],
-    textoLivre: ['situacao', 'tipo'],
-    campoDeTeste: 'situacao',
+    textoLivre: ['situacao', 'status_juridico', 'tipo_financiamento'],
+    // `status_juridico` vem preenchido em 12 de 112: a prova 5 caia num nulo e
+    // comparava null com null. `unidade` esta em 112 de 112.
+    campoDeTeste: 'unidade',
   },
 };
 

@@ -1808,3 +1808,93 @@ justifique estrutura nova.
 
 Homologação de recompras reexecutada: **7 de 7 provas**, 25 lidos, 25 incluídos,
 0 ignorados. Suíte em 410 testes.
+
+---
+
+## B17.11 — Honorários e Entregas: os dois últimos quadros ganham ingestão
+
+**Data:** 2026-08-06
+**Boards:** `7231876117` (Honorários Extrajudiciais) e `18410779605` (Controle de
+Entrega Carpe Diem). **7 de 7 provas em cada.**
+
+Os dois estavam com `DESTINO` apontando para `null` — a carga respondia
+*"ingestao ainda nao implementada nesta fase"*. As tabelas de destino
+(`honorarios` e `unidades`) já existiam, com proveniência e trilha; faltava a
+transformação e o registro do tipo.
+
+| Quadro | Lidos | Incluídos | Erros |
+| --- | --- | --- | --- |
+| Honorários | **890** | 890 | 0 |
+| Entregas | **112** | 112 | 0 |
+
+### Emoji no título de coluna
+
+Oito colunas de Honorários começam com emoji: `📋 Tipo de Honorário`,
+`✅ Data Pagamento Efetivo`, `🏗️ Torre/Bloco`… Escrevi o título idêntico no mapa
+e `categoria` saiu **nula nos 890 registros** — o mesmo sintoma silencioso de
+`'MEU TRABALHO'` em B16.3, por outra causa.
+
+O emoji pode trazer um **seletor de variação (U+FE0F) invisível**: o texto
+parece igual e a comparação falha. `chaveDeColuna` passou a remover pictogramas
+do começo do título, pela mesma lógica das aspas — decoração de quem digitou,
+não identidade da coluna.
+
+**Só pictograma, e só no começo.** Pontuação ASCII fica: `(JUR) NOTIFICAÇÕES
+CLIENTES` e `Nº PROCESSO` são títulos reais que precisam continuar casando.
+
+Depois da correção a coluna resolve — e **continua vazia, agora legitimamente**:
+as cinco colunas com emoji estão em **0 de 500** na origem. São colunas novas que
+ninguém preencheu. A diferença importa: antes era defeito nosso, agora é dado
+que a equipe ainda não digitou, e o relatório mostra qual dos dois é.
+
+### `AURORA - Torre B`
+
+`extrairLocalizacao` removia o sufixo ` TORRE X`, mas não o separador antes
+dele: a base ficava `AURORA -`, com o traço pendurado — o que criaria um
+empreendimento `AURORA -` ao lado do `AURORA` legítimo, partindo o histórico do
+mesmo ativo. Terceira variação do mesmo problema, depois de `ALAMEDAS 406A`
+(B17.4) e da SPE (B17.8).
+
+### Campos que vêm do QUADRO, não de coluna
+
+Os dois destinos têm colunas `NOT NULL` sem coluna correspondente na origem:
+
+- **`honorarios.especie`** — o board inteiro é o de extrajudiciais. A espécie sai
+  do quadro; deixá-la sair de um campo vazio faria a carga falhar na primeira
+  linha.
+- **`unidades.empreendimento_id`** e **`unidades.unidade`** — o empreendimento é
+  o GRUPO (`CARPE DIEM`) e a unidade é o nome do item (`11`). Quando o grupo não
+  resolve, o item é ignorado COM motivo, em vez de derrubar a carga.
+
+### O que NÃO foi mapeado, e por quê
+
+- **`CARÊNCIA (180 DIAS)` → `prazo_180`.** É coluna de STATUS com rótulos de mês
+  (`DEZEMBRO 2025`, `ESTOQUE`, `VENDA NOVA`), não data. Converter "DEZEMBRO 2025"
+  em data exigiria escolher um dia do mês — invenção.
+- **`ENTREGA DAS CHAVES` → `previsao_entrega`.** Entrega realizada e previsão são
+  coisas diferentes num quadro cujo propósito é acompanhar prazo. A data
+  realizada vira `data_fato`, que é o que ela é.
+- **`STATUS` genérico → `situacao`.** O quadro tem sete colunas de status
+  diferentes; aceitar o título genérico faria a situação da unidade sair da
+  primeira que aparecesse.
+
+### Preenchimento real
+
+| Honorários (890) | | Entregas (112) | |
+| --- | --- | --- | --- |
+| valor honorários | 872 | unidade | 112 |
+| valor OAB | 871 | tipo financiamento | 15 |
+| status | 881 | liberação jurídica | 12 |
+| data do evento | 849 | habite-se | **0** |
+| empreendimento | 873 | | |
+| competência | 455 | | |
+
+Dois pontos para o jurídico: **competência em 455 de 890** — os grupos de
+Honorários misturam meses (`AGOSTO/2026`) com um grupo `DISTRATO/ RETOMADA` que
+não deriva competência nenhuma; e **habite-se vazio em 112 de 112**, num quadro
+cujo nome é controle de entrega.
+
+A tabela `honorarios` **não tem coluna de unidade**, e o quadro tem `UNIDADE`
+preenchida — o dado é lido e não tem onde ser gravado. Fica registrado.
+
+Suíte em **421 testes**.

@@ -38,6 +38,7 @@ import {
   separarUnidadeCliente,
   normalizarEstagio,
   normalizarNome,
+  paraBooleano,
   paraData,
   paraInteiro,
   paraNumero,
@@ -386,6 +387,88 @@ async function transformarItem(
     };
   }
 
+  if (quadro === 'honorarios') {
+    // O quadro e o de honorarios EXTRAJUDICIAIS: a especie vem do quadro, nao
+    // de coluna. `especie` e NOT NULL no banco, e deixa-la sair de um campo
+    // vazio faria a carga inteira falhar.
+    return {
+      transformado: {
+        registro: {
+          idOrigem: item.id,
+          campos: {
+            ...comum,
+            especie: 'extrajudicial',
+            categoria: lerCampo(item, mapa, 'categoria') || null,
+            valor_principal: paraNumero(lerCampo(item, mapa, 'valor_principal')),
+            valor_honorarios: paraNumero(lerCampo(item, mapa, 'valor_honorarios')),
+            valor_oab: paraNumero(lerCampo(item, mapa, 'valor_oab')),
+            cliente_novo: paraBooleano(lerCampo(item, mapa, 'cliente_novo')),
+            status: lerCampo(item, mapa, 'status') || null,
+            // A data do pagamento efetivo manda quando existe: `DATA` e a do
+            // lancamento, e o indicador financeiro pergunta quando saiu, nao
+            // quando foi registrado.
+            data_evento:
+              paraData(lerCampo(item, mapa, 'data_pagamento')) ??
+              paraData(lerCampo(item, mapa, 'data_evento')),
+          },
+          valorOriginal: item,
+          dataReferencia:
+            paraData(lerCampo(item, mapa, 'data_pagamento')) ??
+            paraData(lerCampo(item, mapa, 'data_evento')),
+          dataFato:
+            paraData(lerCampo(item, mapa, 'data_pagamento')) ??
+            paraData(lerCampo(item, mapa, 'data_evento')),
+        },
+        documento,
+        cliente: clienteNome,
+        empreendimentoNome: local.empreendimento,
+      },
+    };
+  }
+
+  if (quadro === 'entregas') {
+    // `unidades.empreendimento_id` e NOT NULL, e este quadro nao tem coluna de
+    // empreendimento: ele E o grupo (`CARPE DIEM`). Sem o grupo nao ha unidade
+    // a gravar — ignorar com motivo e melhor que quebrar a carga inteira.
+    const empreendimentoEntrega = await resolverEmpreendimento(tituloGrupo);
+    if (!empreendimentoEntrega) {
+      return { ignorar: `sem empreendimento: o grupo "${tituloGrupo}" nao resolve` };
+    }
+
+    // A unidade e o nome do item (`11`, `12`). `unidade` tambem e NOT NULL.
+    const unidadeEntrega = (item.name || '').trim();
+    if (!unidadeEntrega) return { ignorar: 'item sem nome: nao ha identificador de unidade' };
+
+    return {
+      transformado: {
+        registro: {
+          idOrigem: item.id,
+          campos: {
+            empreendimento_id: empreendimentoEntrega,
+            unidade: unidadeEntrega,
+            torre: lerCampo(item, mapa, 'torre') || null,
+            bloco: lerCampo(item, mapa, 'bloco') || null,
+            situacao: lerCampo(item, mapa, 'situacao') || null,
+            status_juridico: lerCampo(item, mapa, 'status_juridico') || null,
+            tipo_financiamento: lerCampo(item, mapa, 'tipo_financiamento') || null,
+            prazo_habite_se: paraData(lerCampo(item, mapa, 'prazo_habite_se')),
+            prazo_180: paraData(lerCampo(item, mapa, 'prazo_180')),
+            previsao_entrega: paraData(lerCampo(item, mapa, 'previsao_entrega')),
+          },
+          valorOriginal: item,
+          // A entrega REALIZADA e o fato; o habite-se e o marco anterior.
+          dataReferencia:
+            paraData(lerCampo(item, mapa, 'entrega_chaves')) ??
+            paraData(lerCampo(item, mapa, 'prazo_habite_se')),
+          dataFato: paraData(lerCampo(item, mapa, 'entrega_chaves')),
+        },
+        documento,
+        cliente: clienteNome,
+        empreendimentoNome: tituloGrupo,
+      },
+    };
+  }
+
   if (quadro === 'recompras') {
     // A recompra e uma OFERTA, e oferta tem taxa de conversao. As recusadas
     // ENTRAM: sao o denominador de "quantas tentamos e quantas deram certo".
@@ -497,8 +580,8 @@ const DESTINO: Record<ChaveQuadro, TabelaIntegravel | null> = {
   distratos: 'distratos',
   retomadas: 'distratos',
   recompras: 'distratos',
-  honorarios: null,
-  entregas: null,
+  honorarios: 'honorarios',
+  entregas: 'unidades',
 };
 
 /**
