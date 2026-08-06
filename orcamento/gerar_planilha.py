@@ -474,12 +474,13 @@ PEND = [
      "orçamento. Orçada em R$ 2.750/mês pelo ano inteiro, valor fixo em vigor "
      "desde jan/26.",
      "Acréscimo de R$ 33.000 ao orçamento do Jurídico, que passa a R$ 324.730,42. "
-     "CONFERIR NO SIENGE: no extrato de contas pagas, o único lançamento isolado "
-     "de R$ 2.750 é o de jul/26 — de jan a jun aparecem apenas honorários por "
-     "processo, que são repasse (item P). Ou os pagamentos do fixo de jan a jun "
-     "saíram por outro centro de custo, ou estão embutidos naqueles lançamentos. "
-     "Vale localizar antes da reunião. A justificativa da inclusão é pauta.",
-     "Cristiane + Financeiro", "CONFERIR", "Jurídico"),
+     "No extrato, o fixo de jan a jun vem somado aos honorários de repasse no "
+     "mesmo credor: o total mensal (R$ 3.739 a R$ 4.326) é o fixo de R$ 2.750 "
+     "mais o repasse, que o cliente paga e a empresa apenas transfere. Só jun/26 "
+     "fica abaixo do fixo (R$ 1.036,92), provavelmente porque o pagamento daquele "
+     "mês caiu em jul — é o lançamento isolado de R$ 2.750 que aparece lá. "
+     "A justificativa da inclusão é pauta da reunião.",
+     "Cristiane + Diretoria", "APLICADO", "Jurídico"),
     ("P", "Extrato contém REPASSES, não só custo",
      "Os lançamentos em nome da Dra. Michele até jun/26 (R$ 20.821,53) são "
      "repasse: o cliente paga à empresa e a empresa repassa a ela. Não são custo "
