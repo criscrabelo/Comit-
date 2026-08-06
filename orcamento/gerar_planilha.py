@@ -141,18 +141,22 @@ LINHAS = [
     # de proposito: a meta sera definida com a diretoria. Lancadas em separado, a
     # pedido da gestora, para dar visibilidade item a item.
     ("TI-D10", "TI", "Despesas", "Claude",
-     "Ferramenta de IA — não constava na ficha. Planejado a definir com a diretoria",
+     "Ferramenta de IA — não constava na ficha. Planejado a definir com a "
+     "diretoria. RATEIO A DEFINIR: uso transversal entre as áreas",
      "", "Licenças de Softwares", _12(0.00)),
     ("TI-D11", "TI", "Despesas", "GPT",
-     "Ferramenta de IA — não constava na ficha. Planejado a definir com a diretoria",
+     "Ferramenta de IA — não constava na ficha. Planejado a definir com a "
+     "diretoria. RATEIO A DEFINIR: uso transversal entre as áreas",
      "", "Licenças de Softwares", _12(0.00)),
     ("TI-D12", "TI", "Despesas", "Adapta One",
-     "Ferramenta de IA — não constava na ficha. Planejado a definir com a diretoria. "
-     "CONFERIR sobreposição com a linha 'Inteligência Artificial (Adapta)'",
+     "Ferramenta de IA — não constava na ficha. Planejado a definir com a "
+     "diretoria. RATEIO A DEFINIR: uso transversal entre as áreas. CONFERIR "
+     "sobreposição com a linha 'Inteligência Artificial (Adapta)'",
      "", "Licenças de Softwares", _12(0.00)),
     ("TI-D13", "TI", "Despesas", "Adapta Skip",
-     "Ferramenta de IA — não constava na ficha. Planejado a definir com a diretoria. "
-     "CONFERIR o nome exato do produto e a sobreposição com 'Inteligência Artificial (Adapta)'",
+     "Ferramenta de IA — não constava na ficha. Planejado a definir com a "
+     "diretoria. RATEIO A DEFINIR: uso transversal entre as áreas. CONFERIR o "
+     "nome exato do produto e a sobreposição com 'Inteligência Artificial (Adapta)'",
      "", "Licenças de Softwares", _12(0.00)),
     ("TI-D09", "TI", "Despesas", "Bonificação do time",
      "Cumprimento de prazos e participação em projetos — CONFIRMAR se houve "
@@ -528,22 +532,30 @@ PEND = [
      "cancelado, o efeito prático é só de 2026 — mas o método de orçar serviços "
      "parcelados precisa ser revisto para o ano que vem.",
      "Cristiane + Diretoria", "PAUTA REUNIÃO", "Jurídico"),
-    ("L", "Ferramentas de IA sem orçamento — DEFINIR META",
-     "Claude, GPT, Adapta One e Adapta Skip são gastos que existem hoje e não "
-     "constavam na ficha. Foram criadas quatro linhas separadas, com planejado "
-     "zerado, para a meta ser definida junto com a diretoria.",
-     "Enquanto o planejado for zero, qualquer lançamento nessas linhas aparece "
-     "como 'Não orçado'. Conferir também se há sobreposição com a linha "
-     "'Inteligência Artificial (Adapta)', já orçada em R$ 17.400/ano — pode ser "
-     "que ela já cubra o Adapta One e o Adapta Skip. E confirmar o nome exato do "
-     "'Adapta Skip'.",
+    ("L", "Ferramentas de IA — DEFINIR META E RATEIO",
+     "Claude, GPT, Adapta One e Adapta Skip existem hoje e não constavam na "
+     "ficha. Quatro linhas criadas com planejado zerado, à espera da meta. Todas "
+     "marcadas com RATEIO A DEFINIR: são de uso transversal, não exclusivo do TI.",
+     "O rateio já acontece de fato, mas sem regra: no extrato, a OpenAI "
+     "(R$ 5.950,10) caiu no centro de custo do TI e o Adapta (R$ 3.351) caiu no "
+     "Jurídico — mesma natureza de gasto, centros diferentes por acaso. Sem "
+     "critério definido, o TI absorve custo de ferramenta que a empresa inteira "
+     "usa e aparece caro na comparação, enquanto as áreas usuárias não enxergam o "
+     "que consomem. Sugestão: manter o contrato centralizado no TI (facilita "
+     "negociação e controle de licenças) e ratear o custo por usuário ativo, que "
+     "é métrica que as próprias plataformas fornecem. Conferir também a "
+     "sobreposição com 'Inteligência Artificial (Adapta)', já orçada em "
+     "R$ 17.400/ano, e o nome exato do 'Adapta Skip'.",
      "Cristiane + Diretoria", "PAUTA REUNIÃO", "TI"),
-    ("4", "Rateio dos softwares corporativos de TI",
+    ("4", "Rateio dos softwares corporativos e das IAs",
      "Backup (R$ 9.900), Adapta/IA (R$ 17.400), Antivírus (R$ 2.880) e Office 365 "
-     "(R$ 4.500) estão marcados na ficha como 'não sei se seria administrativo'. "
-     "Total no ano: R$ 34.680.",
-     "São 39% das despesas do TI. Se são da empresa toda e ficam no centro de custo "
-     "de TI, o departamento carrega despesa que não é dele e aparece caro.",
+     "(R$ 4.500) estão marcados na ficha como 'não sei se seria administrativo' — "
+     "R$ 34.680 no ano. Somam-se a eles as quatro ferramentas de IA do item L, "
+     "também de uso transversal.",
+     "São 39% das despesas orçadas do TI, mais o que vier das IAs. Se são da "
+     "empresa toda e ficam no centro de custo de TI, o departamento carrega "
+     "despesa que não é dele e aparece caro. Tratar os dois blocos com o mesmo "
+     "critério de rateio, para não criar duas regras diferentes.",
      "Cristiane + Controladoria", "EM ABERTO", "TI"),
     ("5", "Sala de Reunião — recorrente ou pontual?",
      "R$ 2.800/mês × 12 = R$ 33.600 diluídos linearmente, classificados em "
