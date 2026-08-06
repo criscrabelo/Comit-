@@ -277,7 +277,7 @@ de três informações. Duas já existem; a terceira é a incógnita.
 | --- | --- | --- |
 | Quando a recompra começou | `distratos.data_solicitacao` | mapeada nos dois quadros |
 | Que é recompra | `distratos.categoria` | classificada pelo grupo do Monday |
-| **Quando terminou (revenda)** | `ASS. NOVO FINANCIAMENTO`, no quadro `6149480325` | **existe — ver seção 8** |
+| **Quando terminou (revenda)** | `ASS. NOVO FINANCIAMENTO`, no quadro `6149480325` | ✅ **mapeada e carregada — ver seção 9** |
 
 Enquanto a data de venda não for conhecida, não há como distinguir recompra
 aberta de recompra concluída — e o indicador contaria as duas juntas.
@@ -457,3 +457,71 @@ O quadro **não está mapeado**. Mapeá-lo exige decisões que não são de cód
 
 Também apareceu na varredura o quadro **`(PÓS) Distratos das Unidades`
 (`3978322943`, 96 itens)**, igualmente não mapeado. Não foi investigado.
+
+
+---
+
+## 9. Respondido com dado: a coluna de venda/revenda em cada quadro
+
+Homologação dos três quadros em 06/08/2026, com o de recompra já mapeado.
+**7 de 7 provas em cada um.**
+
+### Existe coluna de data de venda/revenda em cada quadro?
+
+| Quadro | Tem `DATA DA VENDA`? | Tem data de **revenda**? | O que alimenta `data_venda` |
+| --- | --- | --- | --- |
+| Distratos `18404493605` | **sim** — venda original (2022→2026) | **não** | a venda original, por decisão registrada em 4.3 |
+| Retomadas `18413057491` | **sim** — venda original | **não** | **nada.** A lista só aceita títulos de revenda, e nenhum existe |
+| Recompra `6149480325` | **sim** — venda original (2020→2025) | ✅ **`ASS. NOVO FINANCIAMENTO`** | a assinatura do novo financiamento |
+
+Os três quadros têm uma coluna chamada `DATA DA VENDA`, e nos três ela é a
+**venda original ao cliente que está saindo**. Só o quadro de recompra tem a
+data que fecha o ciclo.
+
+### Ela está preenchida nos itens do grupo de RECOMPRA?
+
+**Não existe grupo de RECOMPRA em Distratos nem em Retomadas** — a pergunta
+parte de uma premissa que a origem não confirma. Os grupos são `DISTRATOS` (26),
+`DESISTÊNCIAS` (12) e `RETOMADAS` (23). A recompra é **quadro próprio**, e lá os
+grupos são empreendimentos.
+
+Reformulando para o que dá para medir — os registros com `categoria = 'recompra'`:
+
+| Categoria | Registros | Com início | Com `data_venda` | Com conclusão |
+| --- | --- | --- | --- | --- |
+| distrato | 26 | 26 | 26 *(venda original)* | 0 |
+| desistência | 12 | 12 | 12 *(venda original)* | 0 |
+| retomada | 23 | 23 | **0** | 0 |
+| **recompra** | **16** | **16** | **5** | **5** |
+
+**Preenchida em 5 de 16.** As outras 11 são as recompras **em aberto** — e é
+exatamente essa a informação que interessa.
+
+### O ciclo, medido na plataforma
+
+| | Resultado |
+| --- | --- |
+| Recompras concluídas | **5** · média **474 dias** · de **196 a 667** |
+| **Recompras em aberto** | **11** · a mais antiga desde **2024-03-01** |
+| Recompras recusadas pelo cliente | **9**, ignoradas com motivo — não entram na base |
+
+Os 25 itens do quadro viram **16 recompras**: as 9 com
+`Status = RECUSADO PELO CLIENTE` são ignoradas com motivo, visível no relatório.
+Recompra oferecida e recusada não é recompra, e contá-las inflaria o número em
+mais de um terço. O payload íntegro das 25 continua em `registros_brutos`.
+
+**A pergunta da diretoria — "quantas recompras estão abertas e há quanto tempo"
+— agora tem resposta: 11, a mais antiga há mais de dois anos.**
+
+### Decisões tomadas ao mapear o quadro de recompra
+
+| Decisão | O que ficou | Reversível? |
+| --- | --- | --- |
+| Destino | tabela `distratos`, `categoria = 'recompra'` | sim |
+| Recusadas | ignoradas com motivo; bruto preservado | sim |
+| Competência | derivada de `DATA DE RECOMPRA` — os grupos são empreendimentos | sim |
+| Empreendimento | vem do **grupo**; unidade e cliente saem do nome do item (`304 C - GUSTAVO`) | sim |
+| 15 colunas de valor | **não mapeadas** — `distratos` não tem campo de valor | exige migração |
+
+A última segue aberta e agora tem nome: `DEVOLUÇÃO AO CLIENTE`, que a seção 5
+dava como inexistente, **existe na origem**. Falta destino.

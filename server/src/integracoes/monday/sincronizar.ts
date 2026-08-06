@@ -35,6 +35,7 @@ import {
   lerCampo,
   lerVinculo,
   normalizarContrato,
+  separarUnidadeCliente,
   normalizarEstagio,
   normalizarNome,
   paraData,
@@ -385,6 +386,59 @@ async function transformarItem(
     };
   }
 
+  if (quadro === 'recompras') {
+    // Recompra RECUSADA pelo cliente nao e recompra: e o caminho nao tomado da
+    // arvore de decisao. Sao 9 dos 25 itens do quadro — conta-las como recompra
+    // infla o numero em mais de um tercio. Ignorada COM motivo: o payload
+    // integral continua em `registros_brutos`, e a contagem aparece no
+    // relatorio, entao a taxa de recusa continua recuperavel.
+    const status = lerCampo(item, mapa, 'situacao');
+    if (/recusad/i.test(status)) {
+      return { ignorar: `recompra recusada pelo cliente (STATUS = ${status})` };
+    }
+
+    // O empreendimento E o grupo: este quadro nao tem coluna de empreendimento.
+    const empreendimentoRecompra = await resolverEmpreendimento(tituloGrupo);
+    const { unidade, cliente } = separarUnidadeCliente(item.name);
+    const dataRecompra = paraData(lerCampo(item, mapa, 'data_solicitacao'));
+    const dataFim = paraData(lerCampo(item, mapa, 'data_venda'));
+
+    return {
+      transformado: {
+        registro: {
+          idOrigem: item.id,
+          campos: {
+            comite_id: contexto.comiteId,
+            // A competencia sai da DATA DE RECOMPRA: os grupos deste quadro sao
+            // empreendimentos, e `competenciaDoGrupo` nao teria de onde tirar.
+            competencia_ref: dataRecompra ? dataRecompra.slice(0, 7) : contexto.competenciaRef,
+            empreendimento_id: empreendimentoRecompra,
+            unidade,
+            categoria: 'recompra',
+            motivo: lerCampo(item, mapa, 'motivo') || null,
+            equipe: lerCampo(item, mapa, 'equipe') || null,
+            data_solicitacao: dataRecompra,
+            data_venda: dataFim,
+            data_conclusao: dataFim,
+            tempo_dias: null,
+            notificacoes_origem: lerVinculo(item, mapa, 'notificacoes'),
+            contratos_origem: lerVinculo(item, mapa, 'contratos'),
+          },
+          valorOriginal: item,
+          // Sem assinatura, a recompra esta ABERTA: a data de referencia e a do
+          // inicio, nao nula — senao a carga inteira ficaria sem data de corte,
+          // como acontece hoje em Distratos.
+          dataReferencia: dataFim ?? dataRecompra,
+          dataFato: dataFim ?? dataRecompra,
+        },
+        // Este quadro nao tem coluna de documento; o nome sai do titulo do
+        // item, e vale so para o motor de vinculo.
+        cliente: cliente ?? undefined,
+        empreendimentoNome: tituloGrupo,
+      },
+    };
+  }
+
   if (quadro === 'distratos' || quadro === 'retomadas') {
     const categoria = classificarCategoriaDistrato(tituloGrupo, quadro);
 
@@ -425,11 +479,24 @@ async function transformarItem(
   return { ignorar: `quadro ${quadro} ainda nao tem transformacao implementada` };
 }
 
+/**
+ * Categorias que cada quadro produz, para os que dividem a tabela `distratos`.
+ *
+ * Serve ao recorte de ausencia: uma carga so pode afirmar que um registro
+ * sumiu da origem se ela le aquela origem. Ver `marcarAusentes`.
+ */
+const CATEGORIAS_POR_QUADRO: Partial<Record<ChaveQuadro, string[]>> = {
+  distratos: ['distrato', 'desistencia', 'recompra'],
+  retomadas: ['retomada', 'recompra'],
+  recompras: ['recompra'],
+};
+
 const DESTINO: Record<ChaveQuadro, TabelaIntegravel | null> = {
   notificacoes: 'notificacoes',
   processos: 'processos_judiciais',
   distratos: 'distratos',
   retomadas: 'distratos',
+  recompras: 'distratos',
   honorarios: null,
   entregas: null,
 };
@@ -616,6 +683,9 @@ export async function sincronizarQuadro(opcoes: OpcoesSincronizacao): Promise<Re
       const marcados = await marcarAusentes(destino, 'monday', presentes, {
         comiteId: opcoes.comiteId,
         competenciaRef: def.recorte === 'competencia' ? opcoes.competenciaRef : null,
+        // Tres quadros gravam em `distratos`. Cada carga so pode declarar
+        // ausente o que ela mesma governa.
+        categorias: CATEGORIAS_POR_QUADRO[opcoes.quadro],
       });
       if (marcados > 0) {
         logger.info({ destino, marcados }, 'Registros ausentes na carga foram marcados, nao removidos');

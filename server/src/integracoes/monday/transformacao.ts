@@ -301,6 +301,38 @@ export function estagioEncerra(estagio: EstagioNotificacao): boolean {
   return estagio === 'Resolvida' || estagio === 'Encerrada';
 }
 
+/**
+ * Separa unidade e nome do cliente no titulo do item de recompra.
+ *
+ * O quadro `6149480325` nomeia os itens como `304 C - GUSTAVO` ou
+ * `RIVALFREDO - 033 BELLA`: unidade e pessoa no mesmo texto, separadas por
+ * hifen cercado de espacos. Nem todos seguem o padrao — `501 B` vem so com a
+ * unidade —, e nesse caso o nome fica nulo em vez de virar a unidade repetida.
+ *
+ * O hifen precisa de espaco dos dois lados: `SIETE 44-C` e uma unidade so, e
+ * cortar ali produziria a unidade `SIETE 44` e o cliente `C`.
+ */
+export function separarUnidadeCliente(nomeItem: string | null | undefined): {
+  unidade: string | null;
+  cliente: string | null;
+} {
+  const texto = (nomeItem ?? '').trim();
+  if (!texto) return { unidade: null, cliente: null };
+
+  const partes = texto.split(/\s+-\s+/);
+  if (partes.length < 2) return { unidade: texto, cliente: null };
+
+  const [primeiro, ...resto] = partes as [string, ...string[]];
+  const segundo = resto.join(' - ').trim();
+
+  // `RIVALFREDO - 033 BELLA` inverte a ordem. Quem comeca com digito e a
+  // unidade; o outro lado e a pessoa.
+  if (!/^\d/.test(primeiro) && /^\d/.test(segundo)) {
+    return { unidade: segundo, cliente: primeiro.trim() || null };
+  }
+  return { unidade: primeiro.trim() || null, cliente: segundo || null };
+}
+
 // ── Distrato, desistencia, retomada e recompra ──────────────────────────────
 
 export type CategoriaDistrato = 'distrato' | 'desistencia' | 'retomada' | 'recompra';

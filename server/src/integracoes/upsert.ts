@@ -149,7 +149,24 @@ export async function marcarAusentes(
   tabela: TabelaIntegravel,
   fonte: FonteDado,
   idsOrigemPresentes: string[],
-  escopo: { comiteId?: string | null; competenciaRef?: string | null } = {},
+  escopo: {
+    comiteId?: string | null;
+    competenciaRef?: string | null;
+    /**
+     * Categorias que ESTA carga governa, quando varios quadros gravam na mesma
+     * tabela.
+     *
+     * `distratos`, `retomadas` e `recompras` compartilham a tabela `distratos`.
+     * Sem este recorte, carregar Retomadas marcava como ausentes os 38 registros
+     * de Distratos — eles nao estavam no lote lido, e o unico criterio era
+     * "nao veio nesta carga". Descoberto na homologacao de Retomadas
+     * (06/08/2026): 38 de 61 registros marcados ausentes por uma carga que nao
+     * tinha nada a ver com eles.
+     *
+     * Ausencia so pode ser afirmada sobre o que a carga realmente enxerga.
+     */
+    categorias?: string[];
+  } = {},
 ): Promise<number> {
   let consulta = db
     .updateTable(tabela)
@@ -170,6 +187,10 @@ export async function marcarAusentes(
   if (escopo.competenciaRef !== undefined && escopo.competenciaRef !== null) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     consulta = consulta.where('competencia_ref' as any, '=', escopo.competenciaRef);
+  }
+  if (escopo.categorias?.length) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    consulta = consulta.where('categoria' as any, 'in', escopo.categorias);
   }
 
   const r = await consulta.executeTakeFirst();

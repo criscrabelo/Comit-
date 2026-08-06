@@ -23,6 +23,7 @@ import {
   classificarCategoriaDistrato,
   lerVinculo,
 } from '../src/integracoes/monday/transformacao.js';
+import { separarUnidadeCliente } from '../src/integracoes/monday/transformacao.js';
 import { QUADROS, resolverMapa, titulosAmbiguos } from '../src/integracoes/monday/quadros.js';
 import type { ItemMonday } from '../src/integracoes/monday/cliente.js';
 
@@ -299,6 +300,129 @@ describe('Distratos — board 18404493605', () => {
       { id: 'board_relation_novo', title: 'link to (JUR) NOTIFICAÇÕES CLIENTES', type: 'board_relation' },
     ]);
     expect(mapa.porCampo.get('notificacoes')).toBe('board_relation_novo');
+  });
+
+  // ── Recompra: quadro próprio, board 6149480325 ──────────────────────────
+
+  it('a recompra tem quadro próprio, e ele grava na tabela de distratos', () => {
+    // A regra dizia que a recompra era acompanhada "no quadro de Distratos e
+    // Retomadas". Não é: é board separado, e por isso `categoria = 'recompra'`
+    // nunca era produzida — não por defeito da classificação.
+    expect(QUADROS.recompras.idPadrao).toBe('6149480325');
+    expect(QUADROS.recompras.destino).toBe('distratos');
+    // Os grupos são empreendimentos, então não há competência a filtrar.
+    expect(QUADROS.recompras.recorte).toBe('historico');
+  });
+
+  it('`ASS. NOVO FINANCIAMENTO` alimenta a data de revenda e a de conclusão', () => {
+    const colunas = [
+      { id: 'date_mky1rrnr', title: 'DATA DE RECOMPRA', type: 'date' },
+      { id: 'date_mm5zm11v', title: 'ASS. NOVO FINANCIAMENTO', type: 'date' },
+      { id: 'data', title: 'DATA DA VENDA', type: 'date' },
+      { id: 'status2', title: 'Status', type: 'status' },
+    ];
+    const { porCampo } = resolverMapa(QUADROS.recompras, colunas);
+
+    expect(porCampo.get('data_solicitacao')).toBe('date_mky1rrnr');
+    // As duas perguntas — "quando revendeu" e "quando acabou" — são o mesmo
+    // fato NESTE quadro. São campos distintos porque nos outros não coincidem.
+    expect(porCampo.get('data_venda')).toBe('date_mm5zm11v');
+    expect(porCampo.get('data_conclusao')).toBe('date_mm5zm11v');
+  });
+
+  it('`DATA DA VENDA` do quadro de recompra NÃO vira data de revenda', () => {
+    // Mesma armadilha de Distratos e Retomadas: aquele board também tem
+    // `DATA DA VENDA`, com datas de 2020 a 2025 — a venda original ao cliente
+    // que sai. Se entrasse em `data_venda`, toda recompra pareceria concluída.
+    expect(QUADROS.recompras.colunas.data_venda).not.toContain('DATA DA VENDA');
+  });
+
+  it('separa unidade e cliente no título do item de recompra', () => {
+    expect(separarUnidadeCliente('304 C - GUSTAVO')).toEqual({
+      unidade: '304 C',
+      cliente: 'GUSTAVO',
+    });
+    // Ordem invertida: quem começa com dígito é a unidade.
+    expect(separarUnidadeCliente('RIVALFREDO - 033 BELLA')).toEqual({
+      unidade: '033 BELLA',
+      cliente: 'RIVALFREDO',
+    });
+    // Sem cliente no título: a unidade não vira nome repetido.
+    expect(separarUnidadeCliente('501 B')).toEqual({ unidade: '501 B', cliente: null });
+    // Hífen SEM espaços é parte da unidade — cortar produziria `SIETE 44` e `C`.
+    expect(separarUnidadeCliente('SIETE 44-C')).toEqual({ unidade: 'SIETE 44-C', cliente: null });
+  });
+
+  it('cada quadro só governa a ausência das categorias que ele produz', async () => {
+    // Os três quadros gravam na MESMA tabela. Carregar Retomadas marcava como
+    // ausentes os 38 registros de Distratos: eles não estavam no lote lido, e o
+    // único critério era "não veio nesta carga". Descoberto na homologação de
+    // Retomadas — 38 de 61 registros marcados por uma carga que não os lê.
+    //
+    // Ausência só pode ser afirmada sobre o que a carga realmente enxerga.
+    const { db } = await import('../src/db/pool.js');
+    const { marcarAusentes } = await import('../src/integracoes/upsert.js');
+    const { limparDados } = await import('./ajuda/banco.js');
+    await limparDados();
+
+    const semear = (idOrigem: string, categoria: string) =>
+      db
+        .insertInto('distratos')
+        .values({ fonte: 'monday', id_origem: idOrigem, categoria } as never)
+        .execute();
+
+    await semear('d1', 'distrato');
+    await semear('d2', 'desistencia');
+    await semear('r1', 'retomada');
+
+    // Carga de Retomadas: só `r1` veio, e ela só governa retomada/recompra.
+    const marcados = await marcarAusentes('distratos', 'monday', ['r1'], {
+      categorias: ['retomada', 'recompra'],
+    });
+
+    expect(marcados).toBe(0);
+
+    const vivos = await db
+      .selectFrom('distratos')
+      .select(['id_origem', 'ausente_desde'])
+      .orderBy('id_origem')
+      .execute();
+
+    expect(vivos.filter((v) => v.ausente_desde === null).map((v) => v.id_origem)).toEqual([
+      'd1',
+      'd2',
+      'r1',
+    ]);
+  });
+
+  it('dentro do próprio escopo, a ausência continua sendo marcada', async () => {
+    // O recorte não pode virar desculpa para nunca marcar nada.
+    const { db } = await import('../src/db/pool.js');
+    const { marcarAusentes } = await import('../src/integracoes/upsert.js');
+    const { limparDados } = await import('./ajuda/banco.js');
+    await limparDados();
+
+    for (const [id, cat] of [['r1', 'retomada'], ['r2', 'retomada'], ['d1', 'distrato']] as const) {
+      await db
+        .insertInto('distratos')
+        .values({ fonte: 'monday', id_origem: id, categoria: cat } as never)
+        .execute();
+    }
+
+    // `r2` sumiu da origem de Retomadas: tem de ser marcada. `d1` não.
+    const marcados = await marcarAusentes('distratos', 'monday', ['r1'], {
+      categorias: ['retomada', 'recompra'],
+    });
+
+    expect(marcados).toBe(1);
+
+    const ausentes = await db
+      .selectFrom('distratos')
+      .select('id_origem')
+      .where('ausente_desde', 'is not', null)
+      .execute();
+
+    expect(ausentes.map((a) => a.id_origem)).toEqual(['r2']);
   });
 
   // ── 4. O perfil de homologação bate com o esquema ───────────────────────

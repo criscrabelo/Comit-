@@ -69,6 +69,17 @@ interface PerfilHomologacao {
    * produziria numero sem significado.
    */
   colunaClassificacao?: string;
+  /**
+   * Categorias que este quadro produz, quando varios dividem a mesma tabela.
+   *
+   * `distratos`, `retomadas` e `recompras` gravam todos em `distratos`. Sem o
+   * recorte, a fotografia contava os 61 registros da tabela para uma carga de
+   * 23, e a prova 5 alterava o PRIMEIRO registro da tabela — que era de outro
+   * quadro. A sincronizacao seguinte nao o corrigia (nao le aquela origem), a
+   * prova falhava, e a falha nao dizia nada sobre o quadro homologado.
+   * Descoberto na homologacao de Retomadas (06/08/2026).
+   */
+  categorias?: string[];
 }
 
 const PERFIS: Record<string, PerfilHomologacao> = {
@@ -108,6 +119,7 @@ const PERFIS: Record<string, PerfilHomologacao> = {
   // Corrigido contra a migracao 005 na homologacao do board 18404493605.
   distratos: {
     board: '18404493605',
+    categorias: ['distrato', 'desistencia'],
     rotulo: 'Distratos e Desistências',
     colunasAmostra: [
       'id_origem', 'categoria', 'motivo', 'equipe', 'unidade',
@@ -119,7 +131,20 @@ const PERFIS: Record<string, PerfilHomologacao> = {
   },
   retomadas: {
     board: '18413057491',
+    categorias: ['retomada'],
     rotulo: 'Retomadas',
+    colunasAmostra: [
+      'id_origem', 'categoria', 'motivo', 'equipe', 'unidade',
+      'data_solicitacao', 'data_venda', 'data_conclusao', 'tempo_dias',
+      'fonte', 'versao', 'data_referencia', 'extraido_em',
+    ],
+    textoLivre: ['motivo', 'equipe'],
+    campoDeTeste: 'motivo',
+  },
+  recompras: {
+    board: '6149480325',
+    categorias: ['recompra'],
+    rotulo: 'Cessão de Direitos de Recompra',
     colunasAmostra: [
       'id_origem', 'categoria', 'motivo', 'equipe', 'unidade',
       'data_solicitacao', 'data_venda', 'data_conclusao', 'tempo_dias',
@@ -334,6 +359,11 @@ interface Fotografia {
   atualizadoMax: string | null;
 }
 
+/** Recorte da tabela que pertence a ESTE quadro. Vazio quando ela nao e dividida. */
+const recorteDoQuadro = PERFIL.categorias?.length
+  ? sql`AND categoria IN (${sql.join(PERFIL.categorias.map((c) => sql.lit(c)), sql`, `)})`
+  : sql``;
+
 async function fotografar(): Promise<Fotografia> {
   const r = await sql<Fotografia>`
     SELECT
@@ -348,7 +378,7 @@ async function fotografar(): Promise<Fotografia> {
       coalesce(sum(jsonb_array_length(historico)), 0)::int        AS "somaHistorico",
       max(atualizado_em)::text                                   AS "atualizadoMax"
     FROM ${sql.table(TABELA)}
-    WHERE fonte = 'monday'
+    WHERE fonte = 'monday' ${recorteDoQuadro}
   `.execute(db);
   return r.rows[0]!;
 }
@@ -413,7 +443,7 @@ async function amostraAnonimizada(): Promise<void> {
   const linhasAmostra = await sql<Record<string, unknown>>`
     SELECT ${sql.join(colunas, sql`, `)}
     FROM ${sql.table(TABELA)}
-    WHERE fonte = 'monday' AND ausente_desde IS NULL
+    WHERE fonte = 'monday' AND ausente_desde IS NULL ${recorteDoQuadro}
     ORDER BY criado_em
     LIMIT 3
   `.execute(db);
@@ -804,7 +834,7 @@ async function conferirAtualizacao(): Promise<{ ok: boolean; evidencia: string }
 
   const alvo = await sql<{ id: string; alvo: string | null; versao: number }>`
     SELECT id, ${campo} AS alvo, versao FROM ${sql.table(TABELA)}
-    WHERE fonte = 'monday' AND ausente_desde IS NULL
+    WHERE fonte = 'monday' AND ausente_desde IS NULL ${recorteDoQuadro}
     ORDER BY criado_em LIMIT 1
   `.execute(db);
 

@@ -3,7 +3,7 @@
 **Quadro:** Distratos e Desistências — board `18404493605`  
 **Ambiente:** development  
 **Competência:** todas  
-**Executado em:** 2026-08-06T14:08:47.220Z  
+**Executado em:** 2026-08-06T15:10:22.889Z  
 **Versão da API do Monday:** 2024-10
 
 > Nenhum dado foi alterado no Monday. O proxy recusa `mutation` e
@@ -25,11 +25,11 @@
 
 | Métrica | Valor |
 | --- | --- |
-| Identificador da execução | `92834367-4486-4399-9785-56d082ef1e12` |
+| Identificador da execução | `cc81b868-3bc4-4781-9f69-7786daeed01f` |
 | Quadro | Distratos e Desistências — board `18404493605` |
-| Início | 2026-08-06T14:08:47.304Z |
-| Conclusão | 2026-08-06T14:08:49.557Z |
-| Duração | 2.25 s |
+| Início | 2026-08-06T15:10:22.914Z |
+| Conclusão | 2026-08-06T15:10:25.522Z |
+| Duração | 2.61 s |
 | **Quantidade recebida** (lidos da origem) | **38** |
 | **Páginas consultadas** | **1** |
 | **Último cursor** | `null` — leitura chegou ao fim |
@@ -62,7 +62,7 @@
 Levantados de 38 item(ns) da primeira leitura, a partir do payload
 original — não do dado já interpretado.
 
-> **Colunas do mapa não encontradas no quadro:** cpf_cnpj, unidade, contrato, data_conclusao, tempo_dias. Gravadas como nulas, nunca presumidas.
+> **Colunas do mapa não encontradas no quadro:** cpf_cnpj, unidade, contrato, data_conclusao, tempo_dias, notificacoes. Gravadas como nulas, nunca presumidas.
 
 > **Títulos repetidos no quadro.** A resolução por título pressupõe que o
 > título identifique a coluna. Aqui ele não identifica, e o desempate
@@ -83,7 +83,7 @@ original — não do dado já interpretado.
 
 ### Colunas
 
-#### (JUR) CONTRATOS PARA CLIENTES _(não mapeada)_
+#### (JUR) CONTRATOS PARA CLIENTES → `contratos`
 
 `board_relation_mm1r9a8w` · tipo `board_relation` · 26 preenchido(s), 12 vazio(s) · 26 valor(es) distinto(s)
 
@@ -214,8 +214,8 @@ _Coluna vazia em todos os itens._
 
 | Valor | Ocorrências |
 | --- | --- |
-| Concluído | 24 |
-| Em andamento | 6 |
+| Concluído | 27 |
+| Em andamento | 3 |
 
 #### EMPREENDIMENTO _(não mapeada)_
 
@@ -469,11 +469,11 @@ _relatório é evidência versionada. Só a contagem é publicada._
 
 | Métrica | Valor |
 | --- | --- |
-| Identificador da execução | `d4f417cb-abd2-4b4c-b902-c13c64a81d47` |
+| Identificador da execução | `61141ef3-21f6-44e4-8ae1-b412252cc0bb` |
 | Quadro | Distratos e Desistências — board `18404493605` |
-| Início | 2026-08-06T14:08:49.614Z |
-| Conclusão | 2026-08-06T14:08:51.778Z |
-| Duração | 2.16 s |
+| Início | 2026-08-06T15:10:25.542Z |
+| Conclusão | 2026-08-06T15:10:27.696Z |
+| Duração | 2.15 s |
 | **Quantidade recebida** (lidos da origem) | **38** |
 | **Páginas consultadas** | **1** |
 | **Último cursor** | `null` — leitura chegou ao fim |
@@ -485,7 +485,7 @@ _relatório é evidência versionada. Só a contagem é publicada._
 | **Duplicada** | **0** |
 | **Com erro** | **0** |
 | **Data de referência** | — |
-| **Último dado válido (antes desta execução)** | 2026-08-06T14:08:49.555Z |
+| **Último dado válido (antes desta execução)** | 2026-08-06T15:10:25.521Z |
 | Status | sucesso |
 | Contabilidade fecha | sim |
 
@@ -523,21 +523,6 @@ digitado à mão e pode conter um CPF que ninguém previu.
 ```json
 [
   {
-    "id_origem": "***3054",
-    "categoria": "distrato",
-    "motivo": "FINANCIAMENTO REPROVADO",
-    "equipe": "IMOB",
-    "unidade": "23C",
-    "data_solicitacao": "2026-01-29",
-    "data_venda": "2024-01-15",
-    "data_conclusao": null,
-    "tempo_dias": null,
-    "fonte": "monday",
-    "versao": 1,
-    "data_referencia": null,
-    "extraido_em": "2026-08-06T14:08:53.852Z"
-  },
-  {
     "id_origem": "***9112",
     "categoria": "desistencia",
     "motivo": "PROBLEMAS FINANCEIROS",
@@ -550,22 +535,37 @@ digitado à mão e pode conter um CPF que ninguém previu.
     "fonte": "monday",
     "versao": 1,
     "data_referencia": null,
-    "extraido_em": "2026-08-06T14:08:53.891Z"
+    "extraido_em": "2026-08-06T15:10:30.063Z"
   },
   {
-    "id_origem": "***5338",
-    "categoria": "distrato",
-    "motivo": "INADIMPLÊNCIA",
-    "equipe": "HOUSE",
-    "unidade": "44",
-    "data_solicitacao": "2026-01-06",
-    "data_venda": "2023-09-11",
+    "id_origem": "***9587",
+    "categoria": "desistencia",
+    "motivo": "PROBLEMAS FINANCEIROS",
+    "equipe": "IMOB",
+    "unidade": "503C",
+    "data_solicitacao": "2026-03-24",
+    "data_venda": "2026-03-13",
     "data_conclusao": null,
     "tempo_dias": null,
     "fonte": "monday",
     "versao": 1,
     "data_referencia": null,
-    "extraido_em": "2026-08-06T14:08:53.849Z"
+    "extraido_em": "2026-08-06T15:10:30.065Z"
+  },
+  {
+    "id_origem": "***1084",
+    "categoria": "desistencia",
+    "motivo": "PROBLEMAS FINANCEIROS",
+    "equipe": "IMOB",
+    "unidade": "1003B",
+    "data_solicitacao": "2026-01-27",
+    "data_venda": "2026-03-14",
+    "data_conclusao": null,
+    "tempo_dias": null,
+    "fonte": "monday",
+    "versao": 3,
+    "data_referencia": null,
+    "extraido_em": "2026-08-06T15:10:30.062Z"
   }
 ]
 ```

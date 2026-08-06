@@ -1666,3 +1666,73 @@ tinham a mesma forma: **eu não achei, logo não existe.** Uma coluna vazia por
 consulta incompleta; um quadro ausente por eu não ter listado os quadros.
 Verificar ausência custa mais que verificar presença, e nenhuma das duas foi
 verificada antes de virar afirmação em documento.
+
+---
+
+## B17.9 — Três quadros numa tabela: a carga de um marcava o outro como ausente
+
+**Data:** 2026-08-06
+
+Mapeado o quadro `(JUR) CESSÃO DE DIREITOS DE RECOMPRA` (`6149480325`), e
+homologados Distratos, Retomadas e Recompras — **7 de 7 provas em cada**. Só a
+coexistência dos três revelou dois defeitos, e os dois são da mesma família.
+
+### 1. Ausência declarada sobre o que a carga não lê
+
+`distratos`, `retomadas` e `recompras` gravam na tabela `distratos`.
+`marcarAusentes` filtrava por `fonte = 'monday'` e "não veio nesta carga" — então
+**carregar Retomadas marcou os 38 registros de Distratos como ausentes**. Medido:
+38 de 61.
+
+O defeito é antigo: `retomadas → distratos` estava no mapa desde o início, e
+nunca havia sido exercitado junto. Não apareceu em nenhuma homologação anterior
+porque cada quadro rodava sozinho, com o banco recriado.
+
+**Correção:** `marcarAusentes` recebe as categorias que a carga governa.
+**Ausência só pode ser afirmada sobre o que a carga realmente enxerga** — o
+resto não foi consultado, e silêncio não é ausência. Dois testes: um garante que
+o vizinho não é marcado, outro que dentro do próprio escopo a marcação continua
+acontecendo — o recorte não pode virar desculpa para nunca marcar nada.
+
+### 2. A prova 5 testava o quadro errado
+
+Corrigido o item 1, a prova 5 passou a falhar em Retomadas e Recompras.
+`conferirAtualizacao` pegava o **primeiro registro da tabela** por `criado_em` —
+que era de Distratos. Alterava esse registro, ressincronizava Retomadas (que não
+lê aquela origem), e o valor naturalmente não voltava.
+
+Pior: na terceira execução o registro já vinha com `DIVERGENCIA DE TESTE`
+gravado pela prova anterior — a evidência impressa foi
+`devolvido pela origem (DIVERGENCIA DE TESTE)`, que é literalmente o valor de
+teste apresentado como valor de origem.
+
+**Correção:** o perfil declara suas categorias, e `fotografar`,
+`conferirAtualizacao` e a amostra recortam por elas. A fotografia também passou a
+ser honesta: antes dizia "61 → 61 registros" para uma carga de 23.
+
+**O que isto diz sobre o rito:** as sete provas foram desenhadas para um quadro
+por tabela. Rodar quadros isolados, com banco recriado, escondeu os dois
+defeitos. A homologação de Retomadas só valeu alguma coisa porque rodou **depois**
+de Distratos, no mesmo banco.
+
+### Decisões do mapeamento de recompras
+
+- **Destino:** `distratos` com `categoria = 'recompra'`, como a seção 3 previa.
+- **Recusadas:** `Status = RECUSADO PELO CLIENTE` (9 de 25) são ignoradas COM
+  motivo. Recompra oferecida e recusada não é recompra; contá-las inflaria o
+  número em mais de um terço. O bruto das 25 fica em `registros_brutos` e a
+  contagem aparece no relatório, então a taxa de recusa é recuperável.
+- **Competência:** de `DATA DE RECOMPRA`. Os grupos deste quadro são
+  empreendimentos, não meses — `competenciaDoGrupo` não teria de onde tirar.
+- **Empreendimento:** é o grupo. Unidade e cliente saem do nome do item
+  (`304 C - GUSTAVO`), com cuidado para não cortar `SIETE 44-C` no hífen.
+- **`ASS. NOVO FINANCIAMENTO`** alimenta `data_venda` E `data_conclusao`: neste
+  quadro "quando revendeu" e "quando acabou" são o mesmo fato. Continuam campos
+  distintos porque nos outros quadros não coincidem.
+- **15 colunas de valor não mapeadas** — `distratos` não tem campo de valor.
+  Inclui `DEVOLUÇÃO AO CLIENTE`, que a seção 5 dava como inexistente e existe.
+
+Resultado: **16 recompras**, 5 concluídas (média 474 dias, de 196 a 667) e
+**11 em aberto**, a mais antiga desde **2024-03-01**.
+
+Suíte em **410 testes**.

@@ -16,6 +16,7 @@ export type ChaveQuadro =
   | 'notificacoes'
   | 'distratos'
   | 'retomadas'
+  | 'recompras'
   | 'honorarios'
   | 'entregas';
 
@@ -234,6 +235,52 @@ export const QUADROS: Record<ChaveQuadro, DefinicaoQuadro> = {
       // O board 18413057491 nao tem esta ligacao hoje; fica declarada para os
       // dois quadros nao divergirem, ja que gravam na mesma tabela.
       contratos: TITULOS_LIGACAO_CONTRATOS,
+    },
+  },
+
+  /**
+   * Cessao de direitos de recompra — quadro PROPRIO, nao grupo.
+   *
+   * A regra em docs/REGRA-SAIDA-DE-CLIENTE.md dizia que a recompra era
+   * acompanhada "no quadro de Distratos e Retomadas com categoria = recompra".
+   * Nao e: ela tem board separado, e por isso `categoria = 'recompra'` nunca era
+   * produzida — nao por defeito da classificacao, mas por o quadro nao estar
+   * mapeado. Descoberto em 06/08/2026 (B17.8).
+   *
+   * Estrutura diferente de todos os outros quadros, em tres pontos:
+   *   - os GRUPOS sao empreendimentos (VERANO, AURORA, …), nao meses nem
+   *     categorias. Por isso `recorte: 'historico'` e a competencia sai da data
+   *     de recompra, nao do grupo;
+   *   - nao existe coluna de empreendimento: ele E o grupo;
+   *   - o nome do item e `304 C - GUSTAVO` — unidade e primeiro nome do cliente
+   *     no mesmo texto.
+   */
+  recompras: {
+    chave: 'recompras',
+    idPadrao: '6149480325',
+    nome: '(JUR) CESSÃO DE DIREITOS DE RECOMPRA',
+    destino: 'distratos',
+    recorte: 'historico',
+    colunas: {
+      // Quando a recompra comecou.
+      data_solicitacao: ['DATA DE RECOMPRA', 'DATA DA RECOMPRA'],
+      // Quando ela de fato terminou. E a data que a secao 7 daquele documento
+      // dava como inexistente: com a assinatura do novo financiamento pelo
+      // comprador seguinte, o financiamento que seguia no nome do cliente
+      // antigo se extingue — e a exposicao da secao 4.1 acaba.
+      //
+      // Alimenta `data_venda` E `data_conclusao` de proposito: para este quadro
+      // as duas perguntas — "quando revendeu" e "quando o processo acabou" —
+      // sao respondidas pelo mesmo fato. Sao campos distintos porque nos outros
+      // quadros nao coincidem.
+      data_venda: ['ASS. NOVO FINANCIAMENTO', 'ASSINATURA NOVO FINANCIAMENTO'],
+      data_conclusao: ['ASS. NOVO FINANCIAMENTO', 'ASSINATURA NOVO FINANCIAMENTO'],
+      // `DATA DA VENDA` deste quadro e a venda ORIGINAL ao cliente que sai —
+      // datas de 2020 a 2025. NAO entra em `data_venda`, pelo mesmo motivo que
+      // nao entra em Retomadas.
+      situacao: ['STATUS'],
+      motivo: ['CONCLUSÃO'],
+      equipe: ['EXECUTOR'],
     },
   },
 
