@@ -71,10 +71,11 @@ LINHAS = [
      "(aumento de R$ 1.000), contra R$ 5.000 orçados. Planejado revisado para "
      "R$ 5.500 a partir de ago/26",
      "PJ", "Pessoal - PJ", [5000.00] * 7 + [5500.00] * 5),
+    # Mao de obra esquecida na montagem da ficha, orcada agora pelo ano inteiro.
     ("JUR-E04", "Jurídico", "Equipe", "Dra. Michele de Oliveira Silva",
-     "Advogada — NÃO CONSTAVA NA FICHA. R$ 2.750/mês fixos desde jul/26. "
-     "Planejado a definir com a diretoria",
-     "PJ", "Pessoal - PJ", _12(0.00)),
+     "Advogada — R$ 2.750/mês fixos desde jan/26. Não constava na ficha por "
+     "esquecimento na montagem do orçamento; incluída na revisão",
+     "PJ", "Pessoal - PJ", _12(2750.00)),
     # JURIDICO - DESPESAS
     ("JUR-D01", "Jurídico", "Despesas", "JUSFY",
      "Fase de teste com objetivo de eliminar o Astrea", "",
@@ -181,10 +182,10 @@ REALIZADO = {
     # R$ 4.500 de jan a mar; aumento de R$ 1.000 a partir de abr/26.
     # So o fixo mensal e custo do departamento. Os demais lancamentos em nome dela
     # no extrato sao repasse: o cliente paga a empresa e a empresa repassa a ela.
-    "JUR-E04": ([0.00] * 6 + [2750.00] + [None] * 5, "Extrato do financeiro",
-                "R$ 2.750/mês fixos a partir de jul/26. Os demais lançamentos em "
-                "nome dela no extrato são REPASSE de honorários pagos pelo cliente "
-                "— não são custo do departamento"),
+    "JUR-E04": (_r7(2750.00), FONTE_JUR,
+                "R$ 2.750/mês fixos desde jan/26. Os demais lançamentos em nome "
+                "dela no extrato são REPASSE de honorários pagos pelo cliente — "
+                "não são custo do departamento"),
     "JUR-E03": ([4500.00] * 3 + [5500.00] * 4 + [None] * 5, FONTE_JUR,
                 "R$ 4.500/mês em jan–mar; aumento de R$ 1.000 a partir de abr/26"),
     "JUR-D01": ([0.00] * 12, FONTE_JUR,
@@ -468,14 +469,17 @@ PEND = [
      "sairia por volta de R$ 7.400. O responsável financeiro cadastrado no "
      "fornecedor é a Thamar. Guardar a confirmação por escrito.",
      "Cristiane + Thamar", "PRAZO 01/11", "Jurídico"),
-    ("O", "Dra. Michele fora do orçamento — INCLUIR",
-     "Advogada que presta serviço ao departamento e não foi incluída na ficha. "
-     "Recebe R$ 2.750/mês fixos desde jul/26. A linha foi criada com planejado "
-     "zerado, à espera da definição.",
-     "A R$ 2.750/mês são R$ 33.000/ano, que hoje não têm previsão. Enquanto o "
-     "planejado for zero, a linha aparece como 'Não orçado' e o valor entra "
-     "inteiro como estouro. Definir o valor a orçar e a partir de quando.",
-     "Cristiane + Diretoria", "PAUTA REUNIÃO", "Jurídico"),
+    ("O", "Dra. Michele incluída no orçamento",
+     "Mão de obra que ficou de fora da ficha por esquecimento na montagem do "
+     "orçamento. Orçada em R$ 2.750/mês pelo ano inteiro, valor fixo em vigor "
+     "desde jan/26.",
+     "Acréscimo de R$ 33.000 ao orçamento do Jurídico, que passa a R$ 324.730,42. "
+     "CONFERIR NO SIENGE: no extrato de contas pagas, o único lançamento isolado "
+     "de R$ 2.750 é o de jul/26 — de jan a jun aparecem apenas honorários por "
+     "processo, que são repasse (item P). Ou os pagamentos do fixo de jan a jun "
+     "saíram por outro centro de custo, ou estão embutidos naqueles lançamentos. "
+     "Vale localizar antes da reunião. A justificativa da inclusão é pauta.",
+     "Cristiane + Financeiro", "CONFERIR", "Jurídico"),
     ("P", "Extrato contém REPASSES, não só custo",
      "Os lançamentos em nome da Dra. Michele até jun/26 (R$ 20.821,53) são "
      "repasse: o cliente paga à empresa e a empresa repassa a ela. Não são custo "
