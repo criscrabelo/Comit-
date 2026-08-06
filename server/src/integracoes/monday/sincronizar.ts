@@ -33,6 +33,7 @@ import {
   extrairLocalizacao,
   interpretarAtuacao,
   lerCampo,
+  lerVinculo,
   normalizarContrato,
   normalizarEstagio,
   normalizarNome,
@@ -401,6 +402,11 @@ async function transformarItem(
             data_venda: paraData(lerCampo(item, mapa, 'data_venda')),
             data_conclusao: paraData(lerCampo(item, mapa, 'data_conclusao')),
             tempo_dias: paraInteiro(lerCampo(item, mapa, 'tempo_dias')),
+            // `id_origem` das notificacoes ligadas, nao o nome delas: no quadro
+            // de Retomadas o item `SIETE 44-C` aponta para a notificacao
+            // `SIETE 44C`, e casar por nome erraria esse par. Vazio quando a
+            // coluna nao existe no quadro — que e o caso de Distratos hoje.
+            notificacoes_origem: lerVinculo(item, mapa, 'notificacoes'),
           },
           valorOriginal: item,
           dataReferencia: paraData(lerCampo(item, mapa, 'data_conclusao')),

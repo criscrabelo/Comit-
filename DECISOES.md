@@ -1508,3 +1508,89 @@ diferentes. É **um título que descreve mal uma delas**. Renomear o espelho par
 `SPE` tornaria a distinção explícita. Enquanto isso, o detector de B17.1 continua
 sinalizando, que é o comportamento certo: dois títulos iguais continuam sendo
 dois títulos iguais, mesmo quando o desempate acerta.
+
+---
+
+## B17.7 — Ligação notificação → distrato: id, não nome; array, não chave estrangeira
+
+**Data:** 2026-08-06
+**Pergunta que originou:** "quantos dias, da NOTIFICAÇÃO até finalizar todo o
+processo?" — e se a coluna `PERÍODO (DIAS)` do quadro responde isso.
+
+**Não responde.** `PERÍODO (DIAS)` é `DAYS({DATA DA SOLICITAÇÃO}, {DATA DA
+VENDA})`: tempo de posse do imóvel, da compra até o pedido de saída. Os valores
+de quatro dígitos que aparecem na coluna (1.312, 1.057, 643) são anos de posse,
+não duração de processo. É a terceira medida distinta que essas duas datas já
+produziram — depois de `tempo_dias` (B17.4) e da revenda (B17.5).
+
+### O que faltava, e o que foi feito
+
+A medida pedida atravessa dois quadros. O início existe
+(`notificacoes.data_notificacao`, 1019 de 1072); o fim não (o quadro de
+Distratos não tem data de conclusão — item 6.1). E faltava o elo: **qual
+notificação corresponde a qual saída.**
+
+Migração 020 acrescenta `distratos.notificacoes_origem text[]`, mapeada nos dois
+quadros com a mesma lista de títulos. Três decisões de desenho:
+
+**1. Guarda o `id_origem`, não uma chave estrangeira.** Uma FK para
+`notificacoes(id)` criaria dependência de ORDEM de carga: um distrato
+sincronizado antes da notificação que referencia teria o vínculo nulo em
+silêncio, e só uma segunda passada consertaria. `id_origem` já é a chave de
+junção de toda a ingestão, e o vínculo é proveniência da origem — continua
+verdadeiro mesmo que a notificação ainda não tenha sido lida.
+
+**2. Lê o ID, nunca o nome.** O `display_value` de uma ligação traz o nome do
+item ligado, e nome é digitado: no quadro de Retomadas, o item `SIETE 44-C`
+aponta para a notificação `SIETE 44C` — um hífen de diferença. `cliente.ts`
+passou a pedir `linked_item_ids` no fragmento `BoardRelationValue`.
+
+**3. ARRAY, e deduplicado + ordenado.** A mesma unidade pode ser notificada mais
+de uma vez antes de sair — são 1072 notificações em 38 competências, e
+reincidência é o caso comum. Guardar só a primeira descartaria o histórico de
+cobrança; só a última responderia outra pergunta. A ordenação não é cosmética: a
+API não garante ordem estável, e sem normalizar o upsert veria mudança de
+conteúdo a cada carga, inflando `versao` e histórico — o defeito da migração 017
+por outro caminho.
+
+### Validado com dado real, pelo quadro que já tem a coluna
+
+Retomadas (`18413057491`) tem a ligação preenchida em **23 de 23** itens — o que
+descobri só depois de um falso negativo: meu script de inspeção descartável não
+pedia `display_value` no fragmento de `BoardRelationValue`, e a coluna apareceu
+como vazia em 23 de 23. Conferir com a consulta certa inverteu o resultado. Fica
+o registro: ferramenta de diagnóstico também erra, e "vazio" merece segunda
+leitura antes de virar conclusão.
+
+| | Resultado |
+| --- | --- |
+| Retomadas com ligação declarada | **23 de 23** |
+| Ligações que resolvem para notificação existente | **23 de 23** |
+| Distratos com ligação | **0 de 38** — a coluna não existe no quadro |
+| Notificação → pedido, pelos pares ligados | **21 pares · média 39 dias · 3 a 108** |
+
+**Por que a ligação declarada vale mais que o palpite:** casar por empreendimento
++ unidade produziu, nos distratos, um par com **–29 dias** — pedido antes da
+notificação, ou seja, dois episódios diferentes da mesma unidade tratados como
+um. Pela ligação declarada, nenhum dos 21 pares é negativo. Chave errada não
+produz erro, produz número errado.
+
+### O que falta, e é da origem
+
+Criar no quadro de Distratos a coluna de ligação para
+`(JUR) NOTIFICAÇÕES CLIENTES`. A ingestão passa a gravar **sem alteração de
+código**, inclusive se a coluna nascer com o nome automático
+`link to (JUR) NOTIFICAÇÕES CLIENTES` — que está na lista de títulos aceitos
+justamente por ser o caso mais provável. Enquanto não existir, o campo aparece
+em `ausentes` e o array fica vazio: vazio significa "sem ligação declarada",
+nunca "sem notificação".
+
+Com a ligação e a data de conclusão, o ciclo completo fecha. Só com a ligação,
+já se mede notificação → pedido — a metade que existe hoje.
+
+### Verificação
+
+Seis testes em `test/monday-distratos.test.ts`: lê id e não nome visível;
+deduplica e ordena; os três casos que devolvem lista vazia; os dois quadros
+aceitam os mesmos títulos; Retomadas resolve e Distratos cai em `ausentes`; e o
+nome automático do Monday é aceito. Suíte em **402 testes**.

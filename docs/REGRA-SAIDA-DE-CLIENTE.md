@@ -113,12 +113,10 @@ continua sem medição.
 > alimenta `data_venda`", e encaminhava alimentá-la. **As duas coisas estavam
 > erradas**, e a homologação mostrou por quê. Ver seção 4.3.
 
-**A Coevo confirmou que precisa desse dado** (06/08/2026). O encaminhamento
-está na seção 7.
-**Encaminhamento revisado:** a medição do ciclo da recompra depende de **duas
-coisas que hoje não existem** — uma data de revenda na origem e itens com
-`categoria = 'recompra'`. Nenhuma das duas é obtida ajustando o mapa de
-colunas. Seção 4.3.
+**A Coevo confirmou que precisa desse dado** (06/08/2026). A medição depende de
+**duas coisas que hoje não existem** — uma data de revenda na origem e itens com
+`categoria = 'recompra'` —, e nenhuma se obtém ajustando o mapa de colunas. O
+diagnóstico está na seção 4.3; o encaminhamento, na seção 7.
 
 ### 4.3 O que a homologação de Distratos encontrou sobre `data_venda`
 
@@ -163,13 +161,62 @@ que o `CHECK` do banco aceita e que a ingestão **nunca produz**. A pergunta
 não é questão de derivar de `data_venda`, é que a recompra não é registrada como
 tal em lugar nenhum.
 
-**O que efetivamente destrava a medição**, em ordem:
+**O que efetivamente destrava a medição** está na **seção 7**, que trata dela de
+ponta a ponta. Em resumo: a recompra precisa existir na origem, uma data de
+revenda precisa existir na origem, e só então o ciclo pode ser derivado.
 
-1. **A recompra precisa existir na origem** — grupo próprio num dos dois
-   quadros, ou coluna que a distinga. Sem isso não há o que contar.
-2. **Uma data de revenda precisa existir na origem** — coluna nova, distinta de
-   `DATA DA VENDA`. O nome importa: as duas são "venda" e serão confundidas.
-3. Só então o ciclo (acordo → revenda) pode ser derivado.
+### 4.4 A ligação com a notificação: pronta no código, faltando no quadro de Distratos
+
+Pergunta relacionada e distinta: **quantos dias da NOTIFICAÇÃO até o fim de todo
+o processo?** Ela atravessa dois quadros, e cada ponta tem um estado diferente.
+
+| | Onde | Existe? |
+| --- | --- | --- |
+| Início — data da notificação | Notificações `5630368737` | ✅ 1019 de 1072 |
+| Fim — conclusão do distrato | Distratos `18404493605` | ❌ sem coluna (item 6.1 da homologação) |
+| **Qual notificação corresponde a qual saída** | ligação entre quadros | ✅ em Retomadas · ❌ em Distratos |
+
+**A coluna `PERÍODO (DIAS)` do quadro NÃO responde isso.** A fórmula é
+`DAYS({DATA DA SOLICITAÇÃO}, {DATA DA VENDA})` — tempo de posse do imóvel, da
+compra até o pedido de saída. Os valores de três dígitos e quatro dígitos que
+aparecem na coluna (643, 1.057, 1.312) são anos de posse, não duração de
+processo.
+
+**O que foi implementado (migração 020):** `distratos.notificacoes_origem`,
+guardando o `id_origem` das notificações ligadas na origem. Mapeado nos **dois**
+quadros com os mesmos títulos aceitos — eles gravam na mesma tabela, e listas
+divergentes fariam a ligação existir num e não no outro.
+
+Guarda o `id_origem` e não uma chave estrangeira, para não criar dependência de
+ordem de carga; e é ARRAY porque a mesma unidade pode ser notificada mais de uma
+vez antes de sair.
+
+**Validado com dado real pelo quadro de Retomadas**, que já tem a coluna:
+
+| | Resultado |
+| --- | --- |
+| Retomadas com ligação declarada | **23 de 23** |
+| Ligações que resolvem para uma notificação existente | **23 de 23** |
+| Distratos com ligação | **0 de 38** — a coluna ainda não existe no quadro |
+| Notificação → pedido, pelos pares ligados | **21 pares · média 39 dias · 3 a 108** |
+
+Por que a ligação declarada importa mais do que parece: casar por
+empreendimento + unidade é adivinhação, e **erra**. Nos distratos esse palpite
+produziu um par com **–29 dias** — pedido antes da notificação, ou seja, dois
+episódios diferentes da mesma unidade tratados como um. Pela ligação declarada,
+nenhum dos 21 pares é negativo. E o nome também não serve como chave: no quadro
+de Retomadas o item `SIETE 44-C` aponta para a notificação `SIETE 44C`, com um
+hífen de diferença — por isso o vínculo lê o **id**, não o texto visível.
+
+**Falta, no quadro de Distratos:** criar a coluna de ligação para
+`(JUR) NOTIFICAÇÕES CLIENTES` e preenchê-la. A ingestão passa a gravar sozinha,
+**sem nenhuma alteração de código** — inclusive se a coluna for criada com o
+nome automático `link to (JUR) NOTIFICAÇÕES CLIENTES`. Enquanto não existir, o
+campo aparece em `ausentes` no relatório e o array fica vazio: vazio significa
+"sem ligação declarada", nunca "sem notificação".
+
+Com a ligação e a data de conclusão, o ciclo completo fecha. Só com a ligação,
+já se mede notificação → pedido — que é a metade que existe hoje.
 
 Enquanto isso, **`distratos.data_venda` não deve ser usada como data de
 revenda**, e o campo merece ser lido como "data da venda original".

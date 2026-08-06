@@ -59,6 +59,27 @@ export const PROCESSOS_GRUPOS_EXCLUIDOS = [
   'FGLASS/GRADFIBRA',
 ];
 
+/**
+ * Titulos aceitos para a coluna que liga um distrato/retomada as notificacoes
+ * que o precederam.
+ *
+ * Uma lista so, compartilhada pelos dois quadros: eles gravam na MESMA tabela
+ * `distratos`, e duas listas divergindo fariam a ligacao existir em um e nao no
+ * outro — com o sintoma aparecendo bem longe da causa, num indicador que soma
+ * os dois.
+ *
+ * O primeiro titulo e o que o quadro de Retomadas usa hoje. `LINK TO ...` cobre
+ * o nome que o Monday da automaticamente quando a coluna e criada sem ser
+ * renomeada — e o caso mais provavel no dia em que Distratos ganhar a dela.
+ */
+const TITULOS_LIGACAO_NOTIFICACOES = [
+  '(JUR) NOTIFICAÇÕES CLIENTES',
+  'NOTIFICAÇÕES CLIENTES',
+  'NOTIFICAÇÕES',
+  'NOTIFICAÇÃO',
+  'LINK TO (JUR) NOTIFICAÇÕES CLIENTES',
+];
+
 export const QUADROS: Record<ChaveQuadro, DefinicaoQuadro> = {
   processos: {
     chave: 'processos',
@@ -146,6 +167,11 @@ export const QUADROS: Record<ChaveQuadro, DefinicaoQuadro> = {
       data_venda: ['DATA DA VENDA', 'DATA VENDA', 'DATA DA REVENDA', 'REVENDA', 'NOVA VENDA'],
       data_conclusao: ['DATA DO DISTRATO', 'DATA DISTRATO', 'DATA DA CONCLUSÃO', 'CONCLUSÃO'],
       tempo_dias: ['TEMPO', 'DIAS', 'TOTAL DE DIAS'],
+      // Ligacao para o quadro de notificacoes. NAO existe no board 18404493605
+      // hoje — fica mapeada e sera preenchida sozinha no dia em que a coluna
+      // for criada. Ate la aparece como campo ausente no relatorio, que e o
+      // comportamento correto: declarado, nunca presumido.
+      notificacoes: TITULOS_LIGACAO_NOTIFICACOES,
     },
   },
 
@@ -182,6 +208,10 @@ export const QUADROS: Record<ChaveQuadro, DefinicaoQuadro> = {
       // criada na origem. Ver docs/REGRA-SAIDA-DE-CLIENTE.md secao 7.
       data_venda: ['DATA DA REVENDA', 'REVENDA', 'NOVA VENDA'],
       tempo_dias: ['TEMPO', 'DIAS', 'TOTAL DE DIAS'],
+      // Este quadro JA tem a ligacao, preenchida em 23 de 23 itens (06/08/2026)
+      // — e por isso e ele que valida o caminho de ponta a ponta enquanto o de
+      // Distratos nao ganha a coluna.
+      notificacoes: TITULOS_LIGACAO_NOTIFICACOES,
     },
   },
 

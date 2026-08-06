@@ -39,6 +39,15 @@ export interface ValorColuna {
   type: string | null;
   /** Presente em mirror e formula — e onde o valor visivel realmente aparece. */
   display_value?: string | null;
+  /**
+   * Presente em board_relation: os ids dos itens ligados.
+   *
+   * O `display_value` de uma ligacao traz o NOME do item ligado, que nao serve
+   * como chave — no quadro de Retomadas, o item `SIETE 44-C` aponta para a
+   * notificacao `SIETE 44C`, com um hifen de diferenca. O id e estavel; o nome
+   * e digitado.
+   */
+  linked_item_ids?: string[] | null;
 }
 
 export interface ItemMonday {
@@ -303,7 +312,7 @@ export async function lerTodosOsItens(
               type
               ... on MirrorValue    { display_value }
               ... on FormulaValue   { display_value }
-              ... on BoardRelationValue { display_value }
+              ... on BoardRelationValue { display_value linked_item_ids }
             }
           }
         }

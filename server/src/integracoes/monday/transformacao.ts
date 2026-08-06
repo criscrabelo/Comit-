@@ -33,6 +33,38 @@ export function lerCampo(
   return lerColuna(item, mapa.get(campo));
 }
 
+/**
+ * Le uma coluna de LIGACAO e devolve os `id_origem` dos itens apontados.
+ *
+ * Separado de `lerCampo` de proposito: `lerColuna` devolve o texto visivel, e
+ * numa ligacao o texto visivel e o NOME do item ligado. Nome nao e chave — no
+ * quadro de Retomadas o item `SIETE 44-C` aponta para a notificacao
+ * `SIETE 44C`, e casar por nome erraria esse par. O id e o que a origem
+ * garante.
+ *
+ * Devolve lista vazia quando a coluna nao existe no quadro, quando existe e
+ * esta vazia, ou quando a API nao devolveu o campo. Os tres casos significam
+ * "nenhuma ligacao declarada" — e nenhum deles significa "nao houve
+ * notificacao".
+ */
+export function lerVinculo(
+  item: ItemMonday,
+  mapa: Map<string, string>,
+  campo: string,
+): string[] {
+  const idColuna = mapa.get(campo);
+  if (!idColuna) return [];
+
+  const coluna = item.column_values?.find((c) => c.id === idColuna);
+  const ligados = coluna?.linked_item_ids;
+  if (!Array.isArray(ligados)) return [];
+
+  // Deduplicado e ordenado: a ordem em que a API devolve as ligacoes nao e
+  // estavel, e uma reordenacao faria o upsert enxergar mudanca de conteudo
+  // onde nao houve — inflando `versao` e o historico a cada carga.
+  return [...new Set(ligados.map((id) => String(id).trim()).filter(Boolean))].sort();
+}
+
 // ── Normalizacao de texto ───────────────────────────────────────────────────
 
 /**

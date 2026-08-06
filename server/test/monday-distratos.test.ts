@@ -18,8 +18,13 @@
  *     unidade preserva o nome do item inteiro em vez de inventar um recorte.
  */
 import { describe, expect, it } from 'vitest';
-import { extrairLocalizacao, classificarCategoriaDistrato } from '../src/integracoes/monday/transformacao.js';
+import {
+  extrairLocalizacao,
+  classificarCategoriaDistrato,
+  lerVinculo,
+} from '../src/integracoes/monday/transformacao.js';
 import { QUADROS, resolverMapa, titulosAmbiguos } from '../src/integracoes/monday/quadros.js';
+import type { ItemMonday } from '../src/integracoes/monday/cliente.js';
 
 /** Colunas do board 18404493605, como a API as devolveu em 06/08/2026. */
 const COLUNAS_REAIS = [
@@ -187,6 +192,88 @@ describe('Distratos — board 18404493605', () => {
     // espelhos vêm vazios em 12 dos 38 itens.
     expect(ambiguos.find((a) => a.titulo === 'EMPREENDIMENTO')!.vencedora).toBe('color_mm28cam9');
     expect(ambiguos.find((a) => a.titulo === 'SETOR')!.vencedora).toBe('color_mm2knzbk');
+  });
+
+  // ── Ligação com as notificações ─────────────────────────────────────────
+
+  /** Item no formato da API, com uma coluna de ligação. */
+  const itemComLigacao = (ligados: string[] | null | undefined): ItemMonday => ({
+    id: '9001',
+    name: 'SIETE 44-C',
+    group: { id: 'g1', title: 'RETOMADAS' },
+    created_at: null,
+    updated_at: null,
+    column_values: [
+      {
+        id: 'board_relation_mm3an1k0',
+        text: '',
+        value: null,
+        type: 'board_relation',
+        // O nome visível DIVERGE do nome da notificação ligada — é o caso real
+        // do board 18413057491: `SIETE 44-C` aponta para `SIETE 44C`.
+        display_value: 'SIETE 44C',
+        ...(ligados === undefined ? {} : { linked_item_ids: ligados }),
+      },
+    ],
+  });
+
+  const MAPA_LIGACAO = new Map([['notificacoes', 'board_relation_mm3an1k0']]);
+
+  it('lê os ids ligados, não o nome visível da notificação', () => {
+    // Casar por nome erraria este par: `SIETE 44-C` vs `SIETE 44C`.
+    expect(lerVinculo(itemComLigacao(['11350971630']), MAPA_LIGACAO, 'notificacoes')).toEqual([
+      '11350971630',
+    ]);
+  });
+
+  it('deduplica e ordena os ids, para o upsert não ver mudança onde não houve', () => {
+    // A API não garante ordem estável. Sem normalizar, uma reordenação faria
+    // `versao` e o histórico crescerem a cada carga — o defeito da migração 017
+    // por outro caminho.
+    const a = lerVinculo(itemComLigacao(['222', '111', '222']), MAPA_LIGACAO, 'notificacoes');
+    const b = lerVinculo(itemComLigacao(['111', '222']), MAPA_LIGACAO, 'notificacoes');
+
+    expect(a).toEqual(['111', '222']);
+    expect(a).toEqual(b);
+  });
+
+  it('coluna ausente, vazia ou sem o campo devolvem lista vazia — nunca nulo', () => {
+    // Os três casos significam "nenhuma ligação declarada", e nenhum deles
+    // significa "não houve notificação".
+    expect(lerVinculo(itemComLigacao([]), MAPA_LIGACAO, 'notificacoes')).toEqual([]);
+    expect(lerVinculo(itemComLigacao(undefined), MAPA_LIGACAO, 'notificacoes')).toEqual([]);
+    // Campo não mapeado: é o estado do board 18404493605 hoje.
+    expect(lerVinculo(itemComLigacao(['1']), new Map(), 'notificacoes')).toEqual([]);
+  });
+
+  it('os dois quadros aceitam os MESMOS títulos de ligação', () => {
+    // Eles gravam na mesma tabela. Duas listas divergindo fariam a ligação
+    // existir num quadro e não no outro, com o sintoma aparecendo num indicador
+    // que soma os dois.
+    expect(QUADROS.distratos.colunas.notificacoes).toEqual(QUADROS.retomadas.colunas.notificacoes);
+  });
+
+  it('Retomadas resolve a ligação; Distratos ainda não tem a coluna', () => {
+    const retomadas = resolverMapa(QUADROS.retomadas, [
+      { id: 'board_relation_mm3an1k0', title: '(JUR) NOTIFICAÇÕES CLIENTES', type: 'board_relation' },
+    ]);
+    expect(retomadas.porCampo.get('notificacoes')).toBe('board_relation_mm3an1k0');
+
+    // O board de Distratos de hoje: sem nenhuma coluna de ligação para
+    // notificações. Fica em `ausentes` — declarado, nunca presumido.
+    const distratos = resolverMapa(QUADROS.distratos, COLUNAS_REAIS);
+    expect(distratos.ausentes).toContain('notificacoes');
+    expect(distratos.porCampo.has('notificacoes')).toBe(false);
+  });
+
+  it('o nome automático do Monday também é aceito', () => {
+    // Coluna criada e não renomeada vira `link to <quadro>`. É o caso mais
+    // provável no dia em que Distratos ganhar a dela.
+    const mapa = resolverMapa(QUADROS.distratos, [
+      ...COLUNAS_REAIS,
+      { id: 'board_relation_novo', title: 'link to (JUR) NOTIFICAÇÕES CLIENTES', type: 'board_relation' },
+    ]);
+    expect(mapa.porCampo.get('notificacoes')).toBe('board_relation_novo');
   });
 
   // ── 4. O perfil de homologação bate com o esquema ───────────────────────
