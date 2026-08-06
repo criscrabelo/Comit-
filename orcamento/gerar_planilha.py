@@ -63,11 +63,13 @@ LINHAS = [
      "Analista Administrativo — orçada pelo custo total (encargos de folha + benefícios). "
      "Salário bruto informado: R$ 2.886,91/mês",
      "CLT", "Pessoal - CLT", _12(V)),
-    # Reajuste permanente de R$ 500 confirmado pela gestora. Mantido em R$ 5.000
-    # nos meses já realizados para o desvio ficar visível; revisado de out em diante.
+    # Recebe R$ 5.500 desde jan/26, contra R$ 5.000 orcados. O baseline de R$ 5.000
+    # e mantido nos meses ja fechados (jan-jul) para o desvio ficar visivel, e o
+    # planejado e revisado para R$ 5.500 de ago em diante — os meses a realizar.
     ("JUR-E03", "Jurídico", "Equipe", "Thamar Victória",
-     "Advogada — reajuste permanente de R$ 5.000 para R$ 5.500 (revisado a partir de out/26)",
-     "PJ", "Pessoal - PJ", [5000.00] * 9 + [5500.00] * 3),
+     "Advogada — recebe R$ 5.500/mês desde jan/26 contra R$ 5.000 orçados. "
+     "Planejado revisado para R$ 5.500 a partir de ago/26",
+     "PJ", "Pessoal - PJ", [5000.00] * 7 + [5500.00] * 5),
     # JURIDICO - DESPESAS
     ("JUR-D01", "Jurídico", "Despesas", "JUSFY",
      "Fase de teste com objetivo de eliminar o Astrea", "",
@@ -238,12 +240,13 @@ PEND = [
      "faixa normal (67% a 80%), então pode sobrar ou estourar. Só o custo total "
      "real vai dizer.",
      "Cristiane + RH", "A LANÇAR", "TI"),
-    ("C", "Reajuste da Thamar — revisão orçamentária",
-     "Reajuste permanente de R$ 5.000 para R$ 5.500/mês, em vigor desde mai/26. "
-     "O planejado foi mantido em R$ 5.000 nos meses já realizados (para o desvio "
-     "ficar visível) e revisado para R$ 5.500 de out a dez.",
-     "Desvio já incorrido de R$ 500/mês. Ao contrário do aumento do Vinicius, "
-     "este estourou o orçado: não havia folga na linha dela.",
+    ("C", "Thamar acima do orçado desde janeiro",
+     "Recebe R$ 5.500/mês desde jan/26 contra R$ 5.000 orçados. O planejado foi "
+     "mantido em R$ 5.000 nos sete meses fechados (para o desvio ficar visível) e "
+     "revisado para R$ 5.500 de ago a dez.",
+     "R$ 3.500 já gastos acima do orçado em jan–jul, e mais R$ 2.500 previstos até "
+     "dezembro. Ao contrário do aumento do Vinicius, este estourou o orçado: não "
+     "havia folga na linha dela. Orçamento do Jurídico sobe para R$ 291.730,42.",
      "Cristiane", "APLICADO", "Jurídico"),
     ("D", "Jusbrasil 30% acima do orçado",
      "Orçado R$ 104,90/mês, realizado R$ 136,00/mês em mai, jun e jul.",
