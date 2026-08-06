@@ -1,0 +1,54 @@
+Bloqueio de rede — api.sienge.com.br
+Levantado em: 2026-08-06T19:26:40Z
+
+== 1. Endpoint efetivamente usado pelo cliente ==
+cliente.ts monta https://api.sienge.com.br/<SIENGE_SUBDOMAIN>/public/api/v1
+(formato confirmado em docs/SIENGE-INFORMACOES-PREENCHIDAS.md §1)
+
+== 2. CONNECT direto, fora da aplicacao ==
+> CONNECT api.sienge.com.br:443 HTTP/1.1
+< HTTP/1.1 403 Forbidden
+* CONNECT tunnel failed, response 403
+
+Resposta do proxy na requisicao da aplicacao (fetch do Node):
+HTTP 403 — "Host not in allowlist: api.sienge.com.br. Add this host to your
+network egress settings to allow access."
+
+== 3. Efeito na homologacao ==
+scripts/homologar-sienge.ts, sonda de /companies (--simular):
+  ❌ Sonda falhou: Credenciais do Sienge recusadas. Verifique as variaveis
+     de ambiente.  Detalhe: {"status":403,"reentar":false}
+  _Nada foi registrado para este endpoint._
+
+ATENCAO ao diagnostico: o 403 acima veio do PROXY DE EGRESSO, nao do Sienge.
+O cliente trata 401/403 como credencial recusada — correto quando a resposta
+e da API, enganoso quando o bloqueio e da rede. Com o CONNECT recusado (item
+2), a requisicao nunca chegou ao Sienge: as credenciais NAO foram exercitadas
+e nada se pode afirmar sobre elas ainda.
+
+== 4. Controle: outro host HTTPS pelo mesmo proxy ==
+https://api.github.com -> HTTP 200
+
+== 5. Pendencias para destravar ==
+1. Incluir api.sienge.com.br na allowlist de egresso do ambiente
+   (configuracao do ambiente Claude Code, secao de rede).
+2. Conferir o valor de SIENGE_PASSWORD no ambiente: o valor presente hoje
+   tem cara de texto de instrucao do modelo .env (contem "<" e ">"), nao de
+   senha. A variavel existe, mas provavelmente carrega o placeholder.
+   O valor nao e reproduzido aqui por politica: evidencia versionada nao
+   carrega credencial, nem suspeita de credencial.
+
+== 6. O que ja esta pronto, aguardando o destravamento ==
+- scripts/homologar-sienge.ts: pre-confirmacao local (6 itens, todos ✅ em
+  docs/evidencias/preconfirmacao-sienge.md), sondas minimas por endpoint
+  (~10 requisicoes no total, contra franquia de 1.000/dia), registro em
+  integracoes.relatorio_verificacao com autor e trilha de auditoria.
+- Nenhuma confirmacao foi registrada: confirmacao sem consulta real seria
+  invencao, e a regra do conector e exatamente a oposta.
+
+Comando para executar quando a rede estiver liberada:
+  cd server && \
+  SIENGE_HABILITADO=true DATABASE_URL=... \
+  npx tsx scripts/homologar-sienge.ts --confirmado-por "Nome Sobrenome" \
+    --saida ../docs/evidencias/homologacao-sienge.md
+(As credenciais SIENGE_* ja vem do ambiente; nunca por argumento.)

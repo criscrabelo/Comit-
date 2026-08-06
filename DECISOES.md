@@ -2001,3 +2001,64 @@ recompra, cessão, cobrança judicial — como aparecem no Sienge da Coevo.
    por companies/enterprises — baratos e pequenos
 4. Desenho da carga incremental com orçamento diário ANTES da primeira carga
    de títulos
+
+## B20 — Homologação do Sienge virou script auditável; a primeira tentativa esbarrou na rede
+
+**Data:** 2026-08-06 · Sessão com as variáveis `SIENGE_*` já no ambiente.
+
+### A decisão
+
+A homologação endpoint por endpoint não será um `POST /api/sienge/homologar`
+preenchido à mão: é `scripts/homologar-sienge.ts`, no mesmo molde do
+`homologar-monday.ts`. O script executa uma **sonda real e mínima** por
+endpoint (~10 requisições para os 7 candidatos, contra franquia de 1.000/dia),
+confere formato de paginação, campos e totais contra o levantamento
+(`docs/SIENGE-INFORMACOES-PREENCHIDAS.md`), e **só então** grava a confirmação
+em `integracoes.relatorio_verificacao` — com autor (`--confirmado-por`), data,
+observação com evidência e trilha de auditoria. Sonda que falha não registra
+nada: o endpoint continua travado.
+
+Por que assim: a confirmação registrada é o ato que LIBERA a chamada em
+produção. Se ela puder nascer de um formulário sem consulta real, a trava vira
+cerimônia. O script amarra o registro à evidência.
+
+Ordem das sondas: companies e enterprises primeiro (dados corporativos),
+depois customers, títulos, parcelas, saldo devedor (CPF obtido em memória,
+nunca publicado) e comissões. Pré-confirmação local com 6 itens roda antes de
+qualquer requisição — inclusive prova de "somente leitura por construção" e
+folga no orçamento diário. Retentativa também consome franquia, e o script
+recusa iniciar um endpoint sem folga mínima de 10 requisições.
+
+### O que aconteceu na primeira execução
+
+A pré-confirmação passou inteira (`docs/evidencias/preconfirmacao-sienge.md`).
+A sonda de `/companies` falhou: **o proxy de egresso deste ambiente recusa
+`CONNECT api.sienge.com.br:443` com 403** — a requisição nunca chegou ao
+Sienge. Evidência completa em `docs/evidencias/bloqueio-rede-sienge.txt`, no
+mesmo formato do bloqueio do Monday (que foi liberado depois; o caminho é
+conhecido).
+
+**Nenhuma confirmação foi registrada.** Confirmar sem consulta real seria
+inventar — exatamente o que o conector existe para impedir.
+
+Achado de diagnóstico que fica: o cliente trata 401/403 como "credenciais
+recusadas". Quando o 403 vem do proxy de rede, a mensagem engana. A evidência
+registra a distinção; se o falso diagnóstico incomodar de novo, o cliente pode
+passar a diferenciar resposta do proxy de resposta da API.
+
+### Para destravar (fora do alcance desta sessão)
+
+1. **Incluir `api.sienge.com.br` na allowlist de egresso** do ambiente Claude
+   Code (mesmo ajuste feito para `api.monday.com`).
+2. **Conferir `SIENGE_PASSWORD`**: o valor presente hoje tem cara de texto de
+   instrução (contém `<` e `>`), não de senha. Trocar pelo valor real, direto
+   na configuração do ambiente — nunca em chat, arquivo ou argumento.
+
+Depois disso, uma execução única faz a homologação completa e gera o
+relatório:
+
+```bash
+cd server && SIENGE_HABILITADO=true DATABASE_URL=... \
+  npx tsx scripts/homologar-sienge.ts --confirmado-por "Nome Sobrenome" \
+    --saida ../docs/evidencias/homologacao-sienge.md
+```
