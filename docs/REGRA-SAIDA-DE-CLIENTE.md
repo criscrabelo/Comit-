@@ -30,9 +30,10 @@ alternativa ao distrato quando o cliente está financiado.
 - a **Coevo assume o financiamento** do cliente;
 - a Coevo **devolve algum valor** ao cliente, avaliado **caso a caso**, em
   função do que ele já pagou;
-- a unidade retorna para a Coevo;
-- **a unidade continua vinculada ao número do cliente** até que apareça um novo
-  comprador;
+- a unidade retorna para a Coevo e **no Sienge fica como distratada**;
+- **o financiamento continua no nome do cliente junto ao banco**, mesmo com a
+  Coevo pagando — é o único vínculo que sobra, e ele é fora dos sistemas da
+  plataforma;
 - quem opera é **outra pessoa**: distrato tem um responsável, recompra tem
   outro.
 
@@ -66,17 +67,30 @@ durante o período em que ela precisa ser acompanhada.
 
 ---
 
-## 4. Duas consequências que ainda não estão tratadas
+## 4. Consequências que ainda não estão tratadas
 
-### 4.1 A unidade fica no nome de quem já saiu
+### 4.1 O que fica no nome do cliente é o financiamento — no banco, não no Sienge
 
-Enquanto não há novo comprador, a unidade permanece vinculada ao número do
-cliente anterior. No **cruzamento Monday × Sienge** isso vai aparecer como
-divergência de titularidade — unidade cujo titular já saiu.
+Correção de um entendimento errado registrado antes: **no Sienge a unidade
+aparece como distratada**, normalmente. O que continua no nome do cliente é o
+**financiamento junto ao banco** — a Coevo o assumiu de fato, mas
+formalmente ele segue em nome dele na instituição financeira.
 
-**É estado legítimo, não defeito.** Precisa ser reconhecido como tal antes que
-alguém "corrija" o cadastro e apague o vínculo que deve existir enquanto a
-unidade não é revendida.
+Duas consequências, e as duas importam:
+
+**A Coevo carrega uma obrigação que o sistema não enxerga.** O banco não é
+fonte de dados da plataforma — não há integração com a Caixa. Então o
+financiamento assumido não aparece em lugar nenhum: nem no Monday, nem no
+Sienge, nem aqui. É exposição real, invisível ao sistema por construção.
+
+**No cruzamento Monday × Sienge, uma recompra vai parecer um distrato.** O
+Monday classifica como `recompra`, o Sienge representa como distrato. Os dois
+estão certos: são representações diferentes do mesmo fato, em sistemas com
+finalidades diferentes.
+
+Isso **não é inconsistência**, e precisa estar registrado antes de chegarmos ao
+cruzamento — senão a Central de Inconsistências vai abrir um caso para cada
+recompra, e alguém vai "corrigir" uma das pontas.
 
 ### 4.2 Recompra envelhece de forma diferente das demais
 
@@ -102,8 +116,10 @@ na etapa de indicadores:
 1. **O valor devolvido ao cliente** na recompra. Avaliado caso a caso, e não há
    campo para ele. "Quanto devolvemos em recompras neste mês" hoje não tem
    resposta.
-2. **O financiamento assumido pela Coevo.** É exposição financeira que continua
-   depois da recompra registrada, e também não tem campo.
+2. **O financiamento assumido pela Coevo.** Continua em nome do cliente no
+   banco, e o banco não é fonte de dados da plataforma. Não há campo, e não há
+   de onde puxar automaticamente: se esse número precisar existir, será entrada
+   manual com proveniência declarada.
 
 ---
 

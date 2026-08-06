@@ -1163,10 +1163,14 @@ decisão entre distrato, retomada e recompra.
 
 ### Duas consequências registradas, ainda não tratadas
 
-1. **A unidade fica no nome de quem já saiu** até a revenda. No cruzamento
-   Monday × Sienge isso vai aparecer como divergência de titularidade. É
-   **estado legítimo**, não defeito — precisa ser reconhecido como tal antes
-   que alguém "corrija" o cadastro e apague o vínculo.
+1. **No Sienge a unidade fica como distratada** — normalmente. O que continua
+   no nome do cliente é o **financiamento junto ao banco**, que a Coevo assumiu
+   de fato mas não formalmente. Duas consequências: (a) essa obrigação é
+   invisível ao sistema, porque o banco não é fonte de dados; (b) no cruzamento
+   Monday × Sienge uma recompra vai **parecer um distrato** — os dois estão
+   certos, são representações diferentes do mesmo fato. Precisa estar
+   registrado como não-inconsistência antes do cruzamento, ou a Central abre um
+   caso por recompra.
 2. **Recompra envelhece de forma diferente.** Um caso em `Aguardando pagamento`
    há 400 dias é problema; em `Recompra` há 400 dias é normal. Hoje os dois
    ficam juntos em `Em Andamento`, então o tempo médio de notificações abertas
@@ -1177,4 +1181,7 @@ decisão entre distrato, retomada e recompra.
 ### Campos que o modelo não tem
 
 Valor devolvido ao cliente e financiamento assumido pela Coevo. Nenhum bloqueia
-as homologações; os dois viram pergunta na etapa de indicadores.
+as homologações; os dois viram pergunta na etapa de indicadores. O segundo não
+tem de onde ser puxado automaticamente — vive no banco, que não é fonte de
+dados —, então será entrada manual com proveniência declarada, se for
+necessário.
