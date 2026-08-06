@@ -16,6 +16,9 @@ const MondaySync = (() => {
     retomadas:    18413057491,   // (JUR) RETOMADAS
     notificacoes: 5630368737,    // (JUR) NOTIFICAÇÕES CLIENTES
     carpedie:     18410779605,   // CONTROLE DE ENTREGA CARPE DIEM
+    contrClientes: 5821473011,   // (JUR) CONTRATOS PARA CLIENTES
+    contrObra:     5800267760,   // (JUR) OBRA - CONTRATO DE PRESTAÇÃO DE SERVIÇO
+    contrScp:      5800443639,   // (JUR) CONTRATO DE SCP/SPE
   };
 
   /* ── Token helpers ─────────────────────────────────────────── */
@@ -638,6 +641,126 @@ const MondaySync = (() => {
     return count;
   }
 
+  /* ── 5. Contratos ────────────────────────────────────────────
+     Três quadros distintos alimentam a mesma tabela `contratos`:
+       • CLIENTES  — empreendimento vem da COLUNA "EMPREENDIMENTO";
+                     os grupos são meses ("JULHO/ 2026").
+       • OBRA      — empreendimento vem da coluna, com o GRUPO como fallback
+                     (nos dois quadros abaixo os grupos são empreendimentos).
+       • SCP/SPE   — não tem coluna de empreendimento: usa o GRUPO.
+     Filtro do mês em todos: DATA DE SOLICITAÇÃO (fallback no created_at),
+     conforme documentado no README.                                       */
+  const CONTRATO_FONTES = [
+    {
+      board:     'contrClientes',
+      categoria: 'Clientes',
+      titulosTipo:      ['TIPOS DE CONTRATO', 'TIPO DE CONTRATO', 'TIPO DE DOCUMENTO'],
+      titulosSolic:     ['SOLICITAÇÃO', 'DATA DA SOLICITAÇÃO'],
+      titulosConclusao: ['REALIZAÇÃO', 'FINALIZAÇÃO'],
+      titulosStatus:    ['CONFECÇÃO'],
+      titulosAssin:     ['STATUS DA ASSINATURA', 'ACOMPANHAMENTO DE ASSINATURA'],
+      titulosLink:      ['LINK PARA ACOMPANHAMENTO', 'LINK ASSINATURA'],
+      // Grupos são meses neste quadro — nunca servem como empreendimento.
+      grupoEhEmpreendimento: false,
+    },
+    {
+      board:     'contrObra',
+      categoria: 'Prestação de Serviço',
+      titulosTipo:      ['TIPO DE DOCUMENTO', 'TIPOS DE CONTRATO'],
+      titulosSolic:     ['SOLICITAÇÃO', 'DATA DA SOLICITAÇÃO'],
+      titulosConclusao: ['FINALIZAÇÃO', 'REALIZAÇÃO'],
+      titulosStatus:    ['CONFECÇÃO'],
+      titulosAssin:     ['ACOMPANHAMENTO DE ASSINATURA', 'STATUS DA ASSINATURA'],
+      titulosLink:      ['LINK ASSINATURA', 'LINK PARA ACOMPANHAMENTO'],
+      grupoEhEmpreendimento: true,
+    },
+    {
+      board:     'contrScp',
+      categoria: 'SCP/SPE',
+      titulosTipo:      ['OBJETO'],
+      titulosSolic:     ['SOLICITAÇÃO', 'DATA DA SOLICITAÇÃO'],
+      titulosConclusao: ['FINALIZAÇÃO'],
+      titulosStatus:    ['STATUS'],
+      titulosAssin:     ['ASSEMBLÉIA', 'ASSEMBLEIA'],
+      titulosLink:      [],
+      grupoEhEmpreendimento: true,
+    },
+  ];
+
+  async function syncContratos(comiteId, mesRef) {
+    log('Buscando Contratos…', 'wait');
+    const { start, end } = mesRange(mesRef);
+
+    // Limpa uma única vez — as três fontes gravam na mesma tabela e, se cada
+    // uma limpasse a sua, a última apagaria o resultado das anteriores.
+    DB.forComite('contratos', comiteId).forEach(c => DB.remove('contratos', c.id));
+
+    let total = 0;
+
+    for (const fonte of CONTRATO_FONTES) {
+      const boardId = BOARDS[fonte.board];
+      const colMap  = await fetchColumnMap(boardId);
+
+      const idEmpr    = colId(colMap, 'EMPREENDIMENTO');
+      const idTipo    = colId(colMap, ...fonte.titulosTipo);
+      const idSolic   = colId(colMap, ...fonte.titulosSolic);
+      const idConcl   = colId(colMap, ...fonte.titulosConclusao);
+      const idStatus  = colId(colMap, ...fonte.titulosStatus);
+      const idAssin   = colId(colMap, ...fonte.titulosAssin);
+      const idLink    = fonte.titulosLink.length ? colId(colMap, ...fonte.titulosLink) : null;
+      const idSetor   = colId(colMap, 'SETOR');
+      const idSolicit = colId(colMap, 'SOLICITANTE');
+      const idResp    = colId(colMap, 'RESPONSÁVEL', 'RESPONSAVEL');
+      const idRessalva= colId(colMap, 'RESSALVA');
+
+      const items = await fetchAllItems(boardId);
+
+      const filtered = items.filter(item => {
+        const dataSol = cv(item, idSolic);
+        const ca = (item.created_at || '').substring(0, 10);
+        return inRange(dataSol, start, end) || (!dataSol && inRange(ca, start, end));
+      });
+
+      filtered.forEach(item => {
+        // Empreendimento: coluna tem prioridade; grupo só entra como fonte
+        // nos quadros em que os grupos realmente são empreendimentos.
+        const emprCol   = cv(item, idEmpr);
+        const emprGrupo = fonte.grupoEhEmpreendimento ? (item.group?.title || '') : '';
+        const emprNome  = emprCol || emprGrupo;
+        const emprId    = emprNome ? findOrMakeEmpr(emprNome) : null;
+
+        const dataSol  = cv(item, idSolic) || (item.created_at || '').substring(0, 10);
+        const dataConc = cv(item, idConcl);
+
+        DB.insert('contratos', {
+          comite_id:         comiteId,
+          empreendimento_id: emprId,
+          objeto:            item.name,
+          categoria:         fonte.categoria,
+          tipo:              cv(item, idTipo) || fonte.categoria,
+          setor:             cv(item, idSetor),
+          status:            cv(item, idStatus) || 'Pendente',
+          status_assinatura: cv(item, idAssin),
+          data_solicitacao:  dataSol || null,
+          data_conclusao:    dataConc || null,
+          tempo_dias:        (dataSol && dataConc) ? daysBetween(dataSol, dataConc) : null,
+          solicitante:       cv(item, idSolicit),
+          responsavel:       cv(item, idResp),
+          ressalva:          cv(item, idRessalva),
+          link:              idLink ? cv(item, idLink) : '',
+        });
+        total++;
+      });
+
+      const n = filtered.length;
+      log(`  ${fonte.categoria}: ${n} contrato${n !== 1 ? 's' : ''}`, n > 0 ? 'ok' : 'info');
+    }
+
+    log(`${total} contrato${total !== 1 ? 's' : ''} importado${total !== 1 ? 's' : ''} (mês ${mesRef})`,
+        total > 0 ? 'ok' : 'warn');
+    return total;
+  }
+
   /* ═══════════════════════════════════════════════════════════
      LOG / PROGRESS UI
   ═══════════════════════════════════════════════════════════ */
@@ -679,6 +802,7 @@ const MondaySync = (() => {
     await run('Distratos',          () => syncDistratosRetomadas(comiteId, mesRef));
     await run('Retomadas',          () => syncRetomadas(comiteId, mesRef));
     await run('Notificações',       () => syncNotificacoes(comiteId, mesRef));
+    await run('Contratos',          () => syncContratos(comiteId, mesRef));
     await run('Carpe Diem',         () => syncCarpedie(comiteId));
 
     log(fail === 0

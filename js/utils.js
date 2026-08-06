@@ -79,6 +79,10 @@ const BADGE_COLORS = {
   'Acordo': 'purple', 'Baixa Definitiva': 'gray', 'Arq. Provisório': 'yellow',
   'Resolvida': 'green', 'Em Andamento': 'orange',
   'Assinado': 'green', 'Em análise': 'yellow',
+  // Status de contratos vindos do Monday (rótulos variam entre os quadros)
+  'FINALIZADA': 'green', 'FINALIZADO': 'green', 'EM CONFECÇÃO': 'orange',
+  'EM ESPERA': 'yellow', 'Pendente': 'yellow', 'Cancelado': 'red',
+  'Concluído': 'green', 'Em andamento': 'orange', 'NÃO FOI NECESSÁRIO': 'gray',
   'Réu': 'red', 'Autor': 'blue', 'Terceiro': 'gray',
   'Inadimplência': 'red', 'Distrato': 'orange', 'Desistência': 'yellow',
   'Dificuldade Financeira': 'red', 'Insatisfação': 'orange', 'Falha de Serviço': 'purple',

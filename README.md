@@ -61,7 +61,12 @@ Use o menu lateral para acessar cada módulo:
 | 🔁 Retomadas | (JUR) DISTRATOS E RETOMADAS | Grupo "Retomadas", mês selecionado |
 | 📨 Notificações | (JUR) NOTIFICAÇÕES | Data da notificação no mês |
 | 🏠 Unidades | (JUR) CONTROLE CARPE DIEM | Todas as unidades vendidas |
-| 📄 Contratos | (JUR) CONTRATOS PARA CLIENTES + (JUR) OBRA - CONTRATO DE PRESTAÇÃO DE SERVIÇO + (JUR) CONTRATO DE SCP/SPE | Data de Solicitação no mês selecionado |
+| 📄 Contratos | (JUR) CONTRATOS PARA CLIENTES + (JUR) OBRA - CONTRATO DE PRESTAÇÃO DE SERVIÇO + (JUR) CONTRATO DE SCP/SPE | Data de Solicitação no mês selecionado (fallback: data de criação do item) |
+
+> Em **📄 Contratos** as três fontes aparecem em abas separadas (Clientes,
+> Prestação de Serviço, SCP/SPE) além da aba "Todos". O empreendimento vem da
+> coluna `EMPREENDIMENTO` quando existe; nos quadros de Obra e SCP/SPE, em que
+> os grupos são empreendimentos, o grupo é usado como fallback.
 
 > ⚠️ **Fatos Relevantes**, Análise de Risco e Temas Regulatórios são inseridos manualmente — não são sobrescritos pela sincronização.
 

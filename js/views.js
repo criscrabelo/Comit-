@@ -995,6 +995,163 @@ function deleteProc(id) {
 }
 
 // ============================================================
+// CONTRATOS
+// ============================================================
+const CATEGORIAS_CONTR = ['Clientes','Prestação de Serviço','SCP/SPE'];
+// Os três quadros do Monday usam rótulos próprios ("FINALIZADA" em Clientes,
+// "FINALIZADO" em Obra) — a lista cobre todos para que editar um contrato
+// sincronizado não perca o status original.
+const STATUS_CONTR     = ['Pendente','EM ESPERA','EM CONFECÇÃO','FINALIZADA','FINALIZADO','Cancelado'];
+
+function renderContratos() {
+  const comite = DB.getActiveComite();
+  const cid    = comite?.id;
+  if (!cid) { noComiteAlert(); return; }
+
+  const todos = DB.forComite('contratos', cid);
+  // Aba ativa: 'todos' ou uma das categorias sincronizadas do Monday.
+  const tabAtiva = window._contTab || 'todos';
+  const lista = tabAtiva === 'todos' ? todos : todos.filter(c => c.categoria === tabAtiva);
+
+  // Tempo médio de confecção considera só contratos já concluídos.
+  const comTempo = lista.filter(c => typeof c.tempo_dias === 'number' && c.tempo_dias >= 0);
+  const tempoMedio = comTempo.length
+    ? Math.round(comTempo.reduce((s,c) => s + c.tempo_dias, 0) / comTempo.length)
+    : null;
+  // Os quadros usam rótulos diferentes para "pronto": FINALIZADA/FINALIZADO
+  // (Clientes/Obra) e Concluído (SCP/SPE).
+  const finalizados = lista.filter(c => /FINALIZAD|CONCLU/i.test(c.status || '')).length;
+  const ressalvas   = lista.filter(c => c.ressalva && !/EM CONFORMIDADE/i.test(c.ressalva)).length;
+
+  const tabBtn = (key, label) => {
+    const n = key === 'todos' ? todos.length : todos.filter(c => c.categoria === key).length;
+    return `<button class="tab-btn ${tabAtiva===key?'active':''}"
+      onclick="window._contTab='${esc(key)}';renderContratos()">${esc(label)} (${n})</button>`;
+  };
+
+  setView(`
+    <div class="page-header">
+      <div><div class="page-title">📄 Contratos</div><div class="page-sub">${esc(comite.label)}</div></div>
+      <div class="page-actions"><button class="btn btn-primary" onclick="openContrModal()">+ Novo Contrato</button></div>
+    </div>
+    <div class="content">
+      <div class="tabs">
+        ${tabBtn('todos','Todos')}
+        ${CATEGORIAS_CONTR.map(c => tabBtn(c, c)).join('')}
+      </div>
+      <div class="kpi-grid">
+        <div class="kpi-card"><div class="kpi-label">Total</div><div class="kpi-value">${lista.length}</div></div>
+        <div class="kpi-card green"><div class="kpi-label">Finalizados</div><div class="kpi-value">${finalizados}</div></div>
+        <div class="kpi-card blue"><div class="kpi-label">Tempo Médio</div><div class="kpi-value">${tempoMedio!==null?tempoMedio+'d':'—'}</div></div>
+        <div class="kpi-card ${ressalvas?'yellow':'gray'}"><div class="kpi-label">Com Ressalva</div><div class="kpi-value">${ressalvas}</div></div>
+      </div>
+      <div class="charts-grid">
+        <div class="chart-card"><div class="chart-title">Por Tipo</div><div class="chart-wrap"><canvas id="ch_contr_tipo"></canvas></div></div>
+        <div class="chart-card"><div class="chart-title">Por Empreendimento</div><div class="chart-wrap"><canvas id="ch_contr_empr"></canvas></div></div>
+        ${tabAtiva==='todos'?`<div class="chart-card"><div class="chart-title">Por Categoria</div><div class="chart-wrap"><canvas id="ch_contr_cat"></canvas></div></div>`:''}
+        <div class="chart-card"><div class="chart-title">Status de Confecção</div><div class="chart-wrap"><canvas id="ch_contr_status"></canvas></div></div>
+      </div>
+      <div class="table-wrap">
+        <table><thead><tr>
+          <th>Objeto</th><th>Empreendimento</th><th>Categoria</th><th>Tipo</th>
+          <th>Status</th><th>Solicitação</th><th>Dias</th><th>Ações</th>
+        </tr></thead><tbody>
+        ${lista.map(c => `<tr>
+          <td>${c.link
+                ? `<a href="${esc(c.link)}" target="_blank" rel="noopener">${esc(c.objeto||'—')}</a>`
+                : esc(c.objeto||'—')}</td>
+          <td><span class="empr-chip">${esc(emprName(c.empreendimento_id))}</span></td>
+          <td><small>${esc(c.categoria||'—')}</small></td>
+          <td><span title="${esc(c.tipo||'')}">${badge(c.tipo,'purple')}</span></td>
+          <td>${badge(c.status)}</td>
+          <td><small>${esc(fmtDate(c.data_solicitacao))}</small></td>
+          <td>${typeof c.tempo_dias==='number'?c.tempo_dias:'—'}</td>
+          <td>
+            <button class="btn btn-ghost btn-sm" onclick="openContrModal('${c.id}')">✏️</button>
+            <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteContr('${c.id}')">🗑️</button>
+          </td>
+        </tr>`).join('') || '<tr class="empty-row"><td colspan="8">Nenhum contrato no mês — use 🔄 Sincronizar Monday</td></tr>'}
+        </tbody></table>
+      </div>
+    </div>
+  `);
+
+  setTimeout(() => {
+    const tp = mapToLabelData(countBy(lista, 'tipo'));
+    ChartManager.donut('ch_contr_tipo', tp.labels, tp.data, {pie:true});
+    const ep = mapToLabelData(countBy(lista.map(c=>({...c,_en:emprName(c.empreendimento_id)})),'_en'));
+    ChartManager.donut('ch_contr_empr', ep.labels, ep.data);
+    if (tabAtiva === 'todos') {
+      const ct = mapToLabelData(countBy(lista, 'categoria'));
+      ChartManager.donut('ch_contr_cat', ct.labels, ct.data, {pie:true});
+    }
+    const st = mapToLabelData(countBy(lista, 'status'));
+    ChartManager.donut('ch_contr_status', st.labels, st.data, {pie:true});
+  }, 50);
+}
+
+function openContrModal(id) {
+  const c   = id ? DB.getById('contratos', id) : null;
+  const cid = DB.getActiveComite()?.id;
+  // Se o status/categoria vindos do Monday não estiverem na lista conhecida,
+  // o <select> abriria sem seleção e salvar rebaixaria o valor para a primeira
+  // opção. Inclui o valor atual para preservá-lo.
+  const withCurrent = (arr, val) => (val && !arr.includes(val)) ? [val, ...arr] : arr;
+  const statusList = withCurrent(STATUS_CONTR, c?.status);
+  const catList    = withCurrent(CATEGORIAS_CONTR, c?.categoria);
+  openModal(c ? 'Editar Contrato' : 'Novo Contrato',
+    `<div class="form-grid">
+      <div class="form-group span-full"><label class="field-label">Objeto *</label>
+        <input type="text" id="ct_objeto" value="${esc(c?.objeto||'')}" placeholder="Ex: VERANO 204B" /></div>
+      <div class="form-group"><label class="field-label">Empreendimento *</label>
+        <select id="ct_empr">${emprOptions(c?.empreendimento_id)}</select></div>
+      <div class="form-group"><label class="field-label">Categoria</label>
+        <select id="ct_cat">${opts(catList, c?.categoria||'Clientes')}</select></div>
+      <div class="form-group"><label class="field-label">Tipo</label>
+        <input type="text" id="ct_tipo" value="${esc(c?.tipo||'')}" placeholder="Ex: ADITIVO DE RENEGOCIAÇÃO" /></div>
+      <div class="form-group"><label class="field-label">Status</label>
+        <select id="ct_status">${opts(statusList, c?.status||'Pendente')}</select></div>
+      <div class="form-group"><label class="field-label">Data de Solicitação</label>
+        <input type="date" id="ct_solic" value="${esc(c?.data_solicitacao||'')}" /></div>
+      <div class="form-group"><label class="field-label">Data de Conclusão</label>
+        <input type="date" id="ct_concl" value="${esc(c?.data_conclusao||'')}" /></div>
+      <div class="form-group"><label class="field-label">Responsável</label>
+        <input type="text" id="ct_resp" value="${esc(c?.responsavel||'')}" /></div>
+      <div class="form-group"><label class="field-label">Ressalva</label>
+        <input type="text" id="ct_ressalva" value="${esc(c?.ressalva||'')}" /></div>
+    </div>`,
+    `<button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
+     <button class="btn btn-primary" onclick="saveContr('${id||''}','${cid}')">Salvar</button>`
+  );
+}
+
+function saveContr(id, cid) {
+  const solic = document.getElementById('ct_solic').value;
+  const concl = document.getElementById('ct_concl').value;
+  const d = {
+    objeto:            document.getElementById('ct_objeto').value.trim(),
+    empreendimento_id: document.getElementById('ct_empr').value,
+    categoria:         document.getElementById('ct_cat').value,
+    tipo:              document.getElementById('ct_tipo').value.trim(),
+    status:            document.getElementById('ct_status').value,
+    data_solicitacao:  solic || null,
+    data_conclusao:    concl || null,
+    tempo_dias:        (solic && concl) ? daysBetween(solic, concl) : null,
+    responsavel:       document.getElementById('ct_resp').value.trim(),
+    ressalva:          document.getElementById('ct_ressalva').value.trim(),
+  };
+  if (!d.objeto) { toast('Objeto obrigatório','error'); return; }
+  if (!d.empreendimento_id) { toast('Empreendimento obrigatório','error'); return; }
+  if (id) { DB.update('contratos', id, d); toast('Contrato atualizado!','success'); }
+  else { DB.insert('contratos', {comite_id:cid, ...d}); toast('Contrato adicionado!','success'); }
+  closeModal(); renderContratos();
+}
+
+function deleteContr(id) {
+  confirmDelete('Excluir este contrato?', `()=>{ DB.remove('contratos','${id}'); toast('Excluído!'); renderContratos(); }`);
+}
+
+// ============================================================
 // UNIDADES / HABITE-SE
 // ============================================================
 function renderUnidades() {
