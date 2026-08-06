@@ -220,11 +220,17 @@ export type EstagioNotificacao = 'Resolvida' | 'Encerrada' | 'Em Andamento';
  *
  * Vieram dos rotulos REAIS do board 5630368737 (`Distratado`, 27 ocorrencias;
  * `A Retomar`, 3), apontados na homologacao e decididos pela Coevo em
- * 06/08/2026. `Recompra` e da mesma familia e ficou de fora de proposito: a
- * pergunta nao foi feita sobre ela, e nenhuma das 7 tem data de resolucao hoje.
+ * 06/08/2026.
  *
  * `Unidade retomada` (passado) continua como resolucao, e nao como encerramento:
  * ali a retomada se concretizou. `A Retomar` (futuro) e o caso encaminhado.
+ *
+ * `Recompra` NAO entra aqui, e a decisao e deliberada. A recompra so termina
+ * quando a unidade encontra um NOVO comprador e aquele processo de compra se
+ * conclui — o que leva de seis meses a dois anos. Ate la a Coevo continua
+ * acompanhando o caso, e a unidade segue vinculada ao numero do cliente
+ * anterior. Trata-la como terminal encerraria na origem um processo em curso.
+ * Regra em docs/REGRA-SAIDA-DE-CLIENTE.md.
  */
 const ESTAGIOS_ENCERRAM_SEM_RESOLVER = [/distratad/i, /^\s*a\s+retomar/i];
 

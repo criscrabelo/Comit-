@@ -1133,3 +1133,48 @@ O achado das colunas homônimas levantou a dúvida sobre o quadro já aprovado.
 Verificado no relatório de evidências: o board 5959705266 tem **uma única**
 coluna `'MEU TRABALHO'`. A homologação aprovada está correta; a detecção de
 ambiguidade é proteção prospectiva.
+
+## B17.3 — Recompra: por que ela NÃO é estágio terminal
+
+**Data:** 2026-08-06 · Regra de negócio explicada pela Cristiane Rabelo.
+
+Eu havia proposto incluir `Recompra` entre os estágios que encerram a
+notificação, junto com `Distratado` e `A Retomar`. **A proposta estava
+errada**, e a explicação do negócio mostrou por quê.
+
+Recompra não é uma variação do distrato — é um terceiro caminho, com gatilho,
+responsável e ciclo próprios. A Coevo assume o financiamento do cliente,
+devolve um valor avaliado caso a caso, e a unidade retorna. Mas:
+
+> Para finalizar a recompra é preciso conseguir um novo comprador para a
+> unidade, e esse novo comprador tem que encerrar todo o processo de compra —
+> o que pode demorar seis meses, um ano ou até dois anos.
+
+Ou seja: registrar a recompra é o **começo** do acompanhamento, não o fim.
+Tratá-la como terminal tiraria a unidade do acompanhamento justamente durante
+o período em que ela precisa ser acompanhada.
+
+`Recompra` continua `Em Andamento`. Nenhuma alteração de comportamento — o que
+mudou foi o *motivo* estar registrado, com teste que falha se alguém repetir a
+proposta.
+
+Regra completa em `docs/REGRA-SAIDA-DE-CLIENTE.md`, incluindo a árvore de
+decisão entre distrato, retomada e recompra.
+
+### Duas consequências registradas, ainda não tratadas
+
+1. **A unidade fica no nome de quem já saiu** até a revenda. No cruzamento
+   Monday × Sienge isso vai aparecer como divergência de titularidade. É
+   **estado legítimo**, não defeito — precisa ser reconhecido como tal antes
+   que alguém "corrija" o cadastro e apague o vínculo.
+2. **Recompra envelhece de forma diferente.** Um caso em `Aguardando pagamento`
+   há 400 dias é problema; em `Recompra` há 400 dias é normal. Hoje os dois
+   ficam juntos em `Em Andamento`, então o tempo médio de notificações abertas
+   sobe por causa das recompras, e um caso de cobrança realmente esquecido fica
+   escondido no meio delas. Proposta de segmentar nos indicadores — não
+   aplicada, depende de quem lê o indicador no comitê.
+
+### Campos que o modelo não tem
+
+Valor devolvido ao cliente e financiamento assumido pela Coevo. Nenhum bloqueia
+as homologações; os dois viram pergunta na etapa de indicadores.

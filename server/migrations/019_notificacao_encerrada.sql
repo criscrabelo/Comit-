@@ -18,9 +18,10 @@
 -- entrar na contagem de resolvidas.
 --
 -- Decisao da Coevo em 06/08/2026, sobre os dois rotulos apontados na
--- homologacao. `Recompra` (7 ocorrencias) e da mesma familia e NAO foi
--- alterada: nenhuma das 7 tem data de resolucao hoje, e mexer numa regra de
--- indicador sem a pergunta ter sido feita e exatamente o que nao se faz aqui.
+-- homologacao. `Recompra` NAO entra: ela so termina quando a unidade encontra
+-- um novo comprador e aquele processo se conclui, o que leva de seis meses a
+-- dois anos — e ate la o caso continua sendo acompanhado. Ver
+-- docs/REGRA-SAIDA-DE-CLIENTE.md.
 -- ============================================================================
 
 ALTER TABLE notificacoes DROP CONSTRAINT IF EXISTS notificacao_solucao_coerente;

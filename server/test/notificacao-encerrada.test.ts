@@ -15,7 +15,8 @@
  *      caso ficou aberto passa a ser mensurável.
  *   3. **`Em Andamento` continua sem data**, e o banco recusa — a regra vive
  *      no CHECK, não na convenção.
- *   4. **`Recompra` NÃO foi alterada.** A pergunta não foi feita sobre ela.
+ *   4. **`Recompra` NÃO é terminal.** Ela só termina quando a unidade encontra
+ *      novo comprador e aquele processo se conclui — seis meses a dois anos.
  */
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { db, fecharBanco } from '../src/db/pool.js';
@@ -47,9 +48,13 @@ describe('normalizarEstagio — os três estados', () => {
     }
   });
 
-  it('`Recompra` NÃO foi alterada — a pergunta não foi feita sobre ela', () => {
-    // Da mesma familia de `Distratado`, mas mexer numa regra de indicador sem
-    // a decisao ter sido tomada e exatamente o que nao se faz aqui.
+  it('`Recompra` NÃO é terminal — o caso segue aberto por até dois anos', () => {
+    // A recompra so termina quando a unidade encontra um NOVO comprador e
+    // aquele processo de compra se conclui. Ate la a Coevo continua
+    // acompanhando, e a unidade segue vinculada ao numero do cliente anterior.
+    // Trata-la como encerrada tiraria do acompanhamento justamente o periodo em
+    // que ela precisa ser acompanhada.
+    // Regra confirmada pela Coevo em 06/08/2026 — docs/REGRA-SAIDA-DE-CLIENTE.md.
     expect(normalizarEstagio('Recompra')).toBe('Em Andamento');
     expect(normalizarEstagio('RE-COMPRA')).toBe('Em Andamento');
   });
