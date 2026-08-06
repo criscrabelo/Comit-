@@ -183,7 +183,13 @@ export const QUADROS: Record<ChaveQuadro, DefinicaoQuadro> = {
       motivo: ['MOTIVO', 'MOTIVO DO DISTRATO'],
       equipe: ['EQUIPE', 'RESPONSÁVEL', 'RESPONSAVEL'],
       data_solicitacao: ['DATA DA SOLICITAÇÃO', 'DATA DA SOLICITACAO', 'DATA SOLICITAÇÃO'],
-      data_venda: ['DATA DA VENDA', 'DATA VENDA', 'DATA DA REVENDA', 'REVENDA', 'NOVA VENDA'],
+      // AQUI `data_venda` e a venda ORIGINAL ao cliente que sai — a formula de
+      // `PERIODO (DIAS)` no proprio quadro prova. Titulos de REVENDA foram
+      // acrescentados por engano numa rodada anterior e removidos: se um dia
+      // existir uma coluna de revenda neste quadro, ela entraria aqui com o
+      // significado trocado, e o indicador leria uma data pela outra sem erro
+      // aparente. Ver a nota de modelagem em docs/REGRA-SAIDA-DE-CLIENTE.md.
+      data_venda: ['DATA DA VENDA', 'DATA VENDA'],
       data_conclusao: ['DATA DO DISTRATO', 'DATA DISTRATO', 'DATA DA CONCLUSÃO', 'CONCLUSÃO'],
       tempo_dias: ['TEMPO', 'DIAS', 'TOTAL DE DIAS'],
       // Ligacao para o quadro de notificacoes. NAO existe no board 18404493605
