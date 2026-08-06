@@ -127,9 +127,11 @@ export async function criarApp(): Promise<FastifyInstance> {
       root: raizDaInterface,
       // Lista fechada: sem isto, o curinga serviria `server/`, `docs/` e o
       // proprio `.git` para quem pedisse.
+      // `js/vendor/` guarda bibliotecas empacotadas localmente (Chart.js),
+      // eliminando o CDN externo da pagina que exibe dado de cliente.
       allowedPath: (caminho) =>
         caminho === '/' ||
-        /^\/(index\.html|js\/[\w.-]+\.js|css\/[\w.-]+\.css)$/.test(caminho),
+        /^\/(index\.html|js\/(vendor\/)?[\w.-]+\.js|css\/[\w.-]+\.css)$/.test(caminho),
       index: ['index.html'],
       // A SPA nao usa rotas de historico; um caminho desconhecido deve dar 404,
       // nao devolver a pagina inteira com status 200.
