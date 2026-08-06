@@ -697,11 +697,18 @@ PEND = [
      "de custo. Avaliar licenças individuais ou plano de equipe, que costuma sair "
      "mais barato por usuário e separa os históricos.",
      "Cristiane + Vitor", "LEVANTAR", "TI"),
-    ("6", "Office 365 — nº de licenças",
-     "A observação diz '10 licenças de software – 60 usuários'. Os dois números "
-     "não fecham entre si.",
-     "Afeta o valor orçado da linha e a projeção de crescimento.",
-     "Cristiane", "EM ABERTO", "TI"),
+    ("6", "Office 365 — CONFIRMAR se R$ 440 é por licença ou o total",
+     "A gestora esclareceu a estrutura: cada licença atende 6 funcionários e "
+     "custa R$ 440. Com 10 licenças, fecham os 60 usuários da ficha. Falta "
+     "confirmar UMA coisa: os R$ 440 são o valor de CADA licença ou o total pago "
+     "por mês? Não há lançamento de Microsoft/Office no extrato de jan a jul, o "
+     "que também precisa ser explicado — é custo mensal e deveria aparecer.",
+     "A diferença entre as duas leituras é enorme. Se R$ 440 for o total: "
+     "R$ 5.280/ano, R$ 780 acima dos R$ 4.500 orçados — ajuste pequeno. Se for "
+     "por licença: 10 x R$ 440 = R$ 4.400/mês, R$ 52.800/ano, R$ 48.300 acima do "
+     "orçado — sozinho maior que todas as despesas orçadas do TI, e o orçamento "
+     "da área estaria comprometido. Confirmar antes da reunião.",
+     "Cristiane", "CONFIRMAR", "TI"),
     ("7", "Competência x caixa — DECIDIR O REGIME",
      "Confirmado pela gestora: TODOS os PJs das duas áreas prestam o serviço e "
      "recebem no mês seguinte — no Jurídico, Miguel, Thamar e Dra. Michele; no "
