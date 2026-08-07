@@ -145,8 +145,12 @@ LINHAS = [
     ("TI-D05", "TI", "Despesas", "Pacote Office 365",
      "Licenças de software (conferir nº de licenças x usuários) — RATEIO A DEFINIR", "",
      "Licenças de Softwares", _12(375.00)),
-    ("TI-D06", "TI", "Despesas", "Projeto Melhoria de Infraestrutura - Sala de Reunião",
-     "Cadeiras, cafeteira, copos, canetas, blocos personalizados, câmeras, microfones etc.", "",
+    # Decidido executar so o funcional: cameras, microfones e cadeiras. Consumo e
+    # brinde (cafeteira, copos, canetas, blocos) saem para o Administrativo.
+    ("TI-D06", "TI", "Despesas", "Projeto Sala de Reunião — itens funcionais",
+     "Câmeras, microfones e cadeiras. DECIDIDO executar só o funcional; cafeteira, "
+     "copos, canetas e blocos personalizados saem para o Administrativo. Valor a "
+     "rever quando vier a quebra entre funcional e consumo", "",
      "Móveis e Utensílios", _12(2800.00)),
     ("TI-D07", "TI", "Despesas", "Cursos e Treinamentos", "", "",
      "Custeio de Treinamento", _12(200.00)),
@@ -615,23 +619,23 @@ PEND = [
      "despesa que não é dele e aparece caro. Tratar os dois blocos com o mesmo "
      "critério de rateio, para não criar duas regras diferentes.",
      "Cristiane + Controladoria", "EM ABERTO", "TI"),
-    ("5", "Sala de Reunião — EXECUTAR, PAUSAR OU REPENSAR?",
-     "Projeto orçado em R$ 2.800/mês × 12 = R$ 33.600, classificado em Móveis e "
-     "Utensílios, sem nenhum lançamento até jul/26. A gestora levanta que a sala "
-     "já não comporta todas as pessoas, então investir na configuração atual pode "
-     "não resolver o problema real. Três caminhos: executar como está, pausar, ou "
-     "repensar a solução (outro espaço, formato híbrido, mais de uma sala).",
-     "É a maior despesa isolada do TI e 38% de tudo que a área tem orçado em "
-     "despesas. Se pausar, são R$ 33.600 liberados — mais que a economia atual do "
-     "departamento. Decidir antes de comprometer o valor. Se a decisão for "
-     "executar, definir também se é compra pontual ou parcelada: hoje está "
-     "diluída linearmente, e se for compra única o desvio mensal vai acusar "
-     "economia falsa todo mês até a compra e um pico no mês em que ocorrer. "
-     "SEPARAR OS ITENS: a descrição na ficha mistura infraestrutura de reunião "
-     "(câmeras, microfones, cadeiras) com material de consumo e brindes (canetas, "
-     "blocos personalizados, copos, cafeteira). O segundo grupo é papelaria e "
-     "deveria estar no Administrativo, não no TI (item U).",
-     "Cristiane + Diretoria", "PAUTA REUNIÃO", "TI"),
+    ("5", "Sala de Reunião — DECIDIDO: executar só o funcional",
+     "DECISÃO DA GESTORA: mexer somente no que for funcional. Entram os itens de "
+     "infraestrutura de reunião — câmeras, microfones e cadeiras. Ficam de fora "
+     "cafeteira, copos, canetas e blocos personalizados, que são consumo e "
+     "brinde, pertencem ao Administrativo (item U) e não resolvem o problema da "
+     "sala. O orçamento atual é de R$ 2.800/mês, R$ 33.600 no ano, sem nenhum "
+     "lançamento até jul/26.",
+     "FALTA A QUEBRA DO VALOR: quanto dos R$ 33.600 é funcional e quanto é "
+     "consumo. Só com isso dá para ajustar a linha e liberar a diferença. "
+     "Levantar orçamento dos itens funcionais antes de comprar. Definir também se "
+     "é compra pontual ou parcelada — hoje está diluída linearmente em 12 meses, "
+     "e se for compra única o desvio vai acusar economia falsa todo mês até a "
+     "compra e um pico no mês em que ocorrer. Segue de pé a observação da "
+     "gestora de que a sala já não comporta todas as pessoas: o funcional "
+     "melhora a qualidade da reunião, não a capacidade — se o problema de espaço "
+     "precisar de solução, é projeto à parte.",
+     "Cristiane", "QUEBRAR VALOR", "TI"),
     ("R", "Notebooks — TI compra, mas não enxerga o saldo das áreas",
      "Cada área tem a própria linha de orçamento para notebooks, mas é o TI que "
      "recebe a solicitação e executa a compra quando surge a necessidade. Hoje o "
