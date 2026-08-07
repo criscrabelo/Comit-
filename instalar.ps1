@@ -43,6 +43,21 @@ function CarregarEnv($caminho) {
   }
 }
 
+# Roda o psql sem deixar o PowerShell transformar avisos em explosao.
+#
+# Com ErrorActionPreference = Stop, qualquer byte que um programa nativo
+# escreva na saida de erro derruba o script com um NativeCommandError ilegivel,
+# antes de a gente conseguir mostrar uma mensagem decente. Uma senha errada
+# aparecia como chuva vermelha em vez de "senha errada, tente de novo".
+function Psql {
+  $eap = $ErrorActionPreference
+  $ErrorActionPreference = 'Continue'
+  $saida = & psql @args 2>$null
+  $script:PsqlFalhou = ($LASTEXITCODE -ne 0)
+  $ErrorActionPreference = $eap
+  return $saida
+}
+
 function Titulo($t) { Write-Host ""; Write-Host "  $t" -ForegroundColor Cyan }
 function Ok($t)     { Write-Host "  [ok] $t" -ForegroundColor Green }
 function Aviso($t)  { Write-Host "  [atencao] $t" -ForegroundColor Yellow }
@@ -104,24 +119,38 @@ Titulo "3/7  Conexao com o banco"
 Write-Host "  Informe a senha do usuario postgres, definida na instalacao do"
 Write-Host "  PostgreSQL. Ela nao aparece na tela enquanto voce digita."
 Write-Host ""
-$segura = Read-Host "  Senha do postgres" -AsSecureString
-$senhaPg = [Runtime.InteropServices.Marshal]::PtrToStringAuto(
-  [Runtime.InteropServices.Marshal]::SecureStringToBSTR($segura))
-if ([string]::IsNullOrWhiteSpace($senhaPg)) { Parar "Senha vazia." }
-
-$env:PGPASSWORD = $senhaPg
-& psql -U postgres -h localhost -p 5432 -tAc "select 1" 2>&1 | Out-Null
-if ($LASTEXITCODE -ne 0) {
+# Tres tentativas antes de desistir: senha e a coisa que mais se erra, e
+# mandar a pessoa rodar o instalador inteiro de novo por uma tecla trocada
+# seria puni-la pelo nosso fluxo.
+$conectou = $false
+for ($tentativa = 1; $tentativa -le 3; $tentativa++) {
+  $segura = Read-Host "  Senha do postgres" -AsSecureString
+  $senhaPg = [Runtime.InteropServices.Marshal]::PtrToStringAuto(
+    [Runtime.InteropServices.Marshal]::SecureStringToBSTR($segura))
+  if ([string]::IsNullOrWhiteSpace($senhaPg)) {
+    Aviso "Senha vazia. Tente de novo."
+    continue
+  }
+  $env:PGPASSWORD = $senhaPg
+  Psql -U postgres -h localhost -p 5432 -tAc "select 1" | Out-Null
+  if (-not $PsqlFalhou) { $conectou = $true; break }
+  Aviso "O PostgreSQL recusou essa senha. Ela e a que voce definiu na tela"
+  Write-Host "             Password do instalador do PostgreSQL - nao e a senha do"
+  Write-Host "             Windows nem a da plataforma."
+  Write-Host ""
+}
+if (-not $conectou) {
   $env:PGPASSWORD = $null
-  Parar "Nao consegui conectar ao PostgreSQL com essa senha. Ela nao e a senha do Windows nem a da plataforma - e a que voce definiu na tela Password do instalador do PostgreSQL."
+  Parar "Tres tentativas sem sucesso. Se a senha do postgres se perdeu, me avise no chat - existe um caminho para redefini-la sem reinstalar."
 }
 Ok "Conectado"
 
 # --- 4. Banco patrono --------------------------------------------------------
 Titulo "4/7  Banco de dados"
-$existe = (& psql -U postgres -h localhost -p 5432 -tAc "select count(*) from pg_database where datname='patrono'").Trim()
-if ($existe -eq '0') {
-  & psql -U postgres -h localhost -p 5432 -c "create database patrono" | Out-Null
+$existe = (Psql -U postgres -h localhost -p 5432 -tAc "select count(*) from pg_database where datname='patrono'") | Out-String
+if ($existe.Trim() -eq '0') {
+  Psql -U postgres -h localhost -p 5432 -c "create database patrono" | Out-Null
+  if ($PsqlFalhou) { Parar "Nao consegui criar o banco patrono." }
   Ok "Banco patrono criado"
 } else {
   Ok "Banco patrono ja existia, preservado"
@@ -185,7 +214,7 @@ try {
 }
 
 # --- 7. Primeiro usuario -----------------------------------------------------
-$quantos = (& psql -U postgres -h localhost -p 5432 -d patrono -tAc "select count(*) from usuarios").Trim()
+$quantos = ((Psql -U postgres -h localhost -p 5432 -d patrono -tAc "select count(*) from usuarios") | Out-String).Trim()
 if ($quantos -eq '0') {
   Titulo "Seu usuario"
   Write-Host "  Agora crie o usuario com que voce vai entrar na plataforma."
