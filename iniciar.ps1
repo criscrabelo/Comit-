@@ -48,7 +48,11 @@ Write-Host ""
 Start-Process 'http://localhost:3131'
 
 Set-Location (Join-Path $PSScriptRoot 'server')
-& node dist\server.js
+# --env-file e o que faz o servidor enxergar o server\.env. Nada no projeto
+# carrega esse arquivo sozinho: em producao as variaveis vem da plataforma de
+# hospedagem. Sem esta opcao, o servidor sobe sem banco, sem Monday e sem
+# Sienge, e o erro so aparece na primeira tela que precisa de dado.
+& node --env-file=.env dist\server.js
 
 Write-Host ""
 Write-Host "  A plataforma foi encerrada."

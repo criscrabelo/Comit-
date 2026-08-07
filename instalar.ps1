@@ -26,6 +26,23 @@
 $ErrorActionPreference = 'Stop'
 Set-Location -LiteralPath $PSScriptRoot
 
+# Le o server\.env e joga os valores no ambiente deste processo.
+#
+# Faz falta porque nada no projeto carrega .env sozinho: em producao as
+# variaveis vem da plataforma de hospedagem, e no desenvolvimento vinham da
+# linha de comando. Numa maquina Windows nao ha nem uma coisa nem outra, e sem
+# isto as migracoes e a criacao do usuario nao enxergam o banco.
+function CarregarEnv($caminho) {
+  foreach ($linha in Get-Content -LiteralPath $caminho -Encoding UTF8) {
+    if ($linha -match '^\s*#') { continue }
+    if ($linha -match '^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$') {
+      $nome  = $Matches[1]
+      $valor = $Matches[2].Trim().Trim('"').Trim("'")
+      if ($valor -ne '') { Set-Item -LiteralPath "Env:$nome" -Value $valor }
+    }
+  }
+}
+
 function Titulo($t) { Write-Host ""; Write-Host "  $t" -ForegroundColor Cyan }
 function Ok($t)     { Write-Host "  [ok] $t" -ForegroundColor Green }
 function Aviso($t)  { Write-Host "  [atencao] $t" -ForegroundColor Yellow }
@@ -134,6 +151,13 @@ if (Test-Path $envPath) {
   Write-Host "           A plataforma sobe assim, mas nao sincroniza e nao gera backup."
 }
 $senhaPg = $null
+
+# O .env so vale a partir daqui: quem aplica as migracoes e quem cria o usuario
+# le a configuracao do ambiente, nao do arquivo.
+CarregarEnv $envPath
+if (-not $env:DATABASE_URL) {
+  Parar "DATABASE_URL nao foi encontrada em server\.env. Apague esse arquivo e rode o instalador de novo para ele ser recriado."
+}
 
 # --- 6. Dependencias, migracoes e compilacao ---------------------------------
 Titulo "6/7  Dependencias (esta e a parte demorada, alguns minutos)"
