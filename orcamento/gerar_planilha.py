@@ -230,6 +230,8 @@ REALIZADO = {
     "JUR-D05": (_r7(0.00), FONTE_JUR, "Sem gasto no período"),
     "JUR-D06": ([0.00] * 7 + [None] * 5, FONTE_JUR,
                 "Sem parcela no 1º semestre; bonificação de ago/26 a confirmar"),
+    # AnyDesk ainda nao contratado: zero nos meses fechados, nao falta de lancamento.
+    "TI-D14": (_r7(0.00), FONTE_JUR, "Ainda não contratado — sem custo até jul/26"),
     # Equipe de TI — informado pela gestora em 05/08/26. Despesas ainda pendentes.
     "TI-E01": ([None] * 12, "",
                "PREENCHER com o CUSTO TOTAL. Bruto: R$ 2.570,52/mês até jul e "
@@ -694,11 +696,12 @@ PEND = [
     ("V", "AnyDesk — contratação prevista, definir valor",
      "Licença de acesso remoto que será contratada e não constava na ficha. Linha "
      "criada com planejado zerado, à espera do valor e do mês de início.",
-     "Não há sobreposição com o 'Monitor Remoto' do extrato: aquele credor é o "
-     "Jonathan (J H Alves), consultor, não um software de acesso remoto. O "
-     "AnyDesk é contratação nova e sem substituto atual. Definir valor e mês para "
-     "a linha entrar no orçamento — enquanto o planejado for zero, qualquer "
-     "lançamento aparece como 'Não orçado'.",
+     "Ainda não contratado — realizado zerado até jul/26, e não falta de "
+     "lançamento. Não há sobreposição com o 'Monitor Remoto' do extrato: aquele "
+     "credor é o Jonathan (J H Alves), consultor, não um software de acesso "
+     "remoto. É contratação nova, sem substituto atual. Definir valor e mês antes "
+     "de assinar — enquanto o planejado for zero, qualquer lançamento aparece "
+     "como 'Não orçado'.",
      "Cristiane", "DEFINIR VALOR", "TI"),
     ("W", "Vitor (diretoria) — Claude ou GPT? PERGUNTAR",
      "Confirmar com o Vitor se ele seguirá usando o Claude, o GPT, ou os dois. "
