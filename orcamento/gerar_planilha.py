@@ -696,14 +696,17 @@ PEND = [
      "equipamento porque há decisão TÉCNICA envolvida — se o notebook precisa "
      "de troca ou só de formatação, se a tela quebrou por defeito ou por queda. "
      "Não existe decisão técnica em caneta e bloco.",
-     "Três diferenças separam as duas coisas: (1) papelaria acaba, não quebra, "
-     "então a regra de troca 1x1 não se aplica — o controle é de estoque por "
-     "ponto de pedido, outra lógica; (2) não há patrimônio nem número de série "
-     "para rastrear item a item; (3) o custo de controlar uma caneta é maior que "
-     "a caneta. Se papelaria estiver caindo no orçamento do TI por motivo "
-     "histórico, é o mesmo caso do Adapta (item Q): classificação errada, "
-     "corrigir na origem quando o centro de custo novo for aberto.",
-     "Cristiane + Administrativo", "RECOMENDAÇÃO", "TI"),
+     "CONFIRMADO pela gestora: papelaria fica no Administrativo. Três diferenças "
+     "sustentam a separação: (1) papelaria acaba, não quebra, então a regra de "
+     "troca 1x1 não se aplica — o controle é de estoque por ponto de pedido, "
+     "outra lógica; (2) não há patrimônio nem número de série para rastrear item "
+     "a item; (3) o custo de controlar uma caneta é maior que a caneta. "
+     "A VERIFICAR: se hoje há papelaria caindo no orçamento ou no centro de custo "
+     "do TI por motivo histórico. Se houver, entra no mesmo pedido de "
+     "reclassificação do Adapta (item Q). Vale conferir também os itens de "
+     "consumo que estavam no projeto da sala de reunião — cafeteira, copos, "
+     "canetas e blocos personalizados —, que por esta decisão saem do TI.",
+     "Cristiane + Administrativo", "CONFIRMADA", "TI"),
     ("V", "AnyDesk — contratação prevista, definir valor",
      "Licença de acesso remoto que será contratada e não constava na ficha. Linha "
      "criada com planejado zerado, à espera do valor e do mês de início.",
