@@ -38,9 +38,10 @@ function renderComite() {
   const retMed   = rets.length ? Math.round(rets.reduce((s,r)=>s+(r.tempo_dias||0),0)/rets.length) : null;
   const distMed  = dists.length ? Math.round(dists.reduce((s,d)=>s+(d.tempo_dias||0),0)/dists.length) : null;
 
-  // Processos — resumo do mês (POSIÇÃO/CIÊNCIA): mesmo critério da tela
+  // Processos do mês: mesmo criterio da tela (citacao/protocolo). Ver
+  // processoNoMes em js/views.js para por que nao e mais `ciencia`.
   const procAll  = procsExt.concat(procsInt);
-  const mesProc  = procAll.filter(p => (p.ciencia || '').slice(0,7) === comite.ref);
+  const mesProc  = procAll.filter(p => (p.data_citacao || '').slice(0,7) === comite.ref);
   const MESES_FULL = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
   const [cy, cmth] = (comite.ref || '').split('-').map(Number);
   const resumoLabel = (cy && cmth) ? `${MESES_FULL[cmth-1]} ${cy}` : (comite.label || 'Resumo');

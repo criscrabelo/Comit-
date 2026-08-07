@@ -162,6 +162,10 @@ body { display: flex; overflow: hidden; }
 .page-sub { font-size: 13px; color: var(--gray-500); margin-top: 2px; }
 .page-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 
+/* Linha que explica de onde saiu um numero, logo abaixo dele. Existe para
+   que cartao e aba nunca discordem em silencio. */
+.hint-line { font-size: 13px; color: var(--gray-500); margin: 4px 0 16px; line-height: 1.5; }
+
 /* ===== BUTTONS ===== */
 .btn {
   display: inline-flex; align-items: center; gap: 6px;

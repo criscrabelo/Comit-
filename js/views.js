@@ -796,6 +796,23 @@ const STATUS_PROC  = ['Acompanhando','Finalizado','Em Acordo','Baixa Definitiva'
 
 // Evolução mensal por CITAÇÃO/PROTOCOLO (data_citacao): linha do tempo contínua
 // de min→max, meses sem processo viram 0. Usado nas abas Externos e Internos.
+/**
+ * Um processo pertence ao mês do comitê pela data de CITAÇÃO/PROTOCOLO.
+ *
+ * A tela usava `p.ciencia`, campo que a API nunca devolveu: o backend traz
+ * `data_citacao` e nunca chegou a preencher a coluna `data_ciencia`. O
+ * resultado era o pior possível — a aba anunciava 250 processos e os cartões
+ * mostravam 0, sem dizer por quê.
+ *
+ * Ciência e citação são datas diferentes de verdade (divergem em metade dos
+ * processos), então isto não é equivalência: é o critério que os dados
+ * disponíveis sustentam hoje. Trazer a ciência do Monday depende de saber o
+ * título da coluna no quadro, e está registrado como pendência.
+ */
+function processoNoMes(p, ref) {
+  return (p.data_citacao || '').slice(0, 7) === ref;
+}
+
 function evolucaoMensalCitacao(items) {
   const ms = items.map(p => (p.data_citacao || '').slice(0,7))
                   .filter(m => /^\d{4}-\d{2}$/.test(m)).sort();
@@ -830,14 +847,16 @@ function renderProcessos() {
   // Aba "Resumo do mês": KPIs e gráficos somando externos + internos
   const renderResumo = (ext, int) => {
     const all = ext.concat(int);
-    // Resumo do mês: considera apenas processos com CIÊNCIA no mês do comitê ativo
-    const mes = all.filter(p => (p.ciencia || '').slice(0,7) === comite.ref);
+    const mes = all.filter(p => processoNoMes(p, comite.ref));
     return `
       <div class="kpi-grid">
         <div class="kpi-card"><div class="kpi-label">Total</div><div class="kpi-value">${mes.length}</div></div>
         <div class="kpi-card blue"><div class="kpi-label">Externos</div><div class="kpi-value">${mes.filter(p=>!p.interno).length}</div></div>
         <div class="kpi-card purple"><div class="kpi-label">Internos</div><div class="kpi-value">${mes.filter(p=>p.interno).length}</div></div>
       </div>
+      <div class="hint-line">Os cartões acima contam os <strong>${mes.length}</strong> processos com
+      citação/protocolo em ${esc(resumoLabel)}. As abas Externos e Internos trazem os
+      ${all.length} do comitê inteiro.</div>
       <div class="charts-grid">
         <div class="chart-card"><div class="chart-title">Externos × Internos</div><div class="chart-wrap"><canvas id="ch_res_ei"></canvas></div></div>
         <div class="chart-card"><div class="chart-title">Por Empreendimento</div><div class="chart-wrap"><canvas id="ch_res_emp"></canvas></div></div>
@@ -909,7 +928,7 @@ function renderProcessos() {
     </div>
     <div class="content">
       <div class="tabs">
-        <button class="tab-btn ${tabAtiva==='resumo'?'active':''}" onclick="window._procTab='resumo';renderProcessos()">${esc(resumoLabel)} (${ext.length+int.length})</button>
+        <button class="tab-btn ${tabAtiva==='resumo'?'active':''}" onclick="window._procTab='resumo';renderProcessos()">${esc(resumoLabel)} (${ext.concat(int).filter(p=>processoNoMes(p,comite.ref)).length})</button>
         <button class="tab-btn ${tabAtiva==='externos'?'active':''}" onclick="window._procTab='externos';renderProcessos()">Externos (${ext.length})</button>
         <button class="tab-btn ${tabAtiva==='internos'?'active':''}" onclick="window._procTab='internos';renderProcessos()">Internos (${int.length})</button>
       </div>
@@ -924,7 +943,7 @@ function renderProcessos() {
   setTimeout(() => {
     if (tabAtiva === 'resumo') {
       const all = ext.concat(int);
-      const mes = all.filter(p => (p.ciencia || '').slice(0,7) === comite.ref);
+      const mes = all.filter(p => processoNoMes(p, comite.ref));
       ChartManager.donut('ch_res_ei', ['Externos','Internos'],
         [mes.filter(p=>!p.interno).length, mes.filter(p=>p.interno).length], {pie:true});
       const emp = mapToLabelData(countBy(mes.map(p=>({...p,_en:emprName(p.empreendimento_id)})),'_en'));
