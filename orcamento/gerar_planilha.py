@@ -674,15 +674,17 @@ PEND = [
      "menos confortável que o definitivo, o que cria o incentivo natural para "
      "devolver e fechar a troca. A aba 'Controle de Equipamentos' já está pronta "
      "para o registro.",
-     "Além de controlar estoque, a troca 1x1 gera dado de durabilidade e padrão "
-     "de uso — se uma área quebra três vezes mais que as outras, isso aparece. "
-     "Encaminhar: (1) comunicar a regra às áreas; (2) montar o pequeno estoque de "
-     "reserva; (3) definir quantos dias o empréstimo pode durar antes de virar "
-     "'Atrasado'; (4) verificar com o financeiro se o lançamento pode nascer no "
-     "centro de custo da área solicitante — se puder, o controle de custo por "
-     "área sai do próprio SIENGE e esta aba fica só para o que ainda não virou "
-     "pagamento.",
-     "Cristiane", "IMPLANTAR", "TI"),
+     "APROVADA pela gestora, com prazo de empréstimo de 7 DIAS CORRIDOS — "
+     "passou disso, vira 'Atrasado' e o TI cobra a devolução. A aba de controle "
+     "já destaca em vermelho quem passar do prazo. Além de controlar estoque, a "
+     "troca 1x1 gera dado de durabilidade e padrão de uso: se uma área quebra "
+     "três vezes mais que as outras, isso aparece. "
+     "Falta encaminhar: (1) comunicar a regra e o prazo às áreas; (2) montar o "
+     "estoque de reserva com fio; (3) verificar com o financeiro se o lançamento "
+     "pode nascer no centro de custo da área solicitante — se puder, o controle "
+     "de custo por área sai do próprio SIENGE e esta aba fica só para o que ainda "
+     "não virou pagamento.",
+     "Cristiane + Vinicius", "APROVADA", "TI"),
     ("U", "Papelaria não é TI — manter no Administrativo",
      "Recomendação registrada: o controle de papelaria (canetas, blocos, papel, "
      "copos) deve ficar no Administrativo/Facilities, não no TI. O TI controla "
@@ -1870,6 +1872,9 @@ def gerar(DEPTO, OUT):
                            "ficar parado. O reserva é COM FIO de propósito: mais barato e "
                            "menos confortável que o definitivo, o que cria o incentivo para "
                            "devolver e fechar a troca."),
+            ("Prazo: 7 dias", "O empréstimo vale por 7 dias corridos. Passou disso, o status "
+                              "vira 'Atrasado' e o TI cobra a devolução. A coluna 'Dias em "
+                              "posse' calcula sozinha a partir da data de saída."),
             ("Sem devolução", "Se a pessoa não entrega o item antigo, a solicitação fica "
                               "'Pendente devolução' e não vira compra até ser resolvida."),
             ("Aviso de saldo", "Antes de aprovar, conferir o saldo da rubrica da área "
@@ -1929,7 +1934,8 @@ def gerar(DEPTO, OUT):
         r += 1
         header(wq, r, ["Item emprestado", "Patrimônio", "Área", "Pessoa",
                        "Saída em", "Previsão de devolução", "Devolvido em",
-                       "Status", "Dias em posse", "Observações"], fill="1E6B3A")
+                       "Status", "Dias em posse (limite: 7)", "Observações"],
+               fill="1E6B3A")
         emp_hdr = r
         for i in range(25):
             rr = r + 1 + i
@@ -1946,6 +1952,12 @@ def gerar(DEPTO, OUT):
             cc.alignment = Alignment(horizontal="center")
             cc.border = BORDA
             cc.fill = PatternFill("solid", fgColor=CINZA_L)
+        # destaca em vermelho quando passar do prazo de 7 dias
+        wq.conditional_formatting.add(
+            "I{0}:I{1}".format(emp_hdr + 1, emp_hdr + 25),
+            CellIsRule(operator="greaterThan", formula=["7"],
+                       font=Font(color="9C0006", bold=True, size=9),
+                       fill=PatternFill("solid", fgColor="FFC7CE")))
         dv_emp = DataValidation(type="list", allow_blank=True, showDropDown=False,
                                 formula1='"Emprestado,Devolvido,Atrasado,Baixado"')
         wq.add_data_validation(dv_emp)
