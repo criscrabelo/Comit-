@@ -54,12 +54,25 @@ echo  [ok] Node.js
 node -v
 
 REM ── 2. PostgreSQL ───────────────────────────────────────────────────────────
-REM  psql e pg_dump precisam estar no PATH. pg_dump e o que gera o backup; sem
-REM  ele a plataforma sobe e nunca consegue proteger o proprio dado.
+REM  psql e pg_dump precisam ser alcancaveis. pg_dump e o que gera o backup;
+REM  sem ele a plataforma sobe e nunca consegue proteger o proprio dado.
+REM
+REM  O instalador oficial do PostgreSQL para Windows NAO acrescenta a propria
+REM  pasta bin ao PATH. Mandar a pessoa editar variavel de ambiente do Windows
+REM  para instalar um sistema seria transferir a ela um problema que e nosso —
+REM  entao procuramos nos lugares onde ele realmente se instala.
+set "PGBIN="
 where psql >nul 2>&1
-if errorlevel 1 (
+if not errorlevel 1 goto :pg_encontrado
+
+for %%V in (16 17 18 15 14) do (
+  if exist "%ProgramFiles%\PostgreSQL\%%V\bin\psql.exe" (
+    if not defined PGBIN set "PGBIN=%ProgramFiles%\PostgreSQL\%%V\bin"
+  )
+)
+if not defined PGBIN (
   echo.
-  echo  [FALTA] PostgreSQL nao encontrado no PATH.
+  echo  [FALTA] PostgreSQL nao encontrado.
   echo.
   echo  Baixe o PostgreSQL 16 em:
   echo    https://www.postgresql.org/download/windows/
@@ -67,19 +80,24 @@ if errorlevel 1 (
   echo  Durante a instalacao:
   echo    - anote a senha do usuario postgres, voce vai precisar dela aqui
   echo    - mantenha a porta padrao 5432
-  echo    - marque a opcao de adicionar ao PATH, se aparecer
   echo.
   echo  Depois feche esta janela e rode este arquivo de novo.
   echo.
   pause
   exit /b 1
 )
+REM  Vale so para esta janela; nao mexemos no PATH do Windows. O caminho fica
+REM  gravado em PG_BIN no .env, que e como a plataforma acha o pg_dump depois.
+set "PATH=%PGBIN%;%PATH%"
+echo  [ok] PostgreSQL encontrado em %PGBIN%
+
+:pg_encontrado
 where pg_dump >nul 2>&1
 if errorlevel 1 (
   echo.
-  echo  [FALTA] pg_dump nao encontrado no PATH.
-  echo  A instalacao do PostgreSQL veio incompleta: sem pg_dump nao ha backup,
-  echo  e sem backup esta maquina nao pode guardar dado de cliente.
+  echo  [FALTA] pg_dump nao encontrado junto do PostgreSQL.
+  echo  A instalacao veio incompleta: sem pg_dump nao ha backup, e sem backup
+  echo  esta maquina nao pode guardar dado de cliente.
   echo.
   pause
   exit /b 1
@@ -130,12 +148,17 @@ if exist "server\.env" (
   echo       As credenciais que voce ja configurou nao foram tocadas.
 ) else (
   copy /y "server\.env.example" "server\.env" >nul
+  REM  A senha e escapada antes de entrar na URL. Uma senha com @ ou : partiria
+  REM  o endereco de conexao ao meio e o erro apareceria muito depois, sem
+  REM  ninguem ligar uma coisa a outra.
   powershell -NoProfile -Command ^
     "$p = 'server\.env';" ^
+    "$senha = [uri]::EscapeDataString($env:PGPASSWORD);" ^
     "$t = Get-Content $p -Raw -Encoding UTF8;" ^
-    "$t = $t -replace 'DATABASE_URL=.*', 'DATABASE_URL=postgres://postgres:%PGPASSWORD%@localhost:5432/patrono';" ^
+    "$t = $t -replace 'DATABASE_URL=.*', ('DATABASE_URL=postgres://postgres:' + $senha + '@localhost:5432/patrono');" ^
     "$t = $t -replace 'PORT=.*', 'PORT=3131';" ^
-    "$t = $t -replace 'BACKUP_DIRETORIO=.*', ('BACKUP_DIRETORIO=' + (Join-Path $env:USERPROFILE 'Patrono-Backups' -replace '\\','/'));" ^
+    "$t = $t -replace 'PG_BIN=.*', ('PG_BIN=' + $env:PGBIN);" ^
+    "$t = $t -replace 'BACKUP_DIRETORIO=.*', ('BACKUP_DIRETORIO=' + ((Join-Path $env:USERPROFILE 'Patrono-Backups') -replace '\\','/'));" ^
     "Set-Content $p $t -Encoding UTF8"
   echo  [ok] server\.env criado
   echo.

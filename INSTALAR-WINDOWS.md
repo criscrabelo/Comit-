@@ -29,7 +29,12 @@ permissão de administrador. Se o seu usuário não tiver, peça ao TI da Coevo.
    - **Anote a senha do usuário `postgres`.** Você vai precisar dela no passo 2
      e não há como recuperá-la depois — só reinstalando.
    - Mantenha a porta **5432**
-   - Pode desmarcar o *Stack Builder* no final, não é necessário
+   - Na tela de senha, use **apenas letras e números** — símbolos como `@` e `:`
+     têm significado dentro do endereço de conexão do banco
+   - No final o *Stack Builder* abre sozinho: feche, não é necessário
+
+Não é preciso mexer em variável de ambiente do Windows. O instalador do Patrono
+procura o PostgreSQL nos lugares onde ele realmente se instala.
 
 ---
 
