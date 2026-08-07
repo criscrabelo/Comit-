@@ -190,15 +190,14 @@ LINHAS = [
 
 # ---------------------------------------------------------------------------
 # Realizado por COMPETENCIA (mes do servico), conforme decisao da gestora.
-# Os PJs prestam no mes e recebem no seguinte, entao os valores foram deslocados
-# um mes para tras em relacao a data de pagamento: o que foi pago em fev/26 e
-# servico de jan/26, e o que foi pago em jan/26 e servico de dez/25 — fora do
-# exercicio. Consequencia: jul/26 so fecha quando sair o pagamento de ago, por
-# isso o ultimo mes completo e JUNHO. Os CLT nao foram deslocados (ver item 7).
+# PJs e CLT recebem no mes seguinte ao da prestacao, entao todos os valores foram
+# deslocados um mes para tras em relacao a data de pagamento: o que foi pago em
+# fev/26 e servico de jan/26, e o que foi pago em jan/26 e servico de dez/25 —
+# fora do exercicio. Consequencia: jul/26 so fecha quando sair o pagamento de
+# ago, por isso o ultimo mes completo e JUNHO.
 # ---------------------------------------------------------------------------
 FONTE_JUR = "Gestora, 05/08/26 — competência"
-_r7 = lambda v: [v] * 7 + [None] * 5     # CLT: sem deslocamento
-_r6 = lambda v: [v] * 6 + [None] * 6     # PJ constante, jan a jun
+_r6 = lambda v: [v] * 6 + [None] * 6     # valor constante, competencia jan a jun
 
 REALIZADO = {
     # Lancado por CAIXA (mes em que o pagamento saiu). O de ago/26 refere-se a
@@ -209,7 +208,7 @@ REALIZADO = {
     # Lancado o salario bruto, que e o dado disponivel e nao mudou no ano. Atencao:
     # o orcado desta linha e custo total, entao o desvio dela nao e comparavel —
     # faltam encargos e beneficios do lado do realizado.
-    "JUR-E02": (_r7(2886.91), FONTE_JUR,
+    "JUR-E02": (_r6(2886.91), FONTE_JUR,
                 "SALÁRIO BRUTO, sem alteração no ano. O orçado é custo total, "
                 "então o desvio desta linha NÃO é economia: faltam encargos e "
                 "benefícios (~R$ 1.938,61/mês)"),
@@ -226,7 +225,7 @@ REALIZADO = {
     "JUR-D01": ([0.00] * 12, FONTE_JUR,
                 "Nunca iniciado. Cancelado em jan/26 na fase de experimento e não "
                 "será contratado: zero o ano todo"),
-    "JUR-D02": (_r7(136.00), FONTE_JUR,
+    "JUR-D02": (_r6(136.00), FONTE_JUR,
                 "R$ 136,00/mês contra R$ 104,90 orçados. Erro no orçamento original"),
     # Anuidade 2026 em 5 parcelas de R$ 1.346,28. Por caixa: 1 parcela em jan e as
     # outras 4 em fev (R$ 150 + R$ 1.196,28 + R$ 4.038,84 de antecipacao). Por
@@ -235,12 +234,12 @@ REALIZADO = {
                 "Anuidade 2025/26 = R$ 6.731,40 em 5x de R$ 1.346,28 (venc. 01/11/25 a "
                 "01/03/26), quitada em 10/02/26. Cancelamento em ago/26, sem renovação "
                 "e sem substituto: zero de mar a dez"),
-    "JUR-D04": (_r7(970.00), FONTE_JUR, ""),
-    "JUR-D05": (_r7(0.00), FONTE_JUR, "Sem gasto no período"),
-    "JUR-D06": ([0.00] * 7 + [None] * 5, FONTE_JUR,
+    "JUR-D04": (_r6(970.00), FONTE_JUR, ""),
+    "JUR-D05": (_r6(0.00), FONTE_JUR, "Sem gasto no período"),
+    "JUR-D06": ([0.00] * 6 + [None] * 6, FONTE_JUR,
                 "Sem parcela no 1º semestre; bonificação de ago/26 a confirmar"),
     # AnyDesk ainda nao contratado: zero nos meses fechados, nao falta de lancamento.
-    "TI-D14": (_r7(0.00), FONTE_JUR, "Ainda não contratado — sem custo até jul/26"),
+    "TI-D14": (_r6(0.00), FONTE_JUR, "Ainda não contratado — sem custo até jul/26"),
     # Equipe de TI — informado pela gestora em 05/08/26. Despesas ainda pendentes.
     "TI-E01": ([None] * 12, "",
                "PREENCHER com o CUSTO TOTAL. Bruto: R$ 2.570,52/mês até jul e "
@@ -797,9 +796,9 @@ PEND = [
      "do Jonathan: por competência, o primeiro mês de serviço dele cai em abr, "
      "exatamente como informado. (3) O Monitor Remoto zerou no exercício — "
      "aquele pagamento de jan era serviço de dez/25. "
-     "A CONFERIR: os CLT (Geovanna e Vinicius) NÃO foram deslocados. Se a folha "
-     "for paga no mês seguinte, como é usual, eles também precisam deslocar. "
-     "E na Thamar, confirmar se o aumento valeu para o serviço de mar ou de abr. "
+     "Os CLT (Geovanna e Vinicius) seguem a mesma regra, confirmado pela gestora: "
+     "folha paga no mês seguinte, também deslocados. A CONFERIR apenas na Thamar: "
+     "se o aumento valeu para o serviço de mar ou de abr. "
      "Ao configurar a extração no SIENGE, travar o regime de competência e "
      "manter — trocar no meio do ano mistura critérios no histórico.",
      "Cristiane + Financeiro", "APLICADO", ""),
