@@ -184,6 +184,26 @@ const DB = (() => {
     return operacao.promessa;
   }
 
+  /**
+   * O corpo ainda cita algum id provisório que este mesmo lote vai criar?
+   *
+   * `monday-sync.js` cria o empreendimento e, na volta seguinte, as unidades e
+   * processos que o referenciam. Se os dois caírem no mesmo lote, o filho é
+   * enviado apontando para um `tmp-...` que ainda não virou uuid — e o
+   * PostgreSQL recusa com "sintaxe de entrada inválida para tipo uuid".
+   * Foi exatamente o que derrubou a primeira sincronização real.
+   *
+   * A equivalência só existe DEPOIS que o lote anterior volta do servidor.
+   * Por isso a checagem é feita no fechamento do lote, e não no envio.
+   */
+  function _citaProvisorioPendente(corpo) {
+    if (!corpo) return false;
+    return Object.keys(corpo).some((k) => {
+      const v = corpo[k];
+      return typeof v === 'string' && ehProvisorio(v) && !_equivalencias[v];
+    });
+  }
+
   function _proximoLote() {
     const primeira = _fila.shift();
     // Comitê cria competência junto e é sempre um por vez — o servidor recusa
@@ -192,6 +212,9 @@ const DB = (() => {
 
     const lote = [primeira];
     while (_fila.length && _fila[0].tipo === 'criar' && _fila[0].tabela === primeira.tabela && lote.length < 500) {
+      // Uma operação que ainda aponta para id provisório não resolvido fecha o
+      // lote aqui. Ela entra no próximo, quando a equivalência já existir.
+      if (_citaProvisorioPendente(_fila[0].corpo)) break;
       lote.push(_fila.shift());
     }
     return lote;

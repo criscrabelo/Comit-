@@ -102,7 +102,16 @@ export const ENTIDADES: Record<NomeEntidade, DefinicaoEntidade> = {
       tipo: 'tipo',
       cidade: 'cidade',
       empresa: 'empresa',
-      status: 'status',
+      // `status` NAO e mapeado de proposito. A tela usa o vocabulario
+      // "Ativo"/"Inativo"; a coluna do banco tem nove estados de ciclo de vida
+      // do empreendimento (planejamento, lancamento, em_vendas, em_construcao,
+      // entregue, carteira_em_encerramento, encerrado, inativo, arquivado) e
+      // uma restricao que recusa qualquer outro valor. Mapear um no outro
+      // faria a sincronizacao do Monday morrer em toda criacao de
+      // empreendimento — foi o que aconteceu. O status do banco e do ciclo de
+      // vida e so muda por decisao de negocio; o que a tela chama de status
+      // fica preservado em `valor_original`, integro, como todo campo sem
+      // coluna correspondente.
     },
     datas: [],
     inteiros: ['qtd_unidades'],

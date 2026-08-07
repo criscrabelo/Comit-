@@ -338,8 +338,40 @@ export async function obter(
  * As regras vivem no banco de proposito — assim valem para qualquer caminho de
  * escrita, nao so para a API. O que falta e a explicacao, e e o que isto faz.
  */
+/**
+ * Recusa id provisorio do navegador antes de ele virar erro de tipo do banco.
+ *
+ * O adaptador da tela cria `tmp-<uuid>` para exibir o registro antes da
+ * resposta do servidor, e troca pelo uuid real quando ela chega. Se um filho
+ * for enviado antes dessa troca, o PostgreSQL responde "sintaxe de entrada
+ * invalida para tipo uuid" — mensagem que nao diz nada a quem clicou em
+ * sincronizar, e que derrubou a primeira sincronizacao real na maquina da
+ * Coevo.
+ *
+ * A correcao de fato esta no adaptador, que agora fecha o lote antes de
+ * enviar um vinculo nao resolvido. Isto aqui e a rede: se escapar de novo, a
+ * mensagem diz o que aconteceu.
+ */
+function recusarIdProvisorio(colunas: Record<string, unknown>, entidade: NomeEntidade): void {
+  for (const [coluna, valor] of Object.entries(colunas)) {
+    if (typeof valor === 'string' && valor.startsWith('tmp-')) {
+      throw entradaInvalida(
+        `O campo "${coluna}" de ${entidade} aponta para um registro que ainda nao foi gravado. `
+          + 'Aguarde a sincronizacao terminar e tente de novo.',
+        { campo: coluna },
+      );
+    }
+  }
+}
+
 function traduzirErroDoBanco(erro: unknown, entidade: NomeEntidade): never {
   const mensagem = erro instanceof Error ? erro.message : String(erro);
+
+  if (/invalid input syntax for type uuid|sintaxe de entrada .* uuid/i.test(mensagem)) {
+    throw entradaInvalida(
+      `Vinculo invalido em ${entidade}: o registro referenciado ainda nao existe no banco.`,
+    );
+  }
 
   if (/notificacao_solucao_coerente/.test(mensagem)) {
     throw entradaInvalida(
@@ -402,6 +434,7 @@ export async function criar(
   const def = definicao(entidade);
 
   const colunas = paraColunas(def, corpo, false);
+  recusarIdProvisorio(colunas, entidade);
 
   if (def.temEmpreendimento) {
     exigirEmpreendimento(ctx.autorizacao, (colunas.empreendimento_id as string) ?? null);
@@ -483,6 +516,7 @@ export async function criarLote(
 
     for (const corpo of registros) {
       const colunas = paraColunas(def, corpo, false);
+      recusarIdProvisorio(colunas, entidade);
 
       if (def.temEmpreendimento) {
         exigirEmpreendimento(ctx.autorizacao, (colunas.empreendimento_id as string) ?? null);
@@ -575,6 +609,7 @@ export async function atualizar(
   }
 
   const colunas = paraColunas(def, corpo, true);
+  recusarIdProvisorio(colunas, entidade);
   // Recorte da entidade nao muda por edicao: uma retomada nao vira distrato
   // por PATCH.
   if (def.recorte) Object.assign(colunas, def.recorte);
