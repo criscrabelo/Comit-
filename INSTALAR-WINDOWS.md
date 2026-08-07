@@ -40,6 +40,10 @@ procura o PostgreSQL nos lugares onde ele realmente se instala.
 
 ## 2. Instalar o Patrono
 
+Extraia a pasta **fora do OneDrive** — por exemplo em `C:\Users\<seu usuário>\Patrono`.
+Dentro do OneDrive, a sincronização dos milhares de arquivos da instalação deixa
+tudo lento e chega a travar o instalador.
+
 1. Abra a pasta do Patrono
 2. Clique duas vezes em **`Instalar Patrono.bat`**
 3. Informe a senha do `postgres` quando ele pedir
