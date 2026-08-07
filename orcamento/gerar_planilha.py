@@ -565,12 +565,17 @@ PEND = [
      "no centro de custo Jurídico no SIENGE: R$ 575,00/mês de jan a mai e "
      "R$ 476,00 em jun, todos com vencimento dia 15. Total de R$ 3.351,00 em seis "
      "meses. Não é despesa do Jurídico — é ferramenta de IA, de uso transversal.",
-     "Reclassificar no SIENGE para o centro de custo correto e aplicar o rateio "
-     "do item L. Enquanto não for corrigido, o Jurídico carrega R$ 3.351 que não "
-     "são dele e o TI aparece sem um gasto que é seu — as duas áreas ficam com o "
-     "comparativo errado. Aproveitar a abertura do novo centro de custo para "
-     "acertar a classificação desde a origem.",
-     "Cristiane + Financeiro", "RECLASSIFICAR", ""),
+     "DECIDIDO: solicitar a reclassificação contábil ao financeiro agora, sem "
+     "esperar a abertura do centro de custo novo. Enquanto não for corrigido, o "
+     "Jurídico carrega R$ 3.351 que não são dele e o TI aparece sem um gasto que "
+     "é seu — as duas áreas ficam com o comparativo errado ao mesmo tempo. "
+     "O que pedir ao financeiro: reclassificar os seis lançamentos do contrato "
+     "4134643529 (jan a jun/26) do centro de custo Jurídico para o de TI, e "
+     "ajustar a classificação dos próximos para não repetir. Depois de "
+     "reclassificado, aplicar o rateio do item L, já que é ferramenta de uso "
+     "transversal. Quando o centro de custo novo abrir, conferir se a "
+     "classificação nasceu certa.",
+     "Cristiane + Financeiro", "SOLICITADA", ""),
     ("P", "Extrato contém REPASSES, não só custo",
      "Os lançamentos em nome da Dra. Michele até jun/26 (R$ 20.821,53) são "
      "repasse: o cliente paga à empresa e a empresa repassa a ela. Não são custo "
