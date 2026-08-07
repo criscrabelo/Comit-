@@ -145,12 +145,11 @@ LINHAS = [
     ("TI-D05", "TI", "Despesas", "Pacote Office 365",
      "Licenças de software (conferir nº de licenças x usuários) — RATEIO A DEFINIR", "",
      "Licenças de Softwares", _12(375.00)),
-    # Decidido executar so o funcional: cameras, microfones e cadeiras. Consumo e
-    # brinde (cafeteira, copos, canetas, blocos) saem para o Administrativo.
-    ("TI-D06", "TI", "Despesas", "Projeto Sala de Reunião — itens funcionais",
-     "Câmeras, microfones e cadeiras. DECIDIDO executar só o funcional; cafeteira, "
-     "copos, canetas e blocos personalizados saem para o Administrativo. Valor a "
-     "rever quando vier a quebra entre funcional e consumo", "",
+    # Decidido executar o projeto completo, no escopo original.
+    ("TI-D06", "TI", "Despesas", "Projeto Melhoria de Infraestrutura - Sala de Reunião",
+     "Cadeiras, cafeteira, copos, canetas, blocos personalizados, câmeras, "
+     "microfones etc. APROVADO no escopo completo. Definir se é compra pontual ou "
+     "parcelada — hoje está diluída linearmente em 12 meses", "",
      "Móveis e Utensílios", _12(2800.00)),
     ("TI-D07", "TI", "Despesas", "Cursos e Treinamentos", "", "",
      "Custeio de Treinamento", _12(200.00)),
@@ -628,23 +627,25 @@ PEND = [
      "despesa que não é dele e aparece caro. Tratar os dois blocos com o mesmo "
      "critério de rateio, para não criar duas regras diferentes.",
      "Cristiane + Controladoria", "EM ABERTO", "TI"),
-    ("5", "Sala de Reunião — DECIDIDO: executar só o funcional",
-     "DECISÃO DA GESTORA: mexer somente no que for funcional. Entram os itens de "
-     "infraestrutura de reunião — câmeras, microfones e cadeiras. Ficam de fora "
-     "cafeteira, copos, canetas e blocos personalizados, que são consumo e "
-     "brinde, pertencem ao Administrativo (item U) e não resolvem o problema da "
-     "sala. O orçamento atual é de R$ 2.800/mês, R$ 33.600 no ano, sem nenhum "
-     "lançamento até jul/26.",
-     "FALTA A QUEBRA DO VALOR: quanto dos R$ 33.600 é funcional e quanto é "
-     "consumo. Só com isso dá para ajustar a linha e liberar a diferença. "
-     "Levantar orçamento dos itens funcionais antes de comprar. Definir também se "
-     "é compra pontual ou parcelada — hoje está diluída linearmente em 12 meses, "
-     "e se for compra única o desvio vai acusar economia falsa todo mês até a "
-     "compra e um pico no mês em que ocorrer. Segue de pé a observação da "
-     "gestora de que a sala já não comporta todas as pessoas: o funcional "
-     "melhora a qualidade da reunião, não a capacidade — se o problema de espaço "
-     "precisar de solução, é projeto à parte.",
-     "Cristiane", "QUEBRAR VALOR", "TI"),
+    ("5", "Sala de Reunião — DECIDIDO: executar o projeto completo",
+     "DECISÃO DA GESTORA: executar como está, no escopo original. Entram tanto os "
+     "itens de infraestrutura (câmeras, microfones, cadeiras) quanto os de "
+     "consumo e ambientação (cafeteira, copos, canetas e blocos personalizados). "
+     "Orçamento mantido em R$ 2.800/mês, R$ 33.600 no ano, sem nenhum lançamento "
+     "até jun/26. Revoga a decisão anterior de executar só o funcional.",
+     "É a maior despesa isolada do TI e 38% do que a área tem orçado em despesas, "
+     "então o mês em que a compra ocorrer vai dominar o comparativo. "
+     "DEFINIR: se é compra pontual ou parcelada. Hoje está diluída linearmente em "
+     "12 meses — se for compra única, o desvio vai acusar economia falsa todo mês "
+     "até a compra e um pico no mês em que ela acontecer; nesse caso vale "
+     "concentrar o planejado no mês previsto. "
+     "OBSERVAR: os itens de consumo e brinde deste projeto são a exceção à "
+     "decisão do item U, que tirou papelaria do TI — aqui ficam por serem parte "
+     "de um projeto de ambientação, não reposição de material de escritório. "
+     "E a ressalva da própria gestora continua de pé: o projeto melhora a "
+     "qualidade da reunião, não a capacidade da sala. Se o espaço não comporta "
+     "todas as pessoas, isso segue verdade depois da compra.",
+     "Cristiane", "APROVADO", "TI"),
     ("R", "Notebooks — TI compra, mas não enxerga o saldo das áreas",
      "Cada área tem a própria linha de orçamento para notebooks, mas é o TI que "
      "recebe a solicitação e executa a compra quando surge a necessidade. Hoje o "
