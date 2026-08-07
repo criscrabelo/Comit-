@@ -29,7 +29,13 @@ export type TabelaIntegravel =
   | 'notificacoes'
   | 'processos_judiciais'
   | 'distratos'
-  | 'honorarios';
+  | 'honorarios'
+  // Financeiro, origem Sienge. Posicao e movimentacao continuam separadas
+  // fisicamente; o upsert e o mesmo porque a idempotencia nao depende disso.
+  | 'titulos_receber'
+  | 'parcelas'
+  | 'saldos_financeiros'
+  | 'comissoes';
 
 export interface RegistroParaUpsert {
   /** Identificador no sistema de origem. Obrigatorio: e a chave da idempotencia. */

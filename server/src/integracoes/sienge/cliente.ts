@@ -65,7 +65,11 @@ export const ENDPOINTS_CANDIDATOS: Record<string, EndpointCandidato> = {
   },
   receivable_bills: {
     caminho: '/accounts-receivable/receivable-bills',
-    descricao: 'Títulos a receber — customerId OBRIGATÓRIO: não há listagem geral',
+    // O levantamento (§4.4) dizia que customerId era obrigatorio. A sonda de
+    // homologacao (06/08/2026) provou o contrario: a listagem geral existe e
+    // devolveu 5.149 titulos paginados sem o parametro. Muda o desenho da
+    // carga de 3.257 requisicoes (uma por cliente) para ~26 (por pagina).
+    descricao: 'Títulos a receber — listagem geral SEM customerId confirmada por sonda real',
     natureza: 'posicao',
     confirmado: false,
   },

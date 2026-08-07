@@ -146,14 +146,21 @@ Documento consolidado a partir do levantamento realizado no ambiente da Tetus/Co
 
 | Parâmetro | Obrigatório | Regra |
 |---|---:|---|
-| `customerId` | Sim | Código do cliente |
+| `customerId` | Não | Código do cliente — recorta por cliente quando informado |
 | `companyId` | Não | Código da empresa |
 | `costCenterId` | Não | Código do centro de custo |
 | `paidOff` | Não | Padrão `false` |
 | `limit` | Não | Padrão `100`; máximo `200` |
 | `offset` | Não | Padrão `0` |
 
-**Limitação:** não permite listar todos os títulos sem cliente, pois `customerId` é obrigatório.
+> **Correção de 06/08/2026 (homologação):** este documento originalmente
+> registrava `customerId` como obrigatório e a listagem geral como
+> impossível. A sonda real da homologação testou uma consulta **sem**
+> `customerId` e recebeu `200` com `resultSetMetadata.count = 5149` — a
+> listagem geral existe. Isso muda a carga de ~3.257 requisições (uma por
+> cliente ativo) para ~26 (uma por página de 200). Evidência em
+> `docs/evidencias/homologacao-sienge.md`. Mantido aqui como correção
+> registrada, não como edição silenciosa do levantamento original.
 
 ### 4.5 `GET /accounts-receivable/receivable-bills/{receivableBillId}/installments`
 

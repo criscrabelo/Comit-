@@ -12,7 +12,8 @@ import { config } from '../../config.js';
 import { db } from '../../db/pool.js';
 import { ErroApi, entradaInvalida, naoAutenticado } from '../../errors.js';
 import { auditar } from '../../audit/registrar.js';
-import { ENDPOINTS_CANDIDATOS, verificarConfiguracao } from './cliente.js';
+import { ENDPOINTS_CANDIDATOS, orcamentoRestante, verificarConfiguracao } from './cliente.js';
+import { ETAPAS, planejarCarga, sincronizarSienge, type EtapaCarga } from './sincronizar.js';
 
 const esquemaHomologacao = z.object({
   endpoint: z.string().min(1),
@@ -193,33 +194,104 @@ export async function rotasSienge(app: FastifyInstance): Promise<void> {
     },
   );
 
-  // ── Ingestão: existe, e recusa ────────────────────────────────────────────
+  // ── Planejamento: quanto custa a carga, ANTES de gastar ────────────────────
   //
-  // A rota existe para responder com clareza em vez de 404. Recusar dizendo por
-  // quê é melhor do que a interface receber "rota inexistente" e concluir que a
-  // funcionalidade sumiu.
+  // Consulta so metadados (~6 requisicoes) para estimar o custo de cada etapa
+  // contra o orcamento diario restante. Existe para a interface — ou quem for
+  // disparar a carga manualmente — decidir com numero, nao no escuro.
+  app.get(
+    '/api/sienge/plano',
+    { config: { exige: { modulo: 'administracao', acao: 'ler' } } },
+    async () => {
+      if (!config.sienge.habilitado) {
+        throw new ErroApi(
+          'integracao_nao_verificada',
+          'Conector Sienge desligado. Nao ha custo a planejar sem a integracao ligada.',
+        );
+      }
+      return planejarCarga();
+    },
+  );
+
+  const esquemaSync = z.object({
+    etapas: z.array(z.enum(ETAPAS as [EtapaCarga, ...EtapaCarga[]])).optional(),
+    modificadosApos: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    simular: z.boolean().optional(),
+    tetoDeRequisicoes: z.number().int().positive().optional(),
+  });
+
+  // ── Ingestão ────────────────────────────────────────────────────────────
+  //
+  // So roda o que estiver homologado: `sincronizarSienge` chama `ler()` por
+  // dentro, e `ler()` recusa qualquer endpoint com `confirmado: false` antes
+  // de qualquer requisicao — a trava e a mesma dos outros caminhos, nao uma
+  // segunda implementacao que poderia divergir.
   app.post(
     '/api/sienge/sync',
     { config: { exige: { modulo: 'juridico', acao: 'executar' } } },
-    async () => {
+    async (req) => {
+      if (!req.usuario) throw naoAutenticado();
+
       const configuracao = verificarConfiguracao();
       const confirmados = Object.values(ENDPOINTS_CANDIDATOS).filter((e) => e.confirmado).length;
 
-      throw new ErroApi(
-        'integracao_nao_verificada',
-        'A ingestao do Sienge esta travada ate a homologacao do ambiente. ' +
-          'Nenhum dado foi lido e nenhum registro foi alterado.',
-        {
-          credenciais_completas: configuracao.completa,
-          faltando: configuracao.faltando,
-          habilitado: config.sienge.habilitado,
-          endpoints_confirmados: confirmados,
-          endpoints_totais: Object.keys(ENDPOINTS_CANDIDATOS).length,
-          o_que_falta:
-            'Confirmar URL, versao, autenticacao, endpoints, parametros e paginacao com o responsavel ' +
-            'pelo Sienge na Coevo. Lista completa em docs/SIENGE-INFORMACOES-NECESSARIAS.md.',
+      if (!config.sienge.habilitado || confirmados === 0) {
+        throw new ErroApi(
+          'integracao_nao_verificada',
+          'A ingestao do Sienge esta travada ate a homologacao do ambiente. ' +
+            'Nenhum dado foi lido e nenhum registro foi alterado.',
+          {
+            credenciais_completas: configuracao.completa,
+            faltando: configuracao.faltando,
+            habilitado: config.sienge.habilitado,
+            endpoints_confirmados: confirmados,
+            endpoints_totais: Object.keys(ENDPOINTS_CANDIDATOS).length,
+            o_que_falta:
+              'Confirmar URL, versao, autenticacao, endpoints, parametros e paginacao com o responsavel ' +
+              'pelo Sienge na Coevo, e homologar via POST /api/sienge/homologar. Lista completa em ' +
+              'docs/SIENGE-INFORMACOES-NECESSARIAS.md.',
+          },
+        );
+      }
+
+      const corpo = esquemaSync.safeParse(req.body ?? {});
+      if (!corpo.success) {
+        throw entradaInvalida('Corpo invalido para a carga do Sienge.', {
+          etapas_aceitas: ETAPAS,
+        });
+      }
+
+      const orcamentoAntes = orcamentoRestante();
+      const resultado = await sincronizarSienge({
+        etapas: corpo.data.etapas,
+        modificadosApos: corpo.data.modificadosApos ?? null,
+        simular: corpo.data.simular ?? false,
+        tetoDeRequisicoes: corpo.data.tetoDeRequisicoes,
+        usuarioId: req.usuario.id,
+      });
+
+      await auditar({
+        ...req.contextoAuditoria,
+        acao: 'importacao_concluida',
+        recurso: 'integracoes',
+        recursoId: 'sienge',
+        modulo: 'juridico',
+        detalhe: {
+          execucao_id: resultado.execucao.id,
+          etapas: resultado.etapas.map((e) => ({
+            etapa: e.etapa,
+            executada: e.executada,
+            requisicoes: e.requisicoes,
+            incluidos: e.incluidos,
+            atualizados: e.atualizados,
+          })),
+          orcamento_antes: orcamentoAntes,
+          orcamento_depois: resultado.orcamento.saldoFinal,
+          status: resultado.execucao.status,
         },
-      );
+      });
+
+      return resultado;
     },
   );
 }

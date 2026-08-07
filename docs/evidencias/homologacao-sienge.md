@@ -1,7 +1,7 @@
 # Homologação controlada do Sienge
 
 **Ambiente:** development  
-**Executado em:** 2026-08-06T19:42:47.336Z  
+**Executado em:** 2026-08-07T15:01:32.345Z  
 **Base:** `https://api.sienge.com.br/<subdomínio>/public/api/v1` (subdomínio no ambiente)  
 **Escopo:** todos os 7 endpoints do catálogo
 
@@ -43,10 +43,11 @@ Requisições da sonda: 2
 
 Requisições da sonda: 2
 
-- clientes ativos: count=3257; pagina 1 com 200 registros
+- clientes ativos: count=3258; pagina 1 com 200 registros
 - campos confirmados no 1º registro: id, createdAt, modifiedAt
 - registros com CPF/CNPJ na pagina 1: 200 de 200 (valores nao publicados neste relatorio)
-- `modifiedAfter=2026-07-07` aceito: count=57
+- `modifiedAfter=2026-07-08` aceito: count=56
+- ⚠️ total atual (3258) difere do levantamento de 06/08/2026 (3257) — esperado se a base mudou; fica registrado para conferencia
 
 ✅ **Confirmado e registrado** em `integracoes.relatorio_verificacao` por Cristiane Rabelo (juridico@coevoconstrutora.com.br), com trilha de auditoria.
 
@@ -83,7 +84,7 @@ Requisições da sonda: 1
 
 Requisições da sonda: 1
 
-- limit=10&offset=0&commissionFilterType=ALL: count=7382
+- limit=10&offset=0&commissionFilterType=ALL: count=7387
 - campos confirmados na 1ª comissao: commissionID, companyId, enterpriseID, brokerID, value, installmentStatus, dueDate
 
 ✅ **Confirmado e registrado** em `integracoes.relatorio_verificacao` por Cristiane Rabelo (juridico@coevoconstrutora.com.br), com trilha de auditoria.

@@ -2091,3 +2091,90 @@ Notas de ambiente que valem para as próximas execuções:
   efêmera. Ao implantar no ambiente definitivo (produção/fly.io), rodar o
   script de novo contra o `DATABASE_URL` real — as sondas custam 10
   requisições e o registro nasce no banco certo, com nova evidência.
+
+## B21 — Carga incremental do Sienge: implementada, testada e validada contra a API real
+
+**Data:** 2026-08-07 · Sequência do B20 (homologação). Endpoints homologados,
+listagem geral de títulos confirmada — hora de desenhar e construir a carga.
+
+### O que entrou
+
+- **`src/db/schema.ts`** — tipos Kysely para as quatro tabelas financeiras da
+  migração 006 (`titulos_receber`, `parcelas`, `saldos_financeiros`,
+  `comissoes`), que ainda não tinham entrada no `Database`.
+- **`src/integracoes/upsert.ts`** — as quatro tabelas acima como
+  `TabelaIntegravel`, reaproveitando o upsert idempotente que já serve Monday.
+- **`src/integracoes/sienge/transformacao.ts`** — payload do Sienge → registro
+  de domínio. Nomes de campo tirados das RESPOSTAS REAIS da homologação, não
+  da documentação (`adress`, não `address`). Regras que valem a pena repetir:
+  valor monetário nunca cruza para `number` no caminho de gravação (o residuo
+  `341233.7699999997` é arredondado uma vez, no limite); campo que o Sienge não
+  confirma (juros, multa, valor original de parcela) fica `null`, nunca zero;
+  documento sem dígito verificador válido grava mas não vincula.
+- **`src/integracoes/sienge/sincronizar.ts`** — a carga em si. Seis etapas
+  (empresas, empreendimentos, clientes, títulos, parcelas, comissões), cada
+  uma com orçamento PLANEJADO antes de gastar. `planejarCarga()` estima o
+  custo com ~6 requisições de metadados antes de qualquer carga real.
+- **`src/integracoes/sienge/rotas.ts`** — `GET /api/sienge/plano` e
+  `POST /api/sienge/sync` real, substituindo a recusa fixa. A trava de
+  homologação por endpoint continua intacta: `sincronizarSienge` chama
+  `ler()`, que recusa qualquer endpoint não confirmado — a mesma trava, não
+  uma segunda implementação.
+- **`scripts/executar-carga-sienge.ts`** e **`scripts/homologar-sienge.ts`** —
+  CLIs para rodar sem depender do servidor HTTP.
+- **41 testes novos** (`test/sienge-transformacao.test.ts`,
+  `test/sienge-sincronizar.test.ts`), a maioria contra PostgreSQL real com o
+  transporte HTTP substituído por um dublê no formato exato da API. Suíte
+  completa: 463/463.
+
+### O achado que a homologação já tinha mudado, confirmado no desenho
+
+A listagem geral de títulos (sem `customerId`) funciona — 5.149 títulos em
+~26 requisições, não 3.257 (uma por cliente ativo). A carga de títulos usa a
+listagem geral; só **parcelas** continua cara (uma requisição por título,
+sem listagem geral) e é a única etapa com **retomada**: processa o que
+couber no orçamento do dia, salva o último `receivableBillId` concluído em
+`integracoes.configuracao.carga.parcelas_ate_titulo`, e continua de onde
+parou na próxima carga.
+
+### O achado NOVO, encontrado rodando a carga real de empreendimentos
+
+`empreendimentos.nome_normalizado` tem índice **único global** (migração
+003) — pensado para a escala do Monday, um nome por projeto. O portfólio real
+do Sienge tem 285 empreendimentos em 43 empresas, e **6 nomes se repetem
+entre projetos de empresas diferentes** (ex.: um cluster de 7 ids colidindo
+no mesmo nome). Inserir o segundo colidiria com a constraint e abortaria a
+transação inteira — os outros 278 não entrariam.
+
+**Decisão tomada:** preservar a constraint (mudá-la é decisão estrutural que
+afeta o motor de vínculo do Monday também, e exige deliberação própria) e,
+na etapa de empreendimentos, manter o PRIMEIRO registro que ocupa o nome e
+ignorar os demais com o motivo — visível no relatório de execução, nunca
+descartado em silêncio. `id_origem` igual ao já registrado continua
+atualizando normalmente; só um `id_origem` DIFERENTE tentando o mesmo nome é
+ignorado.
+
+**Pendência para decisão da Coevo:** se `nome_normalizado` deveria ser único
+por empresa (não global), esses ~11 empreendimentos legítimos passam a
+entrar. Da forma como está, eles ficam de fora — visíveis no relatório, não
+perdidos, mas não carregados.
+
+### Execução real controlada (evidência em `docs/evidencias/`)
+
+Rodei `empresas` + `empreendimentos` contra a API real da Coevo:
+**43 empresas e 274 de 285 empreendimentos incluídos**, contabilidade fecha,
+status sucesso, 3 requisições consumidas. As 11 exceções são exatamente a
+colisão de nome descrita acima — nenhuma é erro.
+
+**Clientes, títulos, parcelas e comissões não foram carregados nesta
+sessão.** O motivo: esta sessão roda num PostgreSQL efêmero, descartado ao
+fim do container — carregar CPF, nome e situação financeira de clientes reais
+aqui não teria efeito duradouro nenhum e exporia dado pessoal real num banco
+descartável sem necessidade. O caminho está pronto e testado; a primeira
+carga completa deve rodar no ambiente de implantação real, com o mesmo
+comando:
+
+```bash
+cd server && SIENGE_HABILITADO=true DATABASE_URL=<real> \
+  npx tsx scripts/executar-carga-sienge.ts --saida ../docs/evidencias/carga-sienge-completa.md
+```

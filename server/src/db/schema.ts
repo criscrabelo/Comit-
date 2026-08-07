@@ -903,6 +903,70 @@ export interface TabelaPoliticaRetencao {
   atualizada_por: string | null;
 }
 
+// ── Financeiro (origem Sienge) ──────────────────────────────────────────────
+//
+// Posicao e movimentacao vivem em tabelas SEPARADAS, como a migracao 006 impoe:
+// titulo, parcela e saldo sao posicao numa data e nunca se somam entre
+// periodos; comissao e movimentacao e soma eventos unicos.
+
+/** Titulo do contas a receber. Posicao. */
+export interface TabelaTitulosReceber extends Proveniencia {
+  id: Auto<string>;
+  empresa: string | null;
+  empreendimento_id: string | null;
+  cliente_id: string | null;
+  contrato_id: string | null;
+  unidade_id: string | null;
+  numero_titulo: string | null;
+  situacao: string | null;
+  valor_nominal: string | number | null;
+  saldo_atualizado: string | number | null;
+}
+
+/** Parcela de um titulo. Posicao. */
+export interface TabelaParcelas extends Proveniencia {
+  id: Auto<string>;
+  titulo_id: string | null;
+  contrato_id: string | null;
+  cliente_id: string | null;
+  empreendimento_id: string | null;
+  numero_parcela: string | null;
+  vencimento: Dia | null;
+  valor_nominal: string | number | null;
+  saldo_vencido: string | number | null;
+  saldo_atualizado: string | number | null;
+  juros: string | number | null;
+  multa: string | number | null;
+  dias_atraso: number | null;
+  faixa: FaixaAtraso | null;
+  status: string | null;
+}
+
+/** Saldo devedor presente do cliente. Posicao numa data. */
+export interface TabelaSaldosFinanceiros extends Proveniencia {
+  id: Auto<string>;
+  contrato_id: string | null;
+  cliente_id: string | null;
+  empreendimento_id: string | null;
+  empresa: string | null;
+  saldo_vencido: string | number | null;
+  saldo_atualizado: string | number | null;
+  saldo_contratual: string | number | null;
+  dias_atraso: number | null;
+  faixa: FaixaAtraso | null;
+}
+
+/** Comissao. MOVIMENTACAO — soma eventos, nunca posicao. */
+export interface TabelaComissoes extends Proveniencia {
+  id: Auto<string>;
+  contrato_id: string | null;
+  empreendimento_id: string | null;
+  beneficiario: string | null;
+  valor: string | number | null;
+  data_evento: Dia | null;
+  status: string | null;
+}
+
 export interface Database {
   usuarios: TabelaUsuarios;
   permissoes_perfil: TabelaPermissoesPerfil;
@@ -920,6 +984,11 @@ export interface Database {
   unidades: TabelaUnidades;
   clientes: TabelaClientes;
   contratos: TabelaContratos;
+
+  titulos_receber: TabelaTitulosReceber;
+  parcelas: TabelaParcelas;
+  saldos_financeiros: TabelaSaldosFinanceiros;
+  comissoes: TabelaComissoes;
 
   integracoes: TabelaIntegracoes;
   execucoes_importacao: TabelaExecucoesImportacao;
