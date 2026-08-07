@@ -189,19 +189,23 @@ LINHAS = [
 ]
 
 # ---------------------------------------------------------------------------
-# Realizado informado pela gestora (05/08/2026): valores constantes de jan a jul,
-# os sete meses ja fechados. Ago a dez ficam em branco e serao confirmados no
-# decorrer do ano. None = sem lancamento.
+# Realizado por COMPETENCIA (mes do servico), conforme decisao da gestora.
+# Os PJs prestam no mes e recebem no seguinte, entao os valores foram deslocados
+# um mes para tras em relacao a data de pagamento: o que foi pago em fev/26 e
+# servico de jan/26, e o que foi pago em jan/26 e servico de dez/25 — fora do
+# exercicio. Consequencia: jul/26 so fecha quando sair o pagamento de ago, por
+# isso o ultimo mes completo e JUNHO. Os CLT nao foram deslocados (ver item 7).
 # ---------------------------------------------------------------------------
-FONTE_JUR = "Gestora, 05/08/26"
-_r7 = lambda v: [v] * 7 + [None] * 5
+FONTE_JUR = "Gestora, 05/08/26 — competência"
+_r7 = lambda v: [v] * 7 + [None] * 5     # CLT: sem deslocamento
+_r6 = lambda v: [v] * 6 + [None] * 6     # PJ constante, jan a jun
 
 REALIZADO = {
     # Lancado por CAIXA (mes em que o pagamento saiu). O de ago/26 refere-se a
     # julho, pago em 01/08 — ver pendencia sobre competencia x caixa.
-    "JUR-E01": ([6750.00] * 7 + [8818.00] + [None] * 4, FONTE_JUR,
-                "R$ 6.750/mês de jan a jul; R$ 8.818 pagos em 01/08 (ref. julho). "
-                "Lançado por caixa"),
+    "JUR-E01": ([6750.00] * 6 + [8818.00] + [None] * 5, FONTE_JUR,
+                "R$ 6.750/mês de jan a jun e R$ 8.818 em jul (pago em 01/08). "
+                "O pagamento de jan/26 era serviço de dez/25 e saiu do exercício"),
     # Lancado o salario bruto, que e o dado disponivel e nao mudou no ano. Atencao:
     # o orcado desta linha e custo total, entao o desvio dela nao e comparavel —
     # faltam encargos e beneficios do lado do realizado.
@@ -212,12 +216,13 @@ REALIZADO = {
     # R$ 4.500 de jan a mar; aumento de R$ 1.000 a partir de abr/26.
     # So o fixo mensal e custo do departamento. Os demais lancamentos em nome dela
     # no extrato sao repasse: o cliente paga a empresa e a empresa repassa a ela.
-    "JUR-E04": (_r7(2750.00), FONTE_JUR,
+    "JUR-E04": (_r6(2750.00), FONTE_JUR,
                 "R$ 2.750/mês fixos desde jan/26. Os demais lançamentos em nome "
                 "dela no extrato são REPASSE de honorários pagos pelo cliente — "
                 "não são custo do departamento"),
-    "JUR-E03": ([4500.00] * 3 + [5500.00] * 4 + [None] * 5, FONTE_JUR,
-                "R$ 4.500/mês em jan–mar; aumento de R$ 1.000 a partir de abr/26"),
+    "JUR-E03": ([4500.00] * 2 + [5500.00] * 4 + [None] * 6, FONTE_JUR,
+                "R$ 4.500 em jan–fev e R$ 5.500 de mar a jun, por competência. "
+                "CONFERIR: o aumento foi no serviço de mar ou de abr?"),
     "JUR-D01": ([0.00] * 12, FONTE_JUR,
                 "Nunca iniciado. Cancelado em jan/26 na fase de experimento e não "
                 "será contratado: zero o ano todo"),
@@ -240,17 +245,17 @@ REALIZADO = {
     "TI-E01": ([None] * 12, "",
                "PREENCHER com o CUSTO TOTAL. Bruto: R$ 2.570,52/mês até jul e "
                "R$ 3.070,52 de ago — faltam encargos e benefícios"),
-    "TI-E02": (_r7(0.00), FONTE_JUR, "Sem acionamento no período — confirmar se o contrato segue ativo"),
+    "TI-E02": (_r6(0.00), FONTE_JUR, "Sem acionamento no período — confirmar se o contrato segue ativo"),
     # Consultoria fixa: pagamentos de 01/05 em diante.
-    "TI-E03": ([0.00] * 4 + [3723.62, 6173.37, 6300.00] + [None] * 5,
+    "TI-E03": ([0.00] * 3 + [3723.62, 6173.37, 6300.00] + [None] * 6,
                "Extrato do financeiro",
-               "01/05 NFS.76 R$ 3.723,62; 01/06 NFS.78 R$ 6.173,37; 01/07 NFS.3 "
-               "R$ 6.300,00. Sem pagamento em jan–abr: contratação segurada"),
+               "Serviço de abr, mai e jun (pagos em 01/05, 01/06 e 01/07). "
+               "Zero em jan–mar: contratação segurada — bate com a entrada em abr"),
     # Vinculo esporadico anterior: unico pagamento em jan, encerrado.
-    "TI-E04": ([4311.56] + [0.00] * 11, "Extrato do financeiro",
-               "19/01 NFS.70 R$ 4.311,56 — serviço esporádico, provavelmente "
-               "referente a dez/25. Vínculo encerrado com a entrada como "
-               "consultor fixo"),
+    "TI-E04": ([0.00] * 12, "Extrato do financeiro",
+               "Zero no exercício: o pagamento de R$ 4.311,56 em 19/01 (NFS.70) "
+               "era serviço de dez/25 e, por competência, não pertence a 2026. "
+               "Vínculo encerrado com a entrada como consultor fixo"),
 }
 
 # Linhas cujo realizado esta numa base diferente do orcado (bruto x custo total).
@@ -780,28 +785,24 @@ PEND = [
      "orçado — sozinho maior que todas as despesas orçadas do TI, e o orçamento "
      "da área estaria comprometido. Confirmar antes da reunião.",
      "Cristiane", "CONFIRMAR", "TI"),
-    ("7", "Competência x caixa — DECIDIR O REGIME",
-     "Confirmado pela gestora: TODOS os PJs das duas áreas prestam o serviço e "
-     "recebem no mês seguinte — no Jurídico, Miguel, Thamar e Dra. Michele; no "
-     "TI, Elias e Jonathan. O que foi pago em jan/26 é serviço de dez/2025, e o "
-     "serviço de dez/26 só será pago em jan/2027. Hoje o realizado está lançado "
-     "por CAIXA (mês do pagamento), que é como os valores foram informados, "
-     "enquanto o orçamento foi montado por COMPETÊNCIA (mês do serviço). São "
-     "bases diferentes no mesmo comparativo.",
-     "RECOMENDAÇÃO: migrar para competência, deslocando os PJs um mês para trás. "
-     "Motivos: (1) o orçamento já é de competência, então acaba a comparação de "
-     "bases diferentes; (2) por caixa, o ano de 2026 carrega um mês de 2025 e "
-     "perde dez/26, o que distorce sempre que o valor muda no meio do ano — no "
-     "Miguel, R$ 47.250 por caixa contra R$ 49.318 por competência em jan–jul, "
-     "R$ 2.068 de diferença; (3) o SIENGE gera os dois regimes, então é escolha "
-     "de configuração. Contra: caixa é mais fácil de bater com o extrato "
-     "bancário. Decidir UMA vez e manter, senão o histórico mistura critérios. "
-     "ATENÇÃO NO JONATHAN: o planejado dele começa em abr/26 (competência) e o "
-     "realizado também foi lançado a partir de abr (caixa) — se ele recebe no mês "
-     "seguinte, o pagamento de abril é serviço de março, e ou a entrada dele foi "
-     "em março, ou o realizado de abril deveria ser zero. Conferir junto com a "
-     "decisão do regime.",
-     "Cristiane + Financeiro", "DECIDIR", ""),
+    ("7", "Competência x caixa — DECIDIDO: COMPETÊNCIA",
+     "Todos os PJs prestam no mês e recebem no seguinte — Miguel, Thamar e Dra. "
+     "Michele no Jurídico; Elias e Jonathan no TI. O realizado foi convertido "
+     "para COMPETÊNCIA: os valores dos PJs foram deslocados um mês para trás em "
+     "relação à data de pagamento. O que foi pago em jan/26 era serviço de dez/25 "
+     "e saiu do exercício.",
+     "Três efeitos. (1) O último mês completo passa a ser JUNHO, não julho: o "
+     "serviço de jul só fecha quando sair o pagamento de ago — o mês de "
+     "referência do Comparativo foi ajustado. (2) A conversão validou a entrada "
+     "do Jonathan: por competência, o primeiro mês de serviço dele cai em abr, "
+     "exatamente como informado. (3) O Monitor Remoto zerou no exercício — "
+     "aquele pagamento de jan era serviço de dez/25. "
+     "A CONFERIR: os CLT (Geovanna e Vinicius) NÃO foram deslocados. Se a folha "
+     "for paga no mês seguinte, como é usual, eles também precisam deslocar. "
+     "E na Thamar, confirmar se o aumento valeu para o serviço de mar ou de abr. "
+     "Ao configurar a extração no SIENGE, travar o regime de competência e "
+     "manter — trocar no meio do ano mistura critérios no histórico.",
+     "Cristiane + Financeiro", "APLICADO", ""),
 ]
 
 _rl = [k for k, v in REALIZADO.items() if len(v[0]) != NM]
@@ -969,7 +970,7 @@ def gerar(DEPTO, OUT):
            NCOL_C)
 
     wc.cell(row=3, column=1, value="Mês de referência:").font = Font(bold=True, size=10)
-    sel = wc.cell(row=3, column=2, value="Jul/26")
+    sel = wc.cell(row=3, column=2, value="Jun/26")
     sel.font = Font(bold=True, size=11, color=AZUL)
     sel.fill = PatternFill("solid", fgColor=INPUT_BG)
     sel.alignment = Alignment(horizontal="center")
