@@ -147,7 +147,8 @@ onde roda.
 | Sintoma | O que fazer |
 | --- | --- |
 | "Node.js não encontrado" | Instale o Node.js e rode o instalador de novo |
-| "PostgreSQL não encontrado no PATH" | Reinstale o PostgreSQL marcando a opção de adicionar ao PATH, ou reinicie o computador |
+| "PostgreSQL não encontrado" | Ele não foi instalado, ou foi instalado em pasta fora do padrão. Instale pelo link acima aceitando a pasta sugerida |
+| Quero saber se já instalei | Clique em `Iniciar Patrono.bat`. Se abrir, está instalado; se avisar que falta, rode `Instalar Patrono.bat` |
 | "Não consegui conectar com essa senha" | A senha do `postgres` está errada. Não é a senha do Windows nem a da plataforma |
 | A página não abre | Espere uns 15 segundos e atualize. O servidor demora a subir na primeira vez |
 | "Porta 3131 em uso" | Já existe uma janela do Patrono aberta. Use aquela, ou feche e comece de novo |
