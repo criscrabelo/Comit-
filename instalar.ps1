@@ -49,10 +49,16 @@ function CarregarEnv($caminho) {
 # escreva na saida de erro derruba o script com um NativeCommandError ilegivel,
 # antes de a gente conseguir mostrar uma mensagem decente. Uma senha errada
 # aparecia como chuva vermelha em vez de "senha errada, tente de novo".
-function Psql {
+#
+# O nome NAO pode ser "Psql": nomes no PowerShell nao diferenciam maiusculas,
+# funcao ganha de programa na resolucao, e uma funcao Psql (a) e devolvida por
+# Get-Command psql no lugar do programa e (b) faria "& psql" aqui dentro chamar
+# a si mesma para sempre. Aconteceu: a instalacao morreu no passo 2/7.
+# Pelo mesmo motivo, a chamada interna usa "psql.exe", que so resolve programa.
+function RodarPsql {
   $eap = $ErrorActionPreference
   $ErrorActionPreference = 'Continue'
-  $saida = & psql @args 2>$null
+  $saida = & psql.exe @args 2>$null
   $script:PsqlFalhou = ($LASTEXITCODE -ne 0)
   $ErrorActionPreference = $eap
   return $saida
@@ -95,8 +101,12 @@ Ok "Node.js $versaoNode"
 #  para instalar um sistema seria transferir a ela um problema que e nosso.
 Titulo "2/7  PostgreSQL"
 $pgBin = $null
-if (Get-Command psql -ErrorAction SilentlyContinue) {
-  $pgBin = Split-Path (Get-Command psql).Source
+# Somente programa de verdade (psql.exe): sem o filtro, qualquer funcao ou
+# alias chamado psql - inclusive um definido por engano neste proprio script -
+# seria devolvido no lugar do programa, com Source vazio.
+$psqlCmd = Get-Command psql.exe -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+if ($psqlCmd -and -not [string]::IsNullOrWhiteSpace($psqlCmd.Source)) {
+  $pgBin = Split-Path $psqlCmd.Source
 } else {
   foreach ($v in 16, 17, 18, 15, 14) {
     $tentativa = Join-Path $env:ProgramFiles "PostgreSQL\$v\bin"
@@ -132,7 +142,7 @@ for ($tentativa = 1; $tentativa -le 3; $tentativa++) {
     continue
   }
   $env:PGPASSWORD = $senhaPg
-  Psql -U postgres -h localhost -p 5432 -tAc "select 1" | Out-Null
+  RodarPsql -U postgres -h localhost -p 5432 -tAc "select 1" | Out-Null
   if (-not $PsqlFalhou) { $conectou = $true; break }
   Aviso "O PostgreSQL recusou essa senha. Ela e a que voce definiu na tela"
   Write-Host "             Password do instalador do PostgreSQL - nao e a senha do"
@@ -147,9 +157,9 @@ Ok "Conectado"
 
 # --- 4. Banco patrono --------------------------------------------------------
 Titulo "4/7  Banco de dados"
-$existe = (Psql -U postgres -h localhost -p 5432 -tAc "select count(*) from pg_database where datname='patrono'") | Out-String
+$existe = (RodarPsql -U postgres -h localhost -p 5432 -tAc "select count(*) from pg_database where datname='patrono'") | Out-String
 if ($existe.Trim() -eq '0') {
-  Psql -U postgres -h localhost -p 5432 -c "create database patrono" | Out-Null
+  RodarPsql -U postgres -h localhost -p 5432 -c "create database patrono" | Out-Null
   if ($PsqlFalhou) { Parar "Nao consegui criar o banco patrono." }
   Ok "Banco patrono criado"
 } else {
@@ -214,7 +224,7 @@ try {
 }
 
 # --- 7. Primeiro usuario -----------------------------------------------------
-$quantos = ((Psql -U postgres -h localhost -p 5432 -d patrono -tAc "select count(*) from usuarios") | Out-String).Trim()
+$quantos = ((RodarPsql -U postgres -h localhost -p 5432 -d patrono -tAc "select count(*) from usuarios") | Out-String).Trim()
 if ($quantos -eq '0') {
   Titulo "Seu usuario"
   Write-Host "  Agora crie o usuario com que voce vai entrar na plataforma."
