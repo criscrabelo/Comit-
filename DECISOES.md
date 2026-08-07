@@ -2177,3 +2177,62 @@ repete os mesmos ~46 por passagem quando houver banco durável.
 Cruzamento Monday × Sienge: os 3.243 documentos válidos são a chave. Lembrete
 já registrado: recompra aparece como distrato no Sienge — não é inconsistência
 (REGRA-SAIDA-DE-CLIENTE.md §4.1).
+
+## B21 — Diagnóstico do cruzamento: a chave preferencial não existe
+
+**Data:** 2026-08-06 · Zero requisições de rede; tudo sobre os dados já
+carregados. Relatório: `docs/evidencias/cruzamento-monday-sienge.md`.
+
+### Por que este passo veio antes do cruzamento
+
+A escolha entre "cruzar agora" e "carregar parcelas antes" foi decidida pelo
+orçamento: as parcelas dos 1.022 inadimplentes custam 1.022 requisições e
+restavam 808 no dia. O cruzamento custa zero. Só que, ao preparar o cruzamento,
+a primeira pergunta — *com qual chave?* — devolveu um achado que muda o plano.
+
+### O achado
+
+**O CPF/CNPJ, chave preferencial da metodologia (§2), existe só de um lado.**
+
+| Chave | Monday | Sienge |
+| --- | --- | --- |
+| **CPF/CNPJ** | **0** de 1.072 notificações | 3.243 de 3.257 clientes |
+| Contrato | não mapeado nos quadros | não exposto nos títulos |
+| Unidade | 1.072/1.072 · 86/86 distratos | 4.210 de 5.142 títulos |
+| Empreendimento | 1.072 e 249/250 processos | por nome, com centro de custo |
+
+Nenhum dos 7 quadros do Monday traz documento, e a varredura dos payloads
+brutos confirma: nenhum campo de CPF. **Cruzar por pessoa é impossível hoje.**
+
+Sobra `empreendimento + unidade` — que os dois lados têm.
+
+### O pré-requisito: os dois sistemas nomeiam o mesmo ativo de formas diferentes
+
+O Sienge tem **570 registros** de empreendimento porque separa cada ativo em
+centros de custo (`- OBRA`, `- VENDAS`, `- ADMINISTRATIVO`…); o Monday tem 28
+linhas, uma por ativo. Removendo o sufixo, os núcleos ficam comparáveis.
+
+Critérios usados: **núcleo idêntico** e **prefixo em fronteira de palavra**.
+Similaridade difusa ficou de fora de propósito — produz par plausível e errado,
+e a metodologia proíbe unir nome automaticamente.
+
+Resultado: **11 correspondências únicas · 8 ambíguas · 9 sem par**.
+
+As 8 "ambíguas" quase todas são variantes de centro de custo que a lista de
+sufixos ainda não conhece (`- PERSONALIZAÇÃO - TORRE A`, `- SALDOS`,
+`- EXPERIENCE`, `- PERMUTA`, `- CONFISSÃO DE DÍVIDAS`). Ampliar a lista por
+conta própria seria adivinhar; ficam para confirmação.
+
+**AURORA sozinha vale 900 títulos**; VITA VILLAGE, 370; HORIZONTES, 158.
+
+### O que NÃO foi feito
+
+Nenhum vínculo criado. Nenhum mapa aplicado. Vínculo errado contamina
+indicador e é caro de desfazer — a proposta fica emitida, a decisão é humana.
+
+### As duas decisões que destravam
+
+1. **Aprovar ou corrigir o mapa de empreendimentos.**
+2. **CPF/CNPJ no Monday:** incluir a coluna nos quadros (a ingestão passa a
+   lê-la sozinha, como já faz com as demais) ou aceitar que o vínculo por
+   pessoa fica indisponível e cruzar só por unidade.
