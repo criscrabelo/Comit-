@@ -76,11 +76,14 @@ function renderComite() {
 
     <!-- SLIDES PREVIEW (screen) -->
     <div class="content" id="slidesPreview">
+    <div class="deck-stage">
+      <button class="deck-arrow deck-arrow-prev" onclick="deckNav(-1)" aria-label="Slide anterior">‹</button>
+      <div class="deck-track" id="deckTrack">
 
       <!-- SLIDE 1: CAPA -->
-      <div class="slide-preview-card">
+      <div class="slide-preview-card slide-full">
         <div class="slide-tag">Slide 1 · Capa</div>
-        <div style="background:var(--escuro);color:#fff;border-radius:8px;padding:40px;text-align:center;">
+        <div style="background:var(--escuro);color:#fff;text-align:center;padding:40px;">
           <div style="font-size:48px;margin-bottom:16px;">⚖️</div>
           <div style="font-size:32px;font-weight:900;letter-spacing:-1px;">COMITÊ ${esc(comite.label.toUpperCase())}</div>
           <div style="font-size:16px;opacity:.7;margin-top:8px;">Relatório Jurídico e Operacional</div>
@@ -148,9 +151,9 @@ function renderComite() {
       ${buildProcessosSlide('Processos Judiciais Internos', comite.label, procsInt, true)}
 
       <!-- SLIDE 12: OBRIGADA -->
-      <div class="slide-preview-card">
+      <div class="slide-preview-card slide-full">
         <div class="slide-tag">Encerramento</div>
-        <div style="background:var(--escuro);color:#fff;border-radius:8px;padding:60px;text-align:center;">
+        <div style="background:var(--escuro);color:#fff;text-align:center;padding:60px;">
           <div style="font-size:48px;font-weight:900;">OBRIGADA</div>
           <div style="font-size:16px;opacity:.6;margin-top:10px;">${esc(comite.label)} · Departamento Jurídico</div>
         </div>
@@ -159,6 +162,10 @@ function renderComite() {
       <!-- SLIDES ANÁLISE DE RISCO (ANEXOS) -->
       ${riscos.map(r => buildRiscoSlides(r)).join('')}
 
+      </div>
+      <button class="deck-arrow deck-arrow-next" onclick="deckNav(1)" aria-label="Próximo slide">›</button>
+    </div>
+    <div class="deck-counter" id="deckCounter"></div>
     </div>
 
     <!-- VERSÃO PRINT -->
@@ -166,6 +173,8 @@ function renderComite() {
       ${buildPrintSlides(comite, fatosByEmpr, notifs, rets, dists, procsExt, procsInt, riscos, regs, geralFatos)}
     </div>
   `);
+
+  initDeck();
 
   // render charts
   setTimeout(() => {
@@ -229,6 +238,48 @@ function renderComite() {
     const evoInt = evolucaoMensalCitacao(procsInt);
     ChartManager.bar('ch_c_proci_mes', evoInt.labels, [{label:'Internos', data:evoInt.data}], {dataLabels:false});
   }, 80);
+}
+
+// ---- Deck horizontal (trilho, setas, contador) ----
+
+let _deckTecladoAtivo = false;
+
+function initDeck() {
+  const track = document.getElementById('deckTrack');
+  if (!track) return;
+
+  const atualizarContador = () => {
+    const cards = [...track.querySelectorAll('.slide-preview-card')];
+    const contador = document.getElementById('deckCounter');
+    if (!contador || !cards.length) return;
+    const meio = track.scrollLeft + track.clientWidth / 2;
+    let atual = 0;
+    cards.forEach((c, i) => { if (c.offsetLeft <= meio) atual = i; });
+    contador.textContent = `Slide ${atual + 1} de ${cards.length}`;
+  };
+
+  track.addEventListener('scroll', atualizarContador);
+  atualizarContador();
+
+  // Registrado uma unica vez por sessao: o handler consulta #deckTrack a cada
+  // tecla, entao continua correto mesmo depois de sair e voltar a esta tela.
+  if (!_deckTecladoAtivo) {
+    _deckTecladoAtivo = true;
+    document.addEventListener('keydown', (e) => {
+      if (!document.getElementById('deckTrack')) return;
+      if (/^(input|textarea|select)$/i.test(document.activeElement?.tagName || '')) return;
+      if (e.key === 'ArrowRight') { deckNav(1); e.preventDefault(); }
+      else if (e.key === 'ArrowLeft') { deckNav(-1); e.preventDefault(); }
+    });
+  }
+}
+
+function deckNav(dir) {
+  const track = document.getElementById('deckTrack');
+  if (!track) return;
+  const card = track.querySelector('.slide-preview-card');
+  const passo = card ? card.getBoundingClientRect().width + 24 : track.clientWidth * 0.8;
+  track.scrollBy({ left: dir * passo, behavior: 'smooth' });
 }
 
 // ---- Build helpers ----
@@ -378,12 +429,12 @@ function buildRegSlide(r) {
 function buildRiscoSlides(r) {
   // Slide capa
   let html = `
-    <div class="slide-preview-card" style="border-color:var(--red);">
+    <div class="slide-preview-card slide-full">
       <div class="slide-tag" style="background:var(--red);color:#fff;">Anexo · Análise de Risco — ${esc(emprName(r.empreendimento_id))}</div>
-      <div style="background:var(--escuro);color:#fff;border-radius:8px;padding:32px;">
+      <div style="background:var(--escuro);color:#fff;padding:56px;">
         <div style="font-size:11px;opacity:.6;text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;">ANÁLISE JURÍDICA</div>
-        <div style="font-size:20px;font-weight:900;">${esc(emprName(r.empreendimento_id)).toUpperCase()}</div>
-        <div style="font-size:14px;opacity:.7;margin-top:4px;">Riscos Contratuais — ${esc(r.contrato_ref)}</div>
+        <div style="font-size:32px;font-weight:900;">${esc(emprName(r.empreendimento_id)).toUpperCase()}</div>
+        <div style="font-size:16px;opacity:.7;margin-top:6px;">Riscos Contratuais — ${esc(r.contrato_ref)}</div>
       </div>
     </div>
   `;

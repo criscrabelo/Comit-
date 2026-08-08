@@ -726,33 +726,114 @@ textarea { resize: vertical; min-height: 80px; }
   background: #ece8f5; color: #6a5bb0;
 }
 
-/* ===== SLIDE PREVIEW CARDS (tela) ===== */
+/* ===== DECK DO COMITÊ — trilho horizontal 16:9 (tela) =====
+   Fonte: design_handoff_comites_juridicos/README.md, seção "Slides do
+   Comitê". Cada slide é um cartão 16:9 num palco escuro, com scroll-snap
+   horizontal e setas — mesma mecânica do protótipo (#deckTrack).
+
+   `.slide-preview-card` guarda `overflow-y: auto`: um comitê real pode ter
+   mais fatos, riscos ou notificações do que cabem visualmente num 16:9. A
+   alternativa — cortar o conteúdo pela altura do cartão — reproduziria
+   exatamente o problema que esta base evita em outros lugares (truncar sem
+   avisar). Aqui o preço é um scroll interno ocasional; nunca dado perdido em
+   silêncio. */
+.deck-stage {
+  position: relative;
+  background: var(--escuro-2);
+  border-radius: 12px;
+  padding: 32px 8px;
+}
+.deck-track {
+  display: flex;
+  gap: 24px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  padding: 0 48px;
+}
+.deck-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.14);
+  color: #fff;
+  border: none;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  z-index: 5;
+  transition: background .15s;
+}
+.deck-arrow:hover { background: rgba(255,255,255,.26); }
+.deck-arrow-prev { left: 10px; }
+.deck-arrow-next { right: 10px; }
+.deck-counter {
+  text-align: center;
+  color: var(--texto-esc-2);
+  font-family: var(--mono);
+  font-size: 12px;
+  margin-top: 10px;
+}
+
 .slide-preview-card {
+  flex: none;
+  width: min(1180px, 88vw);
+  aspect-ratio: 16 / 9;
+  scroll-snap-align: center;
   background: #fff;
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-md);
-  margin-bottom: 24px;
-  border: 2px solid var(--gray-200);
-  overflow: hidden;
+  border-radius: 6px;
+  box-shadow: 0 24px 60px rgba(0,0,0,.4);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  position: relative;
 }
 .slide-tag {
-  background: var(--gray-100);
-  color: var(--gray-500);
-  font-size: 11px;
+  position: absolute;
+  top: 14px; left: 14px;
+  background: rgba(22,27,36,.55);
+  color: #fff;
+  font-size: 10.5px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: .08em;
-  padding: 6px 16px;
-  border-bottom: 1px solid var(--gray-200);
+  letter-spacing: .07em;
+  padding: 4px 12px;
+  border-radius: 99px;
+  z-index: 2;
+  pointer-events: none;
 }
-.slide-preview-body { padding: 24px; }
+.slide-preview-body { padding: 48px 56px; flex: 1; }
 .slide-preview-title {
-  font-size: 20px;
+  font-size: 26px;
   font-weight: 900;
+  letter-spacing: -.3px;
   color: var(--escuro);
   border-bottom: 3px solid var(--blue);
   padding-bottom: 8px;
   margin-bottom: 18px;
+}
+
+/* Capa e encerramento preenchem o cartão inteiro — sem padding do body. */
+.slide-preview-card.slide-full { display: block; }
+/* :last-child, nao :first-of-type — o primeiro filho e sempre .slide-tag;
+   o conteudo real (capa/encerramento/anexo) vem depois dele no HTML. */
+.slide-preview-card.slide-full > div:last-child {
+  width: 100%;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  box-sizing: border-box;
+}
+
+@media (max-width: 900px) {
+  .slide-preview-card { width: 92vw; }
+  .slide-preview-body { padding: 28px 24px; }
+  .deck-arrow { display: none; }
 }
 
 /* ===== MONDAY SYNC ===== */
