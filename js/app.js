@@ -13,6 +13,8 @@ const Router = (() => {
     regulatorio:     renderRegulatorio,
     comite:          renderComite,
     legislacao:      renderLegislacao,
+    honorarios:      renderHonorarios,
+    transferencias:  renderTransferencias,
     projetos:        renderProjetosTI,
     backup:          renderBackup,
   };

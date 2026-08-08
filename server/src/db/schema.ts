@@ -671,6 +671,36 @@ export interface TabelaHonorarios extends Proveniencia {
   cliente_novo: boolean | null;
   status: string | null;
   data_evento: Dia | null;
+  /** Texto simples, como em distratos/notificacoes — sem vinculo com unidades.id. */
+  unidade: string | null;
+  /**
+   * So para honorarios EXTRAJUDICIAIS, cadastrados manualmente sem processo
+   * por tras. Texto simples, como notificacoes.cliente_nome — evita expor
+   * clientes.cpf_cnpj sem a camada de mascaramento por escopo so para
+   * guardar um nome. Judiciais continuam usando `cliente_id`.
+   */
+  cliente_nome: string | null;
+}
+
+/**
+ * Revenda de unidade ja recomprada (nome comercial: Transferencia
+ * Intermediada). Continuacao de `distratos.categoria = 'recompra'`, num
+ * momento posterior do mesmo processo — ver migrations/027.
+ */
+export interface TabelaTransferenciasIntermediadas extends Proveniencia {
+  id: Auto<string>;
+  empreendimento_id: string | null;
+  unidade: string | null;
+  data_venda: Dia | null;
+  valor_venda: string | null;
+  valor_atual: string | null;
+  lucro: string | null;
+  conclusao: string | null;
+  status: string | null;
+  data_transferencia: Dia | null;
+  lucro_atualizado: string | null;
+  /** Pedido explicito de Cristiane; sem coluna correspondente no Monday. */
+  data_liberacao: Dia | null;
 }
 
 export interface TabelaFatos extends Proveniencia {
@@ -986,4 +1016,5 @@ export interface Database {
   judicializacao_apuracoes: TabelaJudicializacaoApuracoes;
 
   projetos_ti: TabelaProjetosTi;
+  transferencias_intermediadas: TabelaTransferenciasIntermediadas;
 }

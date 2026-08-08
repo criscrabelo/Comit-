@@ -26,7 +26,9 @@ export type NomeEntidade =
   | 'riscos'
   | 'regulatorios'
   | 'contratos'
-  | 'projetos';
+  | 'projetos'
+  | 'honorarios'
+  | 'transferencias';
 
 export interface DefinicaoEntidade {
   /** Tabela real no PostgreSQL. */
@@ -392,6 +394,68 @@ export const ENTIDADES: Record<NomeEntidade, DefinicaoEntidade> = {
     ordenaveis: ['nome', 'status', 'inicio', 'fim', 'criado_em'],
     temComite: false,
     temEmpreendimento: false,
+    temProveniencia: true,
+  },
+
+  // Honorarios extrajudiciais — board 7231876117. A tabela `honorarios`
+  // existe desde migrations/005_juridico.sql (compartilhada com honorarios
+  // judiciais, via `especie`), mas nunca teve uma tela; esta e a primeira.
+  // `cliente_nome` e texto simples (migrations/026), nao FK para `clientes`:
+  // ver o comentario daquela migracao para o motivo (evitar expor
+  // clientes.cpf_cnpj sem a camada de mascaramento por escopo).
+  honorarios: {
+    tabela: 'honorarios',
+    modulo: 'juridico',
+    acoes: ['ler', 'criar', 'editar', 'remover'],
+    campos: {
+      cliente_nome: 'cliente_nome',
+      empreendimento_id: 'empreendimento_id',
+      unidade: 'unidade',
+      status: 'status',
+      valor_honorarios: 'valor_honorarios',
+      data_evento: 'data_evento',
+    },
+    datas: ['data_evento'],
+    inteiros: [],
+    booleanos: [],
+    estruturas: [],
+    recorte: { especie: 'extrajudicial' },
+    ordemPadrao: { coluna: 'criado_em', direcao: 'desc' },
+    ordenaveis: ['valor_honorarios', 'status', 'criado_em'],
+    temComite: false,
+    temEmpreendimento: true,
+    temProveniencia: true,
+  },
+
+  // Transferencia Intermediada (nome comercial; a base juridica e a cessao
+  // de direitos de recompra) — board 6149480325. Ver migrations/027 para a
+  // relacao com `distratos.categoria = 'recompra'`. Cadastro manual por
+  // enquanto: sem MONDAY_TOKEN nesta sessao para homologar o board.
+  transferencias: {
+    tabela: 'transferencias_intermediadas',
+    modulo: 'juridico',
+    acoes: ['ler', 'criar', 'editar', 'remover'],
+    campos: {
+      empreendimento_id: 'empreendimento_id',
+      unidade: 'unidade',
+      data_venda: 'data_venda',
+      valor_venda: 'valor_venda',
+      valor_atual: 'valor_atual',
+      lucro: 'lucro',
+      conclusao: 'conclusao',
+      status: 'status',
+      data_transferencia: 'data_transferencia',
+      lucro_atualizado: 'lucro_atualizado',
+      data_liberacao: 'data_liberacao',
+    },
+    datas: ['data_venda', 'data_transferencia', 'data_liberacao'],
+    inteiros: [],
+    booleanos: [],
+    estruturas: [],
+    ordemPadrao: { coluna: 'criado_em', direcao: 'desc' },
+    ordenaveis: ['data_venda', 'data_transferencia', 'lucro_atualizado', 'criado_em'],
+    temComite: false,
+    temEmpreendimento: true,
     temProveniencia: true,
   },
 };

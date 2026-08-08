@@ -42,7 +42,7 @@ const DB = (() => {
   const TABLES = [
     'comites', 'empreendimentos', 'fatos', 'notificacoes', 'contratos',
     'retomadas', 'distratos', 'processos', 'unidades', 'riscos', 'regulatorios',
-    'projetos',
+    'projetos', 'honorarios', 'transferencias',
   ];
 
   /* ── Cache de trabalho: EM MEMÓRIA, nunca persistido ─────────── */

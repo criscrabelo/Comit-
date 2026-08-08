@@ -1474,6 +1474,266 @@ async function enviarIvo() {
 }
 
 // ============================================================
+// HONORARIOS EXTRAJUDICIAIS
+// ============================================================
+// Fonte: design_handoff_comites_juridicos/README.md, secao "Tela: Honorarios
+// Extrajudiciais" (board Monday 7231876117). A tabela `honorarios` ja existia
+// (migrations/005_juridico.sql, compartilhada com honorarios judiciais via
+// `especie`) mas nunca teve tela — esta e a primeira. Sem comite_id: e um
+// livro continuo de lancamentos, nao um recorte do mes.
+const HONOR_STATUS = ['PAGO', 'AGUARDANDO PAGAMENTO', 'RETIDO EM RETOMADA', 'RETIDO EM DISTRATO', 'RETOMADA EFETIVADA'];
+const HONOR_STATUS_COR = {
+  'PAGO': 'green',
+  'AGUARDANDO PAGAMENTO': 'orange',
+  'RETIDO EM RETOMADA': 'red',
+  'RETIDO EM DISTRATO': 'pink',
+  'RETOMADA EFETIVADA': 'purple',
+};
+
+function renderHonorarios() {
+  const todos = DB.getAll('honorarios');
+  const filtroEmpr = window._honorEmpr || '';
+  const filtroUnid = (window._honorUnid || '').trim().toLowerCase();
+
+  const filtrados = todos.filter((h) =>
+    (!filtroEmpr || h.empreendimento_id === filtroEmpr) &&
+    (!filtroUnid || (h.unidade || '').toLowerCase().includes(filtroUnid)));
+
+  const soma = (lista) => lista.reduce((acc, h) => acc + (parseFloat(h.valor_honorarios) || 0), 0);
+  const apurado = soma(todos);
+  const recebido = soma(todos.filter((h) => h.status === 'PAGO'));
+  const aReceber = apurado - recebido;
+  const fmtR$ = (v) => 'R$ ' + v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  setView(`
+    <div class="page-header">
+      <div><div class="page-title">💰 Honorários Extrajudiciais</div><div class="page-sub">Lançamentos individuais por unidade/cliente</div></div>
+      <div class="page-actions"><button class="btn btn-primary" onclick="openHonorModal()">+ Novo Lançamento</button></div>
+    </div>
+    <div class="content">
+      <div class="kpi-grid">
+        <div class="kpi-card"><div class="kpi-label">Total Apurado</div><div class="kpi-value" style="font-size:20px">${fmtR$(apurado)}</div></div>
+        <div class="kpi-card green"><div class="kpi-label">Recebido</div><div class="kpi-value" style="font-size:20px">${fmtR$(recebido)}</div></div>
+        <div class="kpi-card orange"><div class="kpi-label">A Receber / Retido</div><div class="kpi-value" style="font-size:20px">${fmtR$(aReceber)}</div></div>
+        <div class="kpi-card purple"><div class="kpi-label">Lançamentos</div><div class="kpi-value">${todos.length}</div></div>
+      </div>
+      <div class="filter-bar">
+        <select onchange="window._honorEmpr=this.value;renderHonorarios()">
+          <option value="">Todos os empreendimentos</option>
+          ${DB.getEmpreendimentos().map((e) => `<option value="${esc(e.id)}" ${e.id===filtroEmpr?'selected':''}>${esc(e.nome)}</option>`).join('')}
+        </select>
+        <input type="text" placeholder="Buscar por unidade…" value="${esc(window._honorUnid||'')}"
+          oninput="window._honorUnid=this.value;renderHonorarios()" />
+      </div>
+      <div class="table-wrap">
+        <table><thead><tr>
+          <th>Cliente</th><th>Empreendimento</th><th>Unidade</th><th>Status</th><th>Honorário</th><th>Crédito da Construtora</th><th>Ações</th>
+        </tr></thead><tbody>
+        ${filtrados.map((h) => {
+          const v = parseFloat(h.valor_honorarios) || 0;
+          return `<tr>
+            <td>${esc(h.cliente_nome || '—')}</td>
+            <td><span class="empr-chip">${esc(emprName(h.empreendimento_id))}</span></td>
+            <td><small>${esc(h.unidade||'—')}</small></td>
+            <td>${badge(h.status, HONOR_STATUS_COR[h.status])}</td>
+            <td class="num">${fmtR$(v)}</td>
+            <td class="num">${fmtR$(v*10)}</td>
+            <td>
+              <button class="btn btn-ghost btn-sm" onclick="openHonorModal('${h.id}')">✏️</button>
+              <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteHonor('${h.id}')">🗑️</button>
+            </td>
+          </tr>`;
+        }).join('') || '<tr class="empty-row"><td colspan="7">Nenhum lançamento cadastrado</td></tr>'}
+        </tbody></table>
+      </div>
+      <div class="hint-line">Mostrando <strong>${filtrados.length}</strong> de <strong>${todos.length}</strong> lançamentos. Cadastro manual — a sincronização com o board de honorários do Monday ainda não foi homologada nesta instalação.</div>
+    </div>
+  `);
+}
+
+function openHonorModal(id) {
+  const h = id ? DB.getById('honorarios', id) : null;
+  openModal(h ? 'Editar Lançamento' : 'Novo Lançamento',
+    `<div class="form-grid">
+      <div class="form-group span-full"><label class="field-label">Cliente *</label>
+        <input type="text" id="ho_cliente" value="${esc(h?.cliente_nome||'')}" /></div>
+      <div class="form-group"><label class="field-label">Empreendimento</label>
+        <select id="ho_empr"><option value="">—</option>${emprOptions(h?.empreendimento_id)}</select></div>
+      <div class="form-group"><label class="field-label">Unidade</label>
+        <input type="text" id="ho_unidade" value="${esc(h?.unidade||'')}" /></div>
+      <div class="form-group"><label class="field-label">Status</label>
+        <select id="ho_status">${opts(HONOR_STATUS, h?.status||'AGUARDANDO PAGAMENTO')}</select></div>
+      <div class="form-group"><label class="field-label">Honorário (R$)</label>
+        <input type="number" step="0.01" id="ho_valor" value="${h?.valor_honorarios||''}" /></div>
+      <div class="form-group"><label class="field-label">Data</label>
+        <input type="date" id="ho_data" value="${h?.data_evento||''}" /></div>
+    </div>`,
+    `<button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
+     <button class="btn btn-primary" onclick="saveHonor('${id||''}')">Salvar</button>`
+  );
+}
+
+function saveHonor(id) {
+  const cliente_nome = document.getElementById('ho_cliente').value.trim();
+  if (!cliente_nome) { toast('Informe o nome do cliente','error'); return; }
+  const d = {
+    cliente_nome,
+    empreendimento_id: document.getElementById('ho_empr').value || null,
+    unidade: document.getElementById('ho_unidade').value.trim() || null,
+    status: document.getElementById('ho_status').value,
+    valor_honorarios: document.getElementById('ho_valor').value || null,
+    data_evento: document.getElementById('ho_data').value || null,
+  };
+  if (id) { DB.update('honorarios',id,d); toast('Lançamento atualizado!','success'); }
+  else { DB.insert('honorarios',d); toast('Lançamento adicionado!','success'); }
+  closeModal(); renderHonorarios();
+}
+function deleteHonor(id) {
+  confirmDelete('Excluir este lançamento?', `()=>{ DB.remove('honorarios','${id}'); toast('Excluído!'); renderHonorarios(); }`);
+}
+
+// ============================================================
+// TRANSFERÊNCIA INTERMEDIADA
+// ============================================================
+// Nome comercial atual; a base juridica e a cessao de direitos de recompra
+// (board Monday 6149480325). Ver migrations/027 para a relacao com
+// `distratos.categoria = 'recompra'` — sao dois momentos do mesmo processo.
+const TRANSF_CONCLUSAO = ['Concluído', 'Em andamento', 'Enviado'];
+const TRANSF_STATUS = ['SUCESSO', 'RECUSADO'];
+const TRANSF_STATUS_COR = { 'SUCESSO': 'green', 'RECUSADO': 'red' };
+const TRANSF_CONCLUSAO_COR = { 'Concluído': 'green', 'Em andamento': 'orange', 'Enviado': 'blue' };
+
+function renderTransferencias() {
+  const todos = DB.getAll('transferencias');
+  const fStatus = window._transfStatus || '';
+  const fConc = window._transfConclusao || '';
+  const fEmpr = window._transfEmpr || '';
+
+  const filtrados = todos.filter((t) =>
+    (!fStatus || t.status === fStatus) &&
+    (!fConc || t.conclusao === fConc) &&
+    (!fEmpr || t.empreendimento_id === fEmpr));
+
+  const num = (v) => parseFloat(v) || 0;
+  const efetivadas = todos.filter((t) => t.status === 'SUCESSO');
+  const recusadas = todos.filter((t) => t.status === 'RECUSADO');
+  const lucroTotal = efetivadas.reduce((acc, t) => acc + num(t.lucro_atualizado), 0);
+  const valorVendaEfetivadas = efetivadas.reduce((acc, t) => acc + num(t.valor_venda), 0);
+  const ticketMedio = efetivadas.length ? lucroTotal / efetivadas.length : 0;
+  const fmtAbrev = (v) => {
+    const abs = Math.abs(v);
+    if (abs >= 1e6) return 'R$ ' + (v/1e6).toLocaleString('pt-BR',{maximumFractionDigits:1}) + ' mi';
+    if (abs >= 1e3) return 'R$ ' + (v/1e3).toLocaleString('pt-BR',{maximumFractionDigits:1}) + ' mil';
+    return 'R$ ' + v.toLocaleString('pt-BR',{maximumFractionDigits:0});
+  };
+
+  setView(`
+    <div class="page-header">
+      <div><div class="page-title" style="color:var(--azul-ti)">🔁 Transferência Intermediada</div><div class="page-sub">Revenda de unidades já recompradas</div></div>
+      <div class="page-actions"><button class="btn btn-primary" onclick="openTransfModal()">+ Nova Operação</button></div>
+    </div>
+    <div class="content">
+      <div class="kpi-grid">
+        <div class="kpi-card"><div class="kpi-label">Total de Operações</div><div class="kpi-value">${todos.length}</div></div>
+        <div class="kpi-card green"><div class="kpi-label">Efetivadas</div><div class="kpi-value">${efetivadas.length}</div></div>
+        <div class="kpi-card red"><div class="kpi-label">Recusadas</div><div class="kpi-value">${recusadas.length}</div></div>
+        <div class="kpi-card azulti"><div class="kpi-label">Lucro Total</div><div class="kpi-value" style="font-size:20px">${fmtAbrev(lucroTotal)}</div></div>
+        <div class="kpi-card purple"><div class="kpi-label">Venda das Efetivadas</div><div class="kpi-value" style="font-size:20px">${fmtAbrev(valorVendaEfetivadas)}</div></div>
+        <div class="kpi-card orange"><div class="kpi-label">Ticket Médio</div><div class="kpi-value" style="font-size:20px">${fmtAbrev(ticketMedio)}</div></div>
+      </div>
+      <div class="filter-bar">
+        <select onchange="window._transfStatus=this.value;renderTransferencias()">
+          <option value="">Status · todos</option>
+          ${TRANSF_STATUS.map((s) => `<option value="${esc(s)}" ${s===fStatus?'selected':''}>${esc(s)}</option>`).join('')}
+        </select>
+        <select onchange="window._transfConclusao=this.value;renderTransferencias()">
+          <option value="">Conclusão · todas</option>
+          ${TRANSF_CONCLUSAO.map((c) => `<option value="${esc(c)}" ${c===fConc?'selected':''}>${esc(c)}</option>`).join('')}
+        </select>
+        <select onchange="window._transfEmpr=this.value;renderTransferencias()">
+          <option value="">Todos os empreendimentos</option>
+          ${DB.getEmpreendimentos().map((e) => `<option value="${esc(e.id)}" ${e.id===fEmpr?'selected':''}>${esc(e.nome)}</option>`).join('')}
+        </select>
+      </div>
+      <div class="table-wrap">
+        <table><thead><tr>
+          <th>Empreendimento</th><th>Unidade</th><th>Data da Venda</th><th>Lucro Atualizado</th><th>Data da Transferência</th><th>Liberação p/ Venda</th><th>Status</th><th>Ações</th>
+        </tr></thead><tbody>
+        ${filtrados.map((t) => `<tr>
+          <td><span class="empr-chip">${esc(emprName(t.empreendimento_id))}</span></td>
+          <td><small>${esc(t.unidade||'—')}</small></td>
+          <td>${fmtDate(t.data_venda)}</td>
+          <td class="num" style="color:var(--green);font-weight:600">${t.lucro_atualizado!=null ? 'R$ '+num(t.lucro_atualizado).toLocaleString('pt-BR',{minimumFractionDigits:2}) : '—'}</td>
+          <td>${fmtDate(t.data_transferencia)}</td>
+          <td>${fmtDate(t.data_liberacao)}</td>
+          <td>${badge(t.status, TRANSF_STATUS_COR[t.status])}</td>
+          <td>
+            <button class="btn btn-ghost btn-sm" onclick="openTransfModal('${t.id}')">✏️</button>
+            <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteTransf('${t.id}')">🗑️</button>
+          </td>
+        </tr>`).join('') || '<tr class="empty-row"><td colspan="8">Nenhuma operação cadastrada</td></tr>'}
+        </tbody></table>
+      </div>
+      <div class="hint-line">Mostrando <strong>${filtrados.length}</strong> de <strong>${todos.length}</strong> operações. Cadastro manual — a sincronização com o board de transferências do Monday ainda não foi homologada nesta instalação.</div>
+    </div>
+  `);
+}
+
+function openTransfModal(id) {
+  const t = id ? DB.getById('transferencias', id) : null;
+  openModal(t ? 'Editar Transferência Intermediada' : 'Nova Transferência Intermediada',
+    `<div class="form-grid">
+      <div class="form-group span-full"><label class="field-label">Empreendimento</label>
+        <select id="tr_empr"><option value="">—</option>${emprOptions(t?.empreendimento_id)}</select></div>
+      <div class="form-group"><label class="field-label">Unidade</label>
+        <input type="text" id="tr_unidade" value="${esc(t?.unidade||'')}" /></div>
+      <div class="form-group"><label class="field-label">Conclusão</label>
+        <select id="tr_conclusao">${opts(TRANSF_CONCLUSAO, t?.conclusao||'Em andamento')}</select></div>
+      <div class="form-group"><label class="field-label">Status</label>
+        <select id="tr_status">${opts(TRANSF_STATUS, t?.status||'SUCESSO')}</select></div>
+      <div class="form-group"><label class="field-label">Data da Venda</label>
+        <input type="date" id="tr_data_venda" value="${t?.data_venda||''}" /></div>
+      <div class="form-group"><label class="field-label">Valor da Venda (R$)</label>
+        <input type="number" step="0.01" id="tr_valor_venda" value="${t?.valor_venda||''}" /></div>
+      <div class="form-group"><label class="field-label">Valor Atual (R$)</label>
+        <input type="number" step="0.01" id="tr_valor_atual" value="${t?.valor_atual||''}" /></div>
+      <div class="form-group"><label class="field-label">Lucro (R$)</label>
+        <input type="number" step="0.01" id="tr_lucro" value="${t?.lucro||''}" /></div>
+      <div class="form-group"><label class="field-label">Data da Transferência</label>
+        <input type="date" id="tr_data_transf" value="${t?.data_transferencia||''}" /></div>
+      <div class="form-group"><label class="field-label">Lucro Atualizado (R$)</label>
+        <input type="number" step="0.01" id="tr_lucro_atual" value="${t?.lucro_atualizado||''}" /></div>
+      <div class="form-group span-full"><label class="field-label">Data de Liberação para Venda</label>
+        <input type="date" id="tr_liberacao" value="${t?.data_liberacao||''}" /></div>
+    </div>`,
+    `<button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
+     <button class="btn btn-primary" onclick="saveTransf('${id||''}')">Salvar</button>`
+  );
+}
+
+function saveTransf(id) {
+  const d = {
+    empreendimento_id: document.getElementById('tr_empr').value || null,
+    unidade: document.getElementById('tr_unidade').value.trim() || null,
+    conclusao: document.getElementById('tr_conclusao').value,
+    status: document.getElementById('tr_status').value,
+    data_venda: document.getElementById('tr_data_venda').value || null,
+    valor_venda: document.getElementById('tr_valor_venda').value || null,
+    valor_atual: document.getElementById('tr_valor_atual').value || null,
+    lucro: document.getElementById('tr_lucro').value || null,
+    data_transferencia: document.getElementById('tr_data_transf').value || null,
+    lucro_atualizado: document.getElementById('tr_lucro_atual').value || null,
+    data_liberacao: document.getElementById('tr_liberacao').value || null,
+  };
+  if (id) { DB.update('transferencias',id,d); toast('Operação atualizada!','success'); }
+  else { DB.insert('transferencias',d); toast('Operação adicionada!','success'); }
+  closeModal(); renderTransferencias();
+}
+function deleteTransf(id) {
+  confirmDelete('Excluir esta operação?', `()=>{ DB.remove('transferencias','${id}'); toast('Excluído!'); renderTransferencias(); }`);
+}
+
+// ============================================================
 // PROJETOS DE TI (Tecnologia Digital)
 // ============================================================
 // Fonte: design_handoff_comites_juridicos/README.md, secao "Tela: Projetos de
