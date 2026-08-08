@@ -80,11 +80,11 @@ function renderComite() {
       <!-- SLIDE 1: CAPA -->
       <div class="slide-preview-card">
         <div class="slide-tag">Slide 1 · Capa</div>
-        <div style="background:#1E2A3B;color:#fff;border-radius:8px;padding:40px;text-align:center;">
+        <div style="background:var(--escuro);color:#fff;border-radius:8px;padding:40px;text-align:center;">
           <div style="font-size:48px;margin-bottom:16px;">⚖️</div>
           <div style="font-size:32px;font-weight:900;letter-spacing:-1px;">COMITÊ ${esc(comite.label.toUpperCase())}</div>
           <div style="font-size:16px;opacity:.7;margin-top:8px;">Relatório Jurídico e Operacional</div>
-          <div style="margin-top:20px;background:#2563EB;display:inline-block;padding:8px 28px;border-radius:99px;font-size:15px;font-weight:700;">${esc(comite.label)}</div>
+          <div style="margin-top:20px;background:var(--blue);display:inline-block;padding:8px 28px;border-radius:99px;font-size:15px;font-weight:700;">${esc(comite.label)}</div>
         </div>
       </div>
 
@@ -150,7 +150,7 @@ function renderComite() {
       <!-- SLIDE 12: OBRIGADA -->
       <div class="slide-preview-card">
         <div class="slide-tag">Encerramento</div>
-        <div style="background:#1E2A3B;color:#fff;border-radius:8px;padding:60px;text-align:center;">
+        <div style="background:var(--escuro);color:#fff;border-radius:8px;padding:60px;text-align:center;">
           <div style="font-size:48px;font-weight:900;">OBRIGADA</div>
           <div style="font-size:16px;opacity:.6;margin-top:10px;">${esc(comite.label)} · Departamento Jurídico</div>
         </div>
@@ -380,7 +380,7 @@ function buildRiscoSlides(r) {
   let html = `
     <div class="slide-preview-card" style="border-color:var(--red);">
       <div class="slide-tag" style="background:var(--red);color:#fff;">Anexo · Análise de Risco — ${esc(emprName(r.empreendimento_id))}</div>
-      <div style="background:#1E2A3B;color:#fff;border-radius:8px;padding:32px;">
+      <div style="background:var(--escuro);color:#fff;border-radius:8px;padding:32px;">
         <div style="font-size:11px;opacity:.6;text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;">ANÁLISE JURÍDICA</div>
         <div style="font-size:20px;font-weight:900;">${esc(emprName(r.empreendimento_id)).toUpperCase()}</div>
         <div style="font-size:14px;opacity:.7;margin-top:4px;">Riscos Contratuais — ${esc(r.contrato_ref)}</div>
@@ -541,11 +541,11 @@ function buildPrintSlides(comite, fatosByEmpr, notifs, rets, dists, procsExt, pr
   regs.forEach(r => {
     out += `<div class="slide-page slide-body">
       <div class="slide-title">${esc(r.titulo.toUpperCase())}</div>
-      ${r.destaque ? `<div style="background:#FEF9C3;border:1px solid #FCD34D;border-radius:8px;padding:12px;margin-bottom:16px;font-weight:700;color:#92400E;">🚨 ${esc(r.destaque)}</div>` : ''}
+      ${r.destaque ? `<div style="background:#fbf4e6;border:1px solid #ecdcb6;border-radius:8px;padding:12px;margin-bottom:16px;font-weight:700;color:#8a6d2e;">🚨 ${esc(r.destaque)}</div>` : ''}
       ${r.checklist?.length ? `<ul class="slide-check-list">
         ${r.checklist.map(c=>`<li class="slide-check-item">
           <span class="slide-check-icon">☑️</span>
-          <div><strong style="font-size:13px;">${esc(c.item)}</strong><br><span style="font-size:12px;color:#6B7280;">${esc(c.descricao)}</span></div>
+          <div><strong style="font-size:13px;">${esc(c.item)}</strong><br><span style="font-size:12px;color:var(--gray-500);">${esc(c.descricao)}</span></div>
         </li>`).join('')}
       </ul>` : ''}
     </div>`;
@@ -565,7 +565,7 @@ function buildPrintSlides(comite, fatosByEmpr, notifs, rets, dists, procsExt, pr
   // RISCOS (ANEXOS)
   riscos.forEach(r => {
     // capa
-    out += `<div class="slide-page slide-body" style="background:#1E2A3B;color:#fff;">
+    out += `<div class="slide-page slide-body" style="background:var(--escuro);color:#fff;">
       <div style="margin-top:80px;text-align:center;">
         <div style="font-size:11px;opacity:.5;text-transform:uppercase;letter-spacing:.1em;">ANÁLISE JURÍDICA</div>
         <div style="font-size:32px;font-weight:900;margin:12px 0;">${esc(emprName(r.empreendimento_id)).toUpperCase()}</div>
@@ -578,12 +578,12 @@ function buildPrintSlides(comite, fatosByEmpr, notifs, rets, dists, procsExt, pr
     if (r.cronograma?.length) {
       out += `<div class="slide-page slide-body">
         <div class="slide-title">CRONOGRAMA CONTRATUAL</div>
-        ${r.alerta ? `<div style="background:#FEF2F2;border:1px solid #FCA5A5;border-radius:8px;padding:12px;margin-bottom:16px;font-size:12px;color:#991B1B;">⚠️ ${esc(r.alerta)}</div>` : ''}
+        ${r.alerta ? `<div style="background:#f6e9e6;border:1px solid #e3bdb3;border-radius:8px;padding:12px;margin-bottom:16px;font-size:12px;color:#8f4335;">⚠️ ${esc(r.alerta)}</div>` : ''}
         <div class="slide-kpi-row">
           ${r.cronograma.map(c=>`<div class="slide-kpi">
-            <div style="font-size:10px;color:#6B7280;text-transform:uppercase;">${esc(c.marco)}</div>
+            <div style="font-size:10px;color:var(--gray-500);text-transform:uppercase;">${esc(c.marco)}</div>
             <div style="font-size:16px;font-weight:700;margin:6px 0;">${esc(c.prazo)}</div>
-            <div style="font-size:10px;color:#9CA3AF;">${esc(c.base)}</div>
+            <div style="font-size:10px;color:var(--gray-400);">${esc(c.base)}</div>
           </div>`).join('')}
         </div>
       </div>`;
@@ -627,15 +627,15 @@ function printKpiSlide(titulo, mes, kpis, chart1data, chart2data) {
   const toBar = (data) => {
     const keys = Object.keys(data);
     const vals = Object.values(data);
-    if (!keys.length) return '<em style="font-size:11px;color:#9CA3AF;">Sem dados</em>';
+    if (!keys.length) return '<em style="font-size:11px;color:var(--gray-400);">Sem dados</em>';
     const max = Math.max(...vals) || 1;
     return keys.map((k,i) => `
       <div style="margin-bottom:6px;">
         <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:2px;">
           <span>${esc(k)}</span><span style="font-weight:700;">${vals[i]}</span>
         </div>
-        <div style="background:#E5E7EB;border-radius:99px;height:5px;">
-          <div style="height:5px;border-radius:99px;background:#2563EB;width:${Math.round(vals[i]/max*100)}%;"></div>
+        <div style="background:var(--gray-200);border-radius:99px;height:5px;">
+          <div style="height:5px;border-radius:99px;background:var(--blue);width:${Math.round(vals[i]/max*100)}%;"></div>
         </div>
       </div>
     `).join('');
@@ -684,7 +684,7 @@ function printProcSlide(titulo, mes, list, interno) {
           <td>${esc(p.posicao)}</td>
           <td>${esc(p.status)}</td>
           <td>${esc(p.ano)}</td>
-        </tr>`).join('') || '<tr><td colspan="5" style="text-align:center;color:#9CA3AF;">Nenhum processo</td></tr>'}
+        </tr>`).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--gray-400);">Nenhum processo</td></tr>'}
       </tbody>
     </table>
   </div>`;
