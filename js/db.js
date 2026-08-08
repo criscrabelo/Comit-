@@ -42,6 +42,7 @@ const DB = (() => {
   const TABLES = [
     'comites', 'empreendimentos', 'fatos', 'notificacoes', 'contratos',
     'retomadas', 'distratos', 'processos', 'unidades', 'riscos', 'regulatorios',
+    'projetos',
   ];
 
   /* ── Cache de trabalho: EM MEMÓRIA, nunca persistido ─────────── */
@@ -230,6 +231,14 @@ const DB = (() => {
         else await lote[0].executar();
 
         lote.forEach((op) => op.resolver());
+        // Criação troca o id provisório (`tmp-...`) pelo definitivo no cache
+        // (_trocar/_reapontar), mas a tela já tinha desenhado botões com o id
+        // provisório embutido no onclick. Sem redesenhar aqui, esses botões
+        // continuam apontando para um id que não existe mais assim que o
+        // servidor confirma — editar ou excluir o registro recém-criado falha
+        // até a próxima navegação. Atualização e exclusão não trocam id;
+        // redesenhar sempre seria refazer trabalho sem motivo.
+        if (lote.some((op) => op.tipo === 'criar')) _redesenhar();
         if (!_fila.length) _definirEstado(ESTADOS.SALVO);
         else _definirEstado(ESTADOS.SALVANDO);
       } catch (erro) {

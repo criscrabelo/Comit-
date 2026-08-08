@@ -37,7 +37,14 @@ if (!process.env.DATABASE_URL) {
 
 const { db, fecharBanco } = await import('../src/db/pool.js');
 
-const MODULOS = ['visao_geral', 'equipe', 'juridico', 'empreendimentos', 'inteligencia'] as const;
+const MODULOS = [
+  'visao_geral',
+  'equipe',
+  'juridico',
+  'empreendimentos',
+  'inteligencia',
+  'tecnologia',
+] as const;
 const ACOES = ['criar', 'editar', 'remover', 'exportar', 'executar'] as const;
 const TIPOS = [
   'dado_pessoal',

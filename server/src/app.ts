@@ -26,6 +26,7 @@ import { rotasSienge } from './integracoes/sienge/rotas.js';
 import { rotasMigracao } from './migracao/rotas.js';
 import { rotasDados } from './dados/rotas.js';
 import { rotasBackup } from './backup/rotas.js';
+import { rotasIA } from './ia/rotas.js';
 
 /** 1 MiB cobre com folga qualquer carga legitima da API. */
 const TAMANHO_MAXIMO_CORPO = 1_048_576;
@@ -112,6 +113,7 @@ export async function criarApp(): Promise<FastifyInstance> {
   await app.register(rotasMigracao);
   await app.register(rotasDados);
   await app.register(rotasBackup);
+  await app.register(rotasIA);
 
   // ── Interface, na mesma origem ────────────────────────────────────────────
   //
@@ -127,12 +129,13 @@ export async function criarApp(): Promise<FastifyInstance> {
       root: raizDaInterface,
       // Lista fechada: sem isto, o curinga serviria `server/`, `docs/` e o
       // proprio `.git` para quem pedisse.
-      // `js/vendor/` guarda bibliotecas empacotadas localmente (Chart.js) e
-      // `css/fontes/` guarda as fontes IBM Plex, ambas pelo mesmo motivo:
-      // eliminar o CDN externo da pagina que exibe dado de cliente.
+      // `js/vendor/` guarda bibliotecas empacotadas localmente (Chart.js),
+      // `css/fontes/` guarda as fontes IBM Plex e `img/` guarda o avatar da
+      // Temis — todos pelo mesmo motivo: eliminar o CDN externo da pagina que
+      // exibe dado de cliente.
       allowedPath: (caminho) =>
         caminho === '/' ||
-        /^\/(index\.html|js\/(vendor\/)?[\w.-]+\.js|css\/(fontes\/)?[\w.-]+\.(css|woff2))$/.test(
+        /^\/(index\.html|js\/(vendor\/)?[\w.-]+\.js|css\/(fontes\/)?[\w.-]+\.(css|woff2)|img\/[\w.-]+\.png)$/.test(
           caminho,
         ),
       index: ['index.html'],

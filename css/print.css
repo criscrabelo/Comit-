@@ -4,6 +4,7 @@
 
   body { background: #fff; overflow: visible; }
   .sidebar, .page-header, .btn, #modal, #toast, .filter-bar { display: none !important; }
+  .temis-fab-btn, .temis-painel { display: none !important; }
 
   .main {
     height: auto !important;

@@ -31,6 +31,12 @@ const esquema = z.object({
   MONDAY_TOKEN: z.string().optional(),
   MONDAY_API_VERSION: z.string().default('2024-10'),
 
+  // Assistentes de IA (Temis e Ivo). Ausencia de chave = assistentes
+  // desligadas — a tela mostra a mensagem de indisponibilidade em vez de
+  // travar ou inventar resposta. Ver design_handoff_comites_juridicos/README.md.
+  IA_API_KEY: z.string().optional(),
+  IA_MODELO: z.string().default('claude-sonnet-5'),
+
   SIENGE_SUBDOMAIN: z.string().optional(),
   SIENGE_USER: z.string().optional(),
   SIENGE_PASSWORD: z.string().optional(),
@@ -121,6 +127,15 @@ export const config = {
     versaoApi: env.MONDAY_API_VERSION,
     get habilitado() {
       return Boolean(env.MONDAY_TOKEN?.trim());
+    },
+  },
+
+  ia: {
+    /** Nunca exposta ao navegador; so o servidor fala com a API da IA. */
+    chave: env.IA_API_KEY?.trim() || null,
+    modelo: env.IA_MODELO,
+    get habilitado() {
+      return Boolean(env.IA_API_KEY?.trim());
     },
   },
 

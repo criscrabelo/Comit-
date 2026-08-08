@@ -1367,6 +1367,258 @@ function deleteReg(id) {
 }
 
 // ============================================================
+// IVO — CONSULTOR JURIDICO DE IA (consultoria legislativa)
+// ============================================================
+// Fonte: design_handoff_comites_juridicos/README.md, secao "Ivo". Escopo
+// fixo (nao filtra por comite): direito imobiliario, tributario, financeiro,
+// consumidor e trabalhista da construcao civil.
+const IVO_AREAS = [
+  'Financeiro & Crédito (SFH/SFI)', 'Portarias Receita Federal', 'Normativos Caixa (FGTS)',
+  'Banco Central (CMN)', 'CVM (CRI/securitização)', 'Direito do Consumidor', 'Trabalhista (CLT/NRs)',
+];
+
+// Cards de exemplo — o monitoramento ao vivo de diarios oficiais ainda nao
+// esta conectado (ver README). Marcados como "exemplo" de proposito, para
+// nao serem confundidos com alerta real.
+const IVO_ALERTAS_EXEMPLO = [
+  { titulo: 'Alteração na Lei do Distrato (13.786/2018)', resumo: 'Projeto de lei em tramitação propõe novo teto de retenção em rescisão contratual por inadimplência do comprador.' },
+  { titulo: 'Nova Instrução Normativa da Receita Federal', resumo: 'Atualização nos critérios de apuração do RET (Regime Especial de Tributação) para incorporações imobiliárias.' },
+  { titulo: 'Resolução do Banco Central sobre SFH/SFI', resumo: 'Ajuste nas regras de repasse de recursos do FGTS para financiamento habitacional.' },
+];
+
+function renderLegislacao() {
+  const tab = window._legTab || 'chat';
+  const msgs = window._legMsgs || (window._legMsgs = []);
+  const carregando = Boolean(window._legCarregando);
+
+  const bolha = (m) => m.aviso
+    ? `<div class="ivo-bolha bot"><div class="ivo-avatar-mini">I</div><div class="temis-bolha aviso" style="flex:1">${esc(m.texto)}</div></div>`
+    : m.papel === 'usuario'
+      ? `<div class="ivo-bolha user">${esc(m.texto)}</div>`
+      : `<div class="ivo-bolha bot"><div class="ivo-avatar-mini">I</div><div style="flex:1">${esc(m.texto)}</div></div>`;
+
+  const chatHtml = msgs.length
+    ? msgs.map(bolha).join('') + (carregando ? '<div class="ivo-bolha bot"><div class="ivo-avatar-mini">I</div><div>Consultando a legislação…</div></div>' : '')
+    : `
+      <div class="ivo-vazio">
+        <div class="ivo-avatar-grande">I</div>
+        <div style="font-size:17px;font-weight:700;color:var(--gray-900)">Ivo</div>
+        <div style="font-size:12px;color:var(--dourado);font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin:2px 0 12px">Consultor Jurídico · IA</div>
+        <div style="font-size:13px;color:var(--gray-500);line-height:1.6;margin-bottom:14px">
+          Cobertura em direito imobiliário, construção e incorporação, tributário, financeiro e crédito, consumidor e trabalhista da construção civil. Pergunte livremente — toda resposta traz a fundamentação legal e uma ressalva sobre a data de corte do conhecimento.
+        </div>
+        <div>${IVO_AREAS.map((a) => `<span class="ivo-chip">${esc(a)}</span>`).join('')}</div>
+      </div>`;
+
+  setView(`
+    <div class="page-header">
+      <div><div class="page-title" style="color:var(--dourado)">🤖 Consultor Jurídico Ivo</div><div class="page-sub">Consultoria legislativa por IA</div></div>
+    </div>
+    <div class="content">
+      <div class="tabs">
+        <button class="tab-btn ${tab==='chat'?'active':''}" onclick="window._legTab='chat';renderLegislacao()">Chat</button>
+        <button class="tab-btn ${tab==='alertas'?'active':''}" onclick="window._legTab='alertas';renderLegislacao()">Alertas</button>
+      </div>
+      ${tab === 'chat' ? `
+        <div class="ivo-chat-area" id="ivoChatArea">${chatHtml}</div>
+        <div class="temis-painel-rodape" style="border-top:1px solid var(--gray-200);padding:12px 4px;position:sticky;bottom:0;background:var(--gray-100)">
+          <input type="text" id="ivoInput" placeholder="Pergunte ao Ivo…" ${carregando?'disabled':''}
+            onkeydown="if(event.key==='Enter')enviarIvo()" style="background:#fff" />
+          <button onclick="enviarIvo()" ${carregando?'disabled':''} style="background:var(--dourado)" title="Enviar">➤</button>
+        </div>
+      ` : `
+        <div class="ivo-aviso-alerta">⚠️ O monitoramento ao vivo de diários oficiais ainda não está conectado. Os cards abaixo são exemplos do formato que os alertas reais terão.</div>
+        ${IVO_ALERTAS_EXEMPLO.map((a) => `
+          <div class="ivo-alerta-card">
+            <span class="ivo-alerta-tag">exemplo</span>
+            <div style="font-weight:600;font-size:14px;margin:8px 0 4px">${esc(a.titulo)}</div>
+            <div style="font-size:13px;color:var(--gray-500);line-height:1.5">${esc(a.resumo)}</div>
+          </div>`).join('')}
+      `}
+    </div>
+  `);
+
+  const area = document.getElementById('ivoChatArea');
+  if (area) area.scrollTop = area.scrollHeight;
+}
+
+async function enviarIvo() {
+  const input = document.getElementById('ivoInput');
+  if (!input) return;
+  const texto = input.value.trim();
+  if (!texto || window._legCarregando) return;
+  input.value = '';
+
+  const msgs = window._legMsgs || (window._legMsgs = []);
+  msgs.push({ papel: 'usuario', texto });
+  window._legCarregando = true;
+  renderLegislacao();
+
+  try {
+    const corpo = { mensagens: msgs.filter((m) => !m.aviso).map((m) => ({ papel: m.papel, texto: m.texto })) };
+    const r = await Sessao.requisitar('/api/ia/ivo', { metodo: 'POST', corpo });
+    msgs.push({ papel: 'assistente', texto: r.resposta });
+  } catch (erro) {
+    msgs.push({
+      papel: 'assistente', aviso: true,
+      texto: erro && erro.conflito
+        ? 'O Ivo precisa de uma chave de IA configurada no servidor para responder. Peça para o administrador configurar IA_API_KEY no ambiente da plataforma.'
+        : erro && erro.semPermissao
+          ? 'Seu perfil não tem acesso ao consultor Ivo.'
+          : 'O Ivo não respondeu desta vez. Tente novamente em um instante.',
+    });
+  } finally {
+    window._legCarregando = false;
+    renderLegislacao();
+  }
+}
+
+// ============================================================
+// PROJETOS DE TI (Tecnologia Digital)
+// ============================================================
+// Fonte: design_handoff_comites_juridicos/README.md, secao "Tela: Projetos de
+// TI" (board Monday 5188439530, workspace IT). Cadastro manual por enquanto —
+// a sincronizacao com o Monday nao esta homologada nesta instalacao (falta
+// MONDAY_TOKEN para confirmar os titulos exatos das colunas do board).
+//
+// Sem comite_id: e um backlog continuo, nao um recorte do mes — por isso a
+// tela nao depende de haver um comite aberto, diferente das telas do
+// Juridico.
+const PROJ_STATUS = ['IMPLEMENTADO', 'EM PROGRESSO', 'ATRASADO', 'PARADO', 'IDEALIZAÇÃO', 'AGUARDANDO APROVAÇÃO'];
+const PROJ_STATUS_COR = {
+  'IMPLEMENTADO': 'green',
+  'EM PROGRESSO': 'orange',
+  'ATRASADO': 'red',
+  'PARADO': 'pink',
+  'IDEALIZAÇÃO': 'blue',
+  'AGUARDANDO APROVAÇÃO': 'purple',
+};
+function projStatusLabel(s) {
+  if (s === 'AGUARDANDO APROVAÇÃO') return 'Aguardando aprov.';
+  if (!s) return '—';
+  return s.charAt(0) + s.slice(1).toLowerCase();
+}
+function projBadge(status) {
+  const cor = PROJ_STATUS_COR[status] || 'gray';
+  return `<span class="badge badge-${cor}">${esc(projStatusLabel(status))}</span>`;
+}
+
+function renderProjetosTI() {
+  const todos = DB.getAll('projetos');
+  const tipos = [...new Set(todos.map(p => p.tipo).filter(Boolean))].sort();
+
+  const fStatus = window._pjStatus || [];
+  const fTipo   = window._pjTipo   || [];
+  const filtrados = todos.filter(p =>
+    (!fStatus.length || fStatus.includes(p.status)) &&
+    (!fTipo.length   || fTipo.includes(p.tipo)));
+
+  const contarStatus = (s) => todos.filter(p => p.status === s).length;
+  const qtdIdeia = contarStatus('IDEALIZAÇÃO') + contarStatus('AGUARDANDO APROVAÇÃO');
+
+  const chip = (grupo, valor, ativo, rotulo) =>
+    `<button class="filtro-chip ${ativo?'on':''}" onclick="toggleProjFiltro('${grupo}','${esc(valor)}')">${esc(rotulo)}</button>`;
+
+  setView(`
+    <div class="page-header">
+      <div><div class="page-title">💻 Projetos de TI</div><div class="page-sub">Tecnologia Digital · carteira continua de projetos (cadastro manual)</div></div>
+      <div class="page-actions"><button class="btn btn-primary" onclick="openProjModal()">+ Novo Projeto</button></div>
+    </div>
+    <div class="content">
+      <div class="kpi-grid">
+        <div class="kpi-card green"><div class="kpi-label">Implementado</div><div class="kpi-value">${contarStatus('IMPLEMENTADO')}</div></div>
+        <div class="kpi-card orange"><div class="kpi-label">Em progresso</div><div class="kpi-value">${contarStatus('EM PROGRESSO')}</div></div>
+        <div class="kpi-card red"><div class="kpi-label">Atrasado</div><div class="kpi-value">${contarStatus('ATRASADO')}</div></div>
+        <div class="kpi-card pink"><div class="kpi-label">Parado</div><div class="kpi-value">${contarStatus('PARADO')}</div></div>
+        <div class="kpi-card azulti"><div class="kpi-label">Ideia</div><div class="kpi-value">${qtdIdeia}</div></div>
+      </div>
+      <div class="filter-bar" style="flex-direction:column;align-items:flex-start;gap:10px">
+        <div class="filtro-chips"><span class="filtro-label">Status</span>${PROJ_STATUS.map(s => chip('status', s, fStatus.includes(s), projStatusLabel(s))).join('')}</div>
+        ${tipos.length ? `<div class="filtro-chips"><span class="filtro-label">Tipo</span>${tipos.map(t => chip('tipo', t, fTipo.includes(t), t)).join('')}</div>` : ''}
+      </div>
+      <div class="table-wrap">
+        <table><thead><tr>
+          <th>Projeto</th><th>Tipo</th><th>Empresa</th><th>Executor</th><th>Início</th><th>Fim</th><th>Dias</th><th>Status</th><th>Ações</th>
+        </tr></thead><tbody>
+        ${filtrados.map(p => `<tr>
+          <td>${esc(p.nome)}</td>
+          <td><small>${esc(p.tipo||'—')}</small></td>
+          <td><small>${esc(p.empresa||'—')}</small></td>
+          <td><small>${esc(p.executor||'—')}</small></td>
+          <td>${fmtDate(p.inicio)}</td>
+          <td>${fmtDate(p.fim)}</td>
+          <td class="num">${p.dias ?? '—'}</td>
+          <td>${projBadge(p.status)}</td>
+          <td>
+            <button class="btn btn-ghost btn-sm" onclick="openProjModal('${p.id}')">✏️</button>
+            <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteProj('${p.id}')">🗑️</button>
+          </td>
+        </tr>`).join('') || '<tr class="empty-row"><td colspan="9">Nenhum projeto cadastrado</td></tr>'}
+        </tbody></table>
+      </div>
+      <div class="hint-line">Mostrando <strong>${filtrados.length}</strong> de <strong>${todos.length}</strong> projetos. Cadastro manual — a sincronização com o board de TI do Monday ainda não foi homologada nesta instalação.</div>
+    </div>
+  `);
+}
+
+function toggleProjFiltro(grupo, valor) {
+  const chave = grupo === 'status' ? '_pjStatus' : '_pjTipo';
+  const atual = window[chave] || (window[chave] = []);
+  const i = atual.indexOf(valor);
+  if (i >= 0) atual.splice(i, 1); else atual.push(valor);
+  renderProjetosTI();
+}
+
+function openProjModal(id) {
+  const p = id ? DB.getById('projetos', id) : null;
+  openModal(p ? 'Editar Projeto de TI' : 'Novo Projeto de TI',
+    `<div class="form-grid">
+      <div class="form-group span-full"><label class="field-label">Projeto *</label>
+        <input type="text" id="pj_nome" value="${esc(p?.nome||'')}" /></div>
+      <div class="form-group"><label class="field-label">Tipo</label>
+        <input type="text" id="pj_tipo" value="${esc(p?.tipo||'')}" placeholder="Ex: T.I, Integrações, Sistemas" /></div>
+      <div class="form-group"><label class="field-label">Status</label>
+        <select id="pj_status">${opts(PROJ_STATUS, p?.status||'IDEALIZAÇÃO')}</select></div>
+      <div class="form-group"><label class="field-label">Empresa</label>
+        <input type="text" id="pj_empresa" value="${esc(p?.empresa||'')}" /></div>
+      <div class="form-group"><label class="field-label">Executor</label>
+        <input type="text" id="pj_executor" value="${esc(p?.executor||'')}" /></div>
+      <div class="form-group"><label class="field-label">Início</label>
+        <input type="date" id="pj_inicio" value="${p?.inicio||''}" /></div>
+      <div class="form-group"><label class="field-label">Fim</label>
+        <input type="date" id="pj_fim" value="${p?.fim||''}" /></div>
+    </div>`,
+    `<button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
+     <button class="btn btn-primary" onclick="saveProj('${id||''}')">Salvar</button>`
+  );
+}
+
+function saveProj(id) {
+  const nome     = document.getElementById('pj_nome').value.trim();
+  const inicio   = document.getElementById('pj_inicio').value || null;
+  const fim      = document.getElementById('pj_fim').value || null;
+  if (!nome) { toast('Informe o nome do projeto','error'); return; }
+  const d = {
+    nome,
+    tipo: document.getElementById('pj_tipo').value.trim() || null,
+    status: document.getElementById('pj_status').value,
+    empresa: document.getElementById('pj_empresa').value.trim() || null,
+    executor: document.getElementById('pj_executor').value.trim() || null,
+    inicio,
+    fim,
+    // Na origem (Monday) DIAS vem calculado; no cadastro manual, calculamos
+    // aqui pelo mesmo criterio, quando as duas datas existem.
+    dias: (inicio && fim) ? daysBetween(inicio, fim) : null,
+  };
+  if (id) { DB.update('projetos',id,d); toast('Projeto atualizado!','success'); }
+  else { DB.insert('projetos',d); toast('Projeto adicionado!','success'); }
+  closeModal(); renderProjetosTI();
+}
+function deleteProj(id) {
+  confirmDelete('Excluir este projeto?', `()=>{ DB.remove('projetos','${id}'); toast('Excluído!'); renderProjetosTI(); }`);
+}
+
+// ============================================================
 // BACKUP / RESTAURAR
 // ============================================================
 // A tela de continuidade vive em js/backup.js: e uma tela inteira, com

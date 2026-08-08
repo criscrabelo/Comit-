@@ -25,7 +25,8 @@ export type NomeEntidade =
   | 'unidades'
   | 'riscos'
   | 'regulatorios'
-  | 'contratos';
+  | 'contratos'
+  | 'projetos';
 
 export interface DefinicaoEntidade {
   /** Tabela real no PostgreSQL. */
@@ -362,6 +363,35 @@ export const ENTIDADES: Record<NomeEntidade, DefinicaoEntidade> = {
     ordenaveis: ['numero_contrato', 'data_contrato', 'criado_em'],
     temComite: false,
     temEmpreendimento: true,
+    temProveniencia: true,
+  },
+
+  // Projetos de TI. Departamento separado do juridico: backlog continuo
+  // (board Monday 5188439530, workspace IT), sem comite mensal e sem
+  // vinculo a empreendimento. Cadastro manual por enquanto — ver
+  // migrations/024_projetos_ti.sql.
+  projetos: {
+    tabela: 'projetos_ti',
+    modulo: 'tecnologia',
+    acoes: ['ler', 'criar', 'editar', 'remover'],
+    campos: {
+      nome: 'nome',
+      tipo: 'tipo',
+      status: 'status',
+      empresa: 'empresa',
+      executor: 'executor',
+      inicio: 'inicio',
+      fim: 'fim',
+      dias: 'dias',
+    },
+    datas: ['inicio', 'fim'],
+    inteiros: ['dias'],
+    booleanos: [],
+    estruturas: [],
+    ordemPadrao: { coluna: 'criado_em', direcao: 'desc' },
+    ordenaveis: ['nome', 'status', 'inicio', 'fim', 'criado_em'],
+    temComite: false,
+    temEmpreendimento: false,
     temProveniencia: true,
   },
 };

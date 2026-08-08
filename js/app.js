@@ -12,6 +12,8 @@ const Router = (() => {
     risco:           renderRisco,
     regulatorio:     renderRegulatorio,
     comite:          renderComite,
+    legislacao:      renderLegislacao,
+    projetos:        renderProjetosTI,
     backup:          renderBackup,
   };
 
@@ -27,6 +29,15 @@ const Router = (() => {
     document.querySelectorAll('.nav-item').forEach(el => {
       el.classList.toggle('active', el.dataset.route === route);
     });
+
+    // Alternador de departamento: Tecnologia é hoje só a rota `projetos`;
+    // tudo o mais é Jurídico. Ver design_handoff_comites_juridicos/README.md.
+    const isTecnologia = route === 'projetos';
+    document.getElementById('deptBtnJur').classList.toggle('active', !isTecnologia);
+    document.getElementById('deptBtnTec').classList.toggle('active', isTecnologia);
+    document.getElementById('navJuridico').style.display = isTecnologia ? 'none' : '';
+    document.getElementById('navTecnologia').style.display = isTecnologia ? '' : 'none';
+    document.getElementById('navJuridico-mes').style.display = isTecnologia ? 'none' : '';
 
     // Scroll to top
     document.getElementById('main').scrollTop = 0;
@@ -76,6 +87,7 @@ DB.ready.then((inicio) => {
   populateMonthSelector();   // Preenche o seletor de mês
   updateStorageInfo();       // Exibe o estado da sincronização
   Router.navigate('dashboard');
+  if (typeof Temis !== 'undefined') Temis.init();
 
   // Dados de versões anteriores no navegador: oferece a migração para o
   // PostgreSQL. Não apaga nada por conta própria — pergunta antes, e só remove

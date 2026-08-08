@@ -32,6 +32,7 @@ export type AcaoAuditada =
   | 'registro_removido'
   | 'inconsistencia_tratada'
   | 'reprocessamento'
+  | 'ia_consultada'
   | 'backup_criado'
   | 'backup_baixado'
   | 'backup_protegido'

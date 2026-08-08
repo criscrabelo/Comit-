@@ -56,7 +56,10 @@ export type ModuloPlataforma =
   | 'administracao'
   /** Continuidade: backup e restauracao. Separado de `administracao` porque
    *  levar a base inteira num arquivo e outra coisa que administrar a base. */
-  | 'sistema';
+  | 'sistema'
+  /** Projetos de TI. Departamento separado do Juridico; carteira continua,
+   *  sem recorte de comite mensal. */
+  | 'tecnologia';
 
 export type TipoInformacao =
   | 'dado_pessoal'
@@ -917,6 +920,19 @@ export interface TabelaPoliticaRetencao {
   atualizada_por: string | null;
 }
 
+export interface TabelaProjetosTi extends Proveniencia {
+  id: Auto<string>;
+  nome: string;
+  tipo: string | null;
+  status: Auto<string>;
+  empresa: string | null;
+  executor: string | null;
+  inicio: Dia | null;
+  fim: Dia | null;
+  /** Calculado na origem (Monday). Guardado como veio, nunca recalculado. */
+  dias: number | null;
+}
+
 export interface Database {
   usuarios: TabelaUsuarios;
   permissoes_perfil: TabelaPermissoesPerfil;
@@ -968,4 +984,6 @@ export interface Database {
 
   politicas_judicializacao: TabelaPoliticasJudicializacao;
   judicializacao_apuracoes: TabelaJudicializacaoApuracoes;
+
+  projetos_ti: TabelaProjetosTi;
 }
