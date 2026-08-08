@@ -1,36 +1,76 @@
 /* ===== RESET & BASE ===== */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+/* ===========================================================================
+   Identidade visual — Departamento Jurídico Digital (Grupo Patrono / Coevo)
+   Fonte: design_handoff_comites_juridicos, README "Design Tokens".
+
+   Os NOMES das variáveis foram mantidos de propósito. Trocar só os valores
+   repinta a plataforma inteira sem tocar em uma linha de estrutura ou de
+   comportamento — que era exatamente o pedido: mudar o visual, não o que já
+   funciona. Por isso `--blue` guarda o verde-petróleo da nova identidade:
+   renomear obrigaria a mexer nas 739 linhas seguintes e em todas as telas.
+   =========================================================================== */
 :root {
-  --blue:    #2563EB;
-  --blue-dk: #1D4ED8;
-  --blue-lt: #EFF6FF;
-  --orange:  #E66C37;
-  --green:   #16A34A;
-  --red:     #DC2626;
-  --yellow:  #D97706;
-  --purple:  #7C3AED;
-  --gray-50:  #F9FAFB;
-  --gray-100: #F3F4F6;
-  --gray-200: #E5E7EB;
-  --gray-300: #D1D5DB;
-  --gray-400: #9CA3AF;
-  --gray-500: #6B7280;
-  --gray-700: #374151;
-  --gray-900: #111827;
-  --sidebar-w: 240px;
+  /* Primária do Jurídico (era azul) */
+  --blue:    #1f6461;
+  --blue-dk: #15433f;
+  --blue-lt: #e6f1ea;
+  /* Módulos */
+  --orange:  #b5812c;   /* honorários */
+  --green:   #2f7350;   /* sucesso */
+  --red:     #b25744;   /* atraso / recusado */
+  --yellow:  #9a6a1f;   /* em andamento */
+  --purple:  #7a6cc4;   /* slides do comitê */
+  --teal:    #2f8f88;   /* processos (acento) */
+  --azul-ti: #3f7fb0;   /* recompra e tecnologia */
+  --dourado: #b08a3f;   /* consultor jurídico */
+  --online:  #2fb878;   /* etiqueta DIGITAL / indicador online */
+  /* Neutros */
+  --gray-50:  #fbfbf9;  /* superfície de header */
+  --gray-100: #f4f3f0;  /* fundo da aplicação */
+  --gray-200: #e6e3dd;  /* borda clara */
+  --gray-300: #d9d6cf;  /* borda de controle */
+  --gray-400: #9aa0a8;  /* texto suave */
+  --gray-500: #6b7178;  /* texto terciário */
+  --gray-700: #3c424b;  /* texto secundário */
+  --gray-900: #161b24;  /* texto primário e escuro estrutural */
+  /* Escuros da barra lateral */
+  --escuro:     #161b24;
+  --escuro-2:   #1b222c;
+  --escuro-3:   #202834;
+  --borda-esc:  #262f3b;
+  --borda-esc-2:#2b3441;
+  --texto-esc:  #cfd6de;
+  --texto-esc-2:#8b97a4;
+  --texto-esc-3:#5f6b78;
+  /* Linhas de tabela */
+  --linha:      #f1eee8;
+  --linha-2:    #efece6;
+  --hover-claro:#f4f2ec;
+
+  --sidebar-w: 256px;
   --radius: 8px;
-  --shadow: 0 1px 3px rgba(0,0,0,.10), 0 1px 2px rgba(0,0,0,.06);
-  --shadow-md: 0 4px 6px -1px rgba(0,0,0,.10), 0 2px 4px -1px rgba(0,0,0,.06);
+  --radius-card: 12px;
+  --radius-pill: 99px;
+  --shadow: 0 8px 24px rgba(0,0,0,.10);
+  --shadow-md: 0 12px 32px rgba(0,0,0,.14);
+  --fonte: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;
+  --mono: 'IBM Plex Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
 }
 
 html, body {
   height: 100%;
-  font-family: 'Segoe UI', Arial, sans-serif;
+  font-family: var(--fonte);
   font-size: 14px;
   color: var(--gray-900);
   background: var(--gray-100);
+  -webkit-font-smoothing: antialiased;
 }
+
+/* Números, datas e números de processo em monoespaçada — é o que dá à
+   plataforma a leitura de planilha que o handoff pede. */
+.kpi-value, .stat-value, .estagio-count, td.num, .mono { font-family: var(--mono); }
 
 /* ===== LAYOUT ===== */
 body { display: flex; overflow: hidden; }
@@ -38,8 +78,8 @@ body { display: flex; overflow: hidden; }
 .sidebar {
   width: var(--sidebar-w);
   min-width: var(--sidebar-w);
-  background: #1E2A3B;
-  color: #CBD5E1;
+  background: var(--escuro);
+  color: var(--texto-esc);
   display: flex;
   flex-direction: column;
   height: 100vh;
@@ -60,7 +100,7 @@ body { display: flex; overflow: hidden; }
   align-items: center;
   gap: 10px;
   padding: 20px 16px 16px;
-  border-bottom: 1px solid #2D3F55;
+  border-bottom: 1px solid var(--borda-esc);
 }
 .brand-mark {
   width: 36px; height: 36px;
@@ -70,13 +110,13 @@ body { display: flex; overflow: hidden; }
   font-weight: 700; font-size: 14px; color: #fff;
   flex-shrink: 0;
 }
-.brand-title { font-weight: 700; font-size: 15px; color: #F1F5F9; }
+.brand-title { font-weight: 700; font-size: 15px; color: var(--gray-50); }
 .brand-sub { font-size: 11px; color: var(--gray-400); }
 
 /* ===== MONTH PICKER ===== */
 .month-picker {
   padding: 12px 16px;
-  border-bottom: 1px solid #2D3F55;
+  border-bottom: 1px solid var(--borda-esc);
 }
 .month-picker label {
   display: block;
@@ -88,9 +128,9 @@ body { display: flex; overflow: hidden; }
 }
 .month-picker select {
   width: 100%;
-  background: #2D3F55;
-  color: #F1F5F9;
-  border: 1px solid #3D5068;
+  background: var(--borda-esc);
+  color: var(--gray-50);
+  border: 1px solid var(--borda-esc-2);
   border-radius: 6px;
   padding: 6px 8px;
   font-size: 13px;
@@ -125,16 +165,16 @@ body { display: flex; overflow: hidden; }
   align-items: center;
   gap: 8px;
   padding: 8px 16px;
-  color: #94A3B8;
+  color: var(--texto-esc-2);
   cursor: pointer;
   border-left: 3px solid transparent;
   transition: all .15s;
   user-select: none;
   text-decoration: none;
 }
-.nav-item:hover { background: #2D3F55; color: #F1F5F9; }
+.nav-item:hover { background: var(--borda-esc); color: var(--gray-50); }
 .nav-item.active {
-  background: #1E3A5F;
+  background: var(--escuro-3);
   color: #fff;
   border-left-color: var(--blue);
   font-weight: 600;
@@ -143,7 +183,7 @@ body { display: flex; overflow: hidden; }
 /* ===== SIDEBAR FOOTER ===== */
 .sidebar-footer {
   padding: 10px 16px;
-  border-top: 1px solid #2D3F55;
+  border-top: 1px solid var(--borda-esc);
   color: var(--gray-400);
   font-size: 11px;
 }
@@ -178,9 +218,9 @@ body { display: flex; overflow: hidden; }
 .btn-primary { background: var(--blue); color: #fff; }
 .btn-primary:hover { background: var(--blue-dk); }
 .btn-success { background: var(--green); color: #fff; }
-.btn-success:hover { background: #15803D; }
+.btn-success:hover { background: var(--blue-dk); }
 .btn-danger  { background: var(--red);   color: #fff; }
-.btn-danger:hover  { background: #B91C1C; }
+.btn-danger:hover  { background: #8f4335; }
 .btn-outline {
   background: #fff; color: var(--gray-700);
   border: 1px solid var(--gray-300);
@@ -391,13 +431,13 @@ tbody td {
   font-weight: 600;
   white-space: nowrap;
 }
-.badge-blue   { background: #DBEAFE; color: #1D4ED8; }
-.badge-green  { background: #DCFCE7; color: #15803D; }
-.badge-red    { background: #FEE2E2; color: #B91C1C; }
-.badge-orange { background: #FFEDD5; color: #C2410C; }
-.badge-purple { background: #EDE9FE; color: #6D28D9; }
-.badge-yellow { background: #FEF9C3; color: #92400E; }
-.badge-gray   { background: #F3F4F6; color: #374151; }
+.badge-blue   { background: #e8eef5; color: #3f6ea0; }
+.badge-green  { background: #e6f1ea; color: #2f7350; }
+.badge-red    { background: #f6e9e6; color: #b25744; }
+.badge-orange { background: #f6eedd; color: #9a6a1f; }
+.badge-purple { background: #ece8f5; color: #6a5bb0; }
+.badge-yellow { background: #f6eedd; color: #9a6a1f; }
+.badge-gray   { background: #eef0f2; color: #5d6670; }
 
 /* ===== FORM ===== */
 .form-grid {
@@ -569,9 +609,9 @@ textarea { resize: vertical; min-height: 80px; }
   margin-bottom: 14px;
   display: flex; gap: 8px; align-items: flex-start;
 }
-.alert-warning { background: #FFFBEB; border: 1px solid #FCD34D; color: #92400E; }
-.alert-info    { background: var(--blue-lt); border: 1px solid #93C5FD; color: #1E40AF; }
-.alert-danger  { background: #FEF2F2; border: 1px solid #FCA5A5; color: #991B1B; }
+.alert-warning { background: #fbf4e6; border: 1px solid #ecdcb6; color: #8a6d2e; }
+.alert-info    { background: var(--blue-lt); border: 1px solid #b9d6c6; color: var(--blue-dk); }
+.alert-danger  { background: #f6e9e6; border: 1px solid #e3bdb3; color: #8f4335; }
 
 /* ===== DIVIDER ===== */
 .divider { border: none; border-top: 1px solid var(--gray-200); margin: 18px 0; }
@@ -634,7 +674,7 @@ textarea { resize: vertical; min-height: 80px; }
   padding: 2px 10px;
   border-radius: 99px;
   font-size: 12px; font-weight: 600;
-  background: #E0E7FF; color: #3730A3;
+  background: #ece8f5; color: #6a5bb0;
 }
 
 /* ===== SLIDE PREVIEW CARDS (tela) ===== */
@@ -660,7 +700,7 @@ textarea { resize: vertical; min-height: 80px; }
 .slide-preview-title {
   font-size: 20px;
   font-weight: 900;
-  color: #1E2A3B;
+  color: var(--escuro);
   border-bottom: 3px solid var(--blue);
   padding-bottom: 8px;
   margin-bottom: 18px;
@@ -688,7 +728,7 @@ textarea { resize: vertical; min-height: 80px; }
   align-items: center;
   justify-content: space-between;
   background: var(--blue-lt);
-  border: 1px solid #BFDBFE;
+  border: 1px solid #b9d6c6;
   border-radius: var(--radius);
   padding: 8px 14px;
   font-size: 13px;
@@ -700,12 +740,12 @@ textarea { resize: vertical; min-height: 80px; }
   border-radius: var(--radius);
   padding: 10px 14px;
   font-size: 12px;
-  color: #92400E;
+  color: #8a6d2e;
   line-height: 1.5;
 }
 
 .sync-log {
-  background: #0F172A;
+  background: var(--escuro);
   color: #E2E8F0;
   border-radius: var(--radius);
   padding: 12px 14px;
@@ -717,12 +757,12 @@ textarea { resize: vertical; min-height: 80px; }
   line-height: 1.7;
 }
 
-.sync-line         { color: #94A3B8; }
-.sync-line.sync-ok { color: #4ADE80; }
+.sync-line         { color: var(--texto-esc-2); }
+.sync-line.sync-ok { color: var(--online); }
 .sync-line.sync-error { color: #F87171; }
 .sync-line.sync-warn  { color: #FBBF24; }
-.sync-line.sync-wait  { color: #60A5FA; }
-.sync-line.sync-info  { color: #CBD5E1; }
+.sync-line.sync-wait  { color: #7fb0d6; }
+.sync-line.sync-info  { color: var(--texto-esc); }
 
 /* field-hint helper used in settings forms */
 .field-hint {
