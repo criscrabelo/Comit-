@@ -1,6 +1,8 @@
 @echo off
-title Plataforma Comites - Compartilhada
 chcp 65001 >nul
+title Plataforma Comites - Compartilhada
+setlocal enabledelayedexpansion
+
 echo.
 echo  ========================================
 echo   Plataforma de Comites - Juridico
@@ -10,31 +12,52 @@ echo.
 
 cd /d "%~dp0"
 
-:: Mata processos antigos na porta 3131
-echo  [0/3] Liberando porta 3131...
+if not exist "server\.env" (
+  echo  X Falta preparar esta maquina.
+  echo    Rode primeiro: "Preparar Plataforma (Primeira Vez).bat"
+  echo.
+  pause
+  exit /b 1
+)
+
+:: ── Limpeza do que ficou de execucoes anteriores ─────────────────────────
+echo  [0/3] Liberando a porta 3131...
 for /f "tokens=5" %%a in ('netstat -aon 2^>nul ^| findstr ":3131 "') do (
   taskkill /F /PID %%a >nul 2>&1
 )
-:: Mata cloudflared antigo
 taskkill /F /IM cloudflared.exe >nul 2>&1
 timeout /t 2 /nobreak >nul
 
-:: Inicia o servidor na porta 3131
-echo  [1/3] Iniciando servidor com banco compartilhado...
-start /B node server.js >nul 2>&1
-timeout /t 3 /nobreak >nul
-
-:: Inicia tunnel Cloudflare e captura URL automaticamente
-echo  [2/3] Criando link publico via Cloudflare (aguarde 15 segundos)...
+:: ── O tunel vem ANTES do servidor, e a ordem e proposital ────────────────
+::
+:: Em producao a plataforma exige a lista de origens (CORS_ORIGINS) e recusa
+:: subir sem ela. A origem, aqui, e o endereco do tunel - que so existe depois
+:: que o tunel sobe. Subir o servidor primeiro obrigaria a reinicia-lo, ou a
+:: rodar fora de producao, e fora de producao o cookie de sessao perde a marca
+:: Secure num acesso que e HTTPS.
+::
+:: O tunel aceita subir antes do servidor: ele apenas encaminha, e quem chegar
+:: antes da hora recebe erro de conexao por alguns segundos.
+echo  [1/3] Criando o link publico via Cloudflare (aguarde)...
 set TUNNEL_LOG=%TEMP%\cloudflared_tunnel.txt
 del "%TUNNEL_LOG%" >nul 2>&1
 
-:: Inicia cloudflared em background
 set CF_EXE=%USERPROFILE%\.local\bin\cloudflared.exe
-start /B "%CF_EXE%" tunnel --url http://localhost:3131 --no-autoupdate > "%TUNNEL_LOG%" 2>&1
+if not exist "%CF_EXE%" (
+  echo.
+  echo  X cloudflarednao encontrado em:
+  echo      %CF_EXE%
+  echo.
+  echo    Sem ele nao ha link publico. Para uso apenas na rede local,
+  echo    use "Iniciar Plataforma.bat".
+  echo.
+  pause
+  exit /b 1
+)
 
-:: Aguarda a URL aparecer no log (max 30 tentativas x 1s)
-set URL_ENCONTRADA=
+start /B "" "%CF_EXE%" tunnel --url http://localhost:3131 --no-autoupdate > "%TUNNEL_LOG%" 2>&1
+
+set "LINHA="
 for /L %%i in (1,1,30) do (
   timeout /t 1 /nobreak >nul
   for /f "tokens=*" %%a in ('findstr /C:"trycloudflare.com" "%TUNNEL_LOG%" 2^>nul') do (
@@ -42,44 +65,60 @@ for /L %%i in (1,1,30) do (
   )
   if defined LINHA goto :extrair
 )
-echo  AVISO: Timeout aguardando URL do tunnel.
-goto :fim
+echo.
+echo  X Tempo esgotado esperando o endereco do tunel.
+echo    Log: %TUNNEL_LOG%
+echo.
+pause
+exit /b 1
 
 :extrair
-:: Extrai a URL https://...trycloudflare.com da linha
-for %%a in (%LINHA%) do (
+set "URL_PUBLICA="
+for %%a in (!LINHA!) do (
   echo %%a | findstr /C:"https://" >nul 2>&1
-  if not errorlevel 1 set "URL_ENCONTRADA=%%a"
+  if not errorlevel 1 set "URL_PUBLICA=%%a"
+)
+set URL_PUBLICA=!URL_PUBLICA:|=!
+for /f "tokens=* delims= " %%a in ("!URL_PUBLICA!") do set "URL_PUBLICA=%%a"
+
+if not defined URL_PUBLICA (
+  echo.
+  echo  X Nao consegui extrair o endereco. Log: %TUNNEL_LOG%
+  echo.
+  pause
+  exit /b 1
 )
 
-:: Limpa barra vertical e espacos extras
-set URL_ENCONTRADA=%URL_ENCONTRADA:|=%
-for /f "tokens=* delims= " %%a in ("%URL_ENCONTRADA%") do set "URL_ENCONTRADA=%%a"
+echo !URL_PUBLICA! > "%~dp0URL_PUBLICA.txt"
+echo Gerado em: %DATE% %TIME% >> "%~dp0URL_PUBLICA.txt"
 
-if not defined URL_ENCONTRADA (
-  echo  AVISO: Nao foi possivel extrair a URL. Verifique: %TUNNEL_LOG%
-  goto :fim
-)
-
-:: Salva a URL
-echo %URL_ENCONTRADA% > "%~dp0URL_PUBLICA.txt"
-echo Generated: %DATE% %TIME% >> "%~dp0URL_PUBLICA.txt"
-
+:: ── Servidor, em producao, com a origem do tunel ─────────────────────────
+echo  [2/3] Iniciando a plataforma em modo producao...
 echo.
 echo  =========================================
 echo   [3/3] LINK PARA COMPARTILHAR:
 echo.
-echo   %URL_ENCONTRADA%
+echo   !URL_PUBLICA!
 echo.
 echo  =========================================
 echo.
-echo  Copie o link acima e envie para a outra pessoa.
-echo  A outra pessoa abre no navegador (celular ou PC).
-echo  Todos verao os mesmos dados em tempo real.
+echo  Quem receber o link precisa de usuario e senha - a plataforma
+echo  agora exige login, e cada pessoa entra com o seu.
 echo.
 echo  MANTENHA ESTA JANELA ABERTA enquanto usar.
 echo  =========================================
 echo.
 
-:fim
+cd server
+set NODE_ENV=production
+set PORT=3131
+set CORS_ORIGINS=!URL_PUBLICA!
+npx tsx src/server.ts
+
+echo.
+echo  A plataforma parou. A mensagem acima diz o motivo.
+echo.
+cd ..
+taskkill /F /IM cloudflared.exe >nul 2>&1
 pause
+endlocal

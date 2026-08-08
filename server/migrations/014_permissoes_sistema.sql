@@ -10,6 +10,12 @@
 -- Esta migracao SO acrescenta os valores ao enum. A concessao por perfil vive
 -- na 015, porque o PostgreSQL nao permite usar um valor de enum na mesma
 -- transacao em que ele foi criado.
+--
+-- ATENCAO ao rodar: a separacao em dois arquivos so funciona se cada migracao
+-- tiver a PROPRIA transacao. `node-pg-migrate` envolve a execucao inteira numa
+-- transacao unica por padrao, e ai a 015 volta a usar o valor antes do commit
+-- da 014 — o erro e `unsafe use of new value "sistema" of enum type
+-- modulo_plataforma`. Por isso `npm run migrate` passa `--no-single-transaction`.
 -- ============================================================================
 
 ALTER TYPE modulo_plataforma ADD VALUE IF NOT EXISTS 'sistema';

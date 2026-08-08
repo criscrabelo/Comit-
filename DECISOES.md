@@ -912,3 +912,70 @@ liga e `SIENGE_HABILITADO`.
 
 357 testes contra PostgreSQL real (eram 336), 19 novos. Ensaio da homologacao de
 Processos: 7 de 7.
+
+
+---
+
+## B18 — Ligar na maquina da Coevo: o caminho de producao das migracoes estava quebrado
+
+A plataforma roda da maquina da Cristiane, nao em nuvem — os `.bat` na raiz sao
+a interface real de operacao. "Ligar" e, portanto, subir o backend novo ali.
+Roteiro em `docs/LIGAR-NA-SUA-MAQUINA.md`.
+
+### `npm run migrate:up` falhava em banco novo
+
+O comando que o README manda rodar em producao **nao funcionava**. Erro:
+`unsafe use of new value "sistema" of enum type modulo_plataforma`, na 015.
+
+As migracoes 014 e 015 foram separadas de proposito — o comentario da 014 e da
+010 dizem por que: o PostgreSQL nao permite USAR um valor de enum na mesma
+transacao em que ele foi criado. O que anulava a separacao era a invocacao:
+`node-pg-migrate` envolve a execucao INTEIRA numa transacao unica por padrao, e
+com isso a 015 voltava a usar o valor antes do commit da 014.
+
+Corrigido com `--no-single-transaction`, que da a cada migracao a propria
+transacao — exatamente o que `recriar-banco.sh` ja fazia, e o que a separacao
+pressupoe.
+
+**Por que ninguem viu:** os testes rodam sobre `recriar-banco.sh`, que aplica
+cada arquivo em transacao propria; e em banco ja migrado nao ha o que aplicar. O
+defeito so aparece em banco NOVO — que e o primeiro contato de quem instala a
+plataforma. O teste novo (`migracoes-caminho-de-producao.test.ts`) cria banco do
+zero e roda o comando do README, nao uma invocacao propria: reproduzir as flags
+no teste provaria apenas que a invocacao do teste funciona, e era justamente a
+invocacao declarada no `package.json` que estava errada. Conferido que ele
+reprova sem a correcao.
+
+### Os `.bat` passaram a iniciar o backend novo
+
+Nesta versao o backend serve a propria interface (`@fastify/static`), e o
+frontend ja fala com `/api/dados` e `/api/auth`. Iniciar o `server.js` antigo
+daria plataforma quebrada — deixar os `.bat` apontando para ele seria uma
+armadilha. A porta continua 3131, entao firewall e acesso por IP nao mudam.
+
+`Preparar Plataforma (Primeira Vez).bat` confere Node e PostgreSQL e **para com
+instrucao** quando falta, em vez de seguir e falhar adiante. A senha do primeiro
+usuario e lida oculta e nao entra no historico do terminal.
+
+### Os dois modos rodam com NODE_ENV diferente, e e proposital
+
+O cookie de sessao recebe `Secure` em producao, e o navegador so o envia por
+HTTPS. Na rede local o acesso e `http://` sem certificado: com `Secure` o cookie
+seria descartado e o login pareceria quebrado **sem mensagem de erro**. Por isso
+rede local roda em development e o link publico (HTTPS do Cloudflare) roda em
+producao. Verificado na pratica: em producao o `set-cookie` sai com `Secure`.
+
+No script compartilhado o tunel sobe ANTES do servidor. Producao exige a lista
+de origens, e a origem e o endereco do tunel — que so existe depois que o tunel
+sobe. A ordem inversa obrigaria a reiniciar o servidor a cada execucao.
+
+### O que NAO foi testado
+
+Os proprios arquivos `.bat`. O ambiente e Linux, e nao ha como executar batch do
+Windows aqui. Cada comando que eles chamam foi verificado contra PostgreSQL
+real — migracoes em banco novo, criacao de usuario, subida do servidor servindo
+interface e API, login real devolvendo cookie, e a recusa de subir em producao
+sem origens. A sintaxe do batch, nao. Esta registrado no roteiro para que a
+primeira execucao seja lida com essa expectativa.
+
+358 testes.

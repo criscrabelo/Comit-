@@ -17,9 +17,20 @@ Requisitos: Node.js 22+ e PostgreSQL 16+.
 cd server
 npm install
 cp .env.example .env      # preencha DATABASE_URL
+createdb -U postgres patrono   # o banco da DATABASE_URL precisa existir
 npm run migrate:up        # aplica as migrações
 npm run dev               # sobe em modo desenvolvimento
 ```
+
+`migrate` roda com `--no-single-transaction`, e isso **não** é detalhe de
+estilo: as migrações 014 e 015 estão separadas porque o PostgreSQL não permite
+usar um valor de enum na mesma transação em que ele foi criado. Numa transação
+única a 015 falha com `unsafe use of new value "sistema"`. Cada migração precisa
+da própria transação.
+
+**Na máquina da Coevo**, onde a plataforma roda, o caminho é por scripts do
+Windows: veja
+[`../docs/LIGAR-NA-SUA-MAQUINA.md`](../docs/LIGAR-NA-SUA-MAQUINA.md).
 
 Criar o primeiro usuário (a senha vem de variável de ambiente, nunca de
 argumento — argumento aparece em `ps` e no histórico do shell):
