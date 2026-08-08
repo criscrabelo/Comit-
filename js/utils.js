@@ -18,6 +18,20 @@ function daysBetween(a, b) {
   return Math.round((db - da) / 86400000);
 }
 
+// ---- Exportação CSV (do que está na tela, já filtrado) ----
+function baixarCsv(nomeArquivo, cabecalho, linhas) {
+  const csv = [cabecalho, ...linhas]
+    .map((linha) => linha.map((v) => `"${String(v ?? '').replace(/"/g, '""')}"`).join(','))
+    .join('\r\n');
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = nomeArquivo;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 // ---- DOM helpers ----
 function el(selector, ctx) { return (ctx || document).querySelector(selector); }
 function els(selector, ctx) { return [...(ctx || document).querySelectorAll(selector)]; }
@@ -112,6 +126,14 @@ function confirmDelete(msg, cb) {
 }
 
 // ---- Month selector population ----
+// O <select> nativo continua sendo o que app.js escuta (evento 'change');
+// o painel abaixo só espelha a mesma lista visualmente, no formato do
+// handoff ("Julho · 2026" + código mono "07/26").
+function mesCodigo(ref) {
+  const [y, m] = (ref || '').split('-');
+  return (y && m) ? `${m}/${y.slice(2)}` : '';
+}
+
 function populateMonthSelector() {
   const sel = document.getElementById('monthSelector');
   const comites = DB.getComites();
@@ -119,6 +141,53 @@ function populateMonthSelector() {
   sel.innerHTML = comites.length
     ? comites.map(c => `<option value="${c.id}" ${active && c.id === active.id ? 'selected' : ''}>${esc(c.label)}</option>`).join('')
     : '<option value="">— nenhum —</option>';
+
+  const painel = document.getElementById('monthPanel');
+  const label  = document.getElementById('monthTriggerLabel');
+  const codigo = document.getElementById('monthTriggerCode');
+  if (!painel) return;
+
+  painel.innerHTML = comites.length
+    ? comites.map(c => `
+        <div class="month-item ${active && c.id === active.id ? 'selected' : ''}" onclick="selecionarMes('${c.id}')">
+          <span class="month-item-dot"></span>${esc(c.label)}
+          <span style="margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--texto-esc-3)">${mesCodigo(c.ref)}</span>
+        </div>`).join('')
+    : '<div class="month-item">— nenhum —</div>';
+
+  label.textContent  = active ? active.label : '— nenhum —';
+  codigo.textContent = active ? mesCodigo(active.ref) : '';
+}
+
+function toggleMonthPanel() {
+  document.getElementById('monthPanel').classList.toggle('hidden');
+}
+
+function selecionarMes(id) {
+  document.getElementById('monthPanel').classList.add('hidden');
+  const sel = document.getElementById('monthSelector');
+  if (sel.value === id) return;
+  sel.value = id;
+  sel.dispatchEvent(new Event('change'));
+}
+
+// Fecha o painel ao clicar fora — mesmo padrão de popover usado nos filtros.
+document.addEventListener('click', (e) => {
+  const dropdown = document.getElementById('monthDropdown');
+  if (dropdown && !dropdown.contains(e.target)) {
+    document.getElementById('monthPanel')?.classList.add('hidden');
+  }
+});
+
+// ---- Contagem ao vivo na nav (bolinha + número, grupo "Cadastros do Mês") ----
+// A maioria das entidades deste grupo tem comite_id: o cache já vem
+// recortado pelo mês ativo. `honorarios` e `transferencias` são cadastro
+// contínuo, sem recorte de mês — contam o total.
+function updateNavCounts() {
+  els('.nav-count[data-count]').forEach((el) => {
+    const tabela = el.dataset.count;
+    el.textContent = DB.getAll(tabela).length;
+  });
 }
 
 // ---- New month dialog ----

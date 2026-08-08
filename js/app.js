@@ -41,6 +41,12 @@ const Router = (() => {
     document.getElementById('navTecnologia').style.display = isTecnologia ? '' : 'none';
     document.getElementById('navJuridico-mes').style.display = isTecnologia ? 'none' : '';
 
+    document.getElementById('brandMark').textContent = isTecnologia ? 'TD' : 'DJ';
+    document.getElementById('brandMark').classList.toggle('tec', isTecnologia);
+    document.getElementById('brandTitle').textContent = isTecnologia ? 'Tecnologia Digital' : 'Departamento Jurídico';
+    document.getElementById('brandSub').textContent = isTecnologia ? 'DEPARTAMENTO' : 'DIGITAL';
+    document.getElementById('brandSub').classList.toggle('tec', isTecnologia);
+
     // Scroll to top
     document.getElementById('main').scrollTop = 0;
     updateStorageInfo();
@@ -68,7 +74,7 @@ document.getElementById('btnNewMonth').addEventListener('click', openNewMonthMod
 // O rodapé passa a informar a situação da sincronização com o servidor. Antes
 // mostrava o tamanho do localStorage — métrica que deixou de existir, porque
 // não há mais dado de negócio no navegador.
-DB.aoMudarEstado(() => updateStorageInfo());
+DB.aoMudarEstado(() => { updateStorageInfo(); updateNavCounts(); });
 
 // ---- Bootstrap ----
 //
@@ -88,6 +94,7 @@ DB.ready.then((inicio) => {
 
   populateMonthSelector();   // Preenche o seletor de mês
   updateStorageInfo();       // Exibe o estado da sincronização
+  updateNavCounts();         // Bolinha + contagem por item da nav
   Router.navigate('dashboard');
   if (typeof Temis !== 'undefined') Temis.init();
 

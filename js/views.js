@@ -832,143 +832,175 @@ function evolucaoMensalCitacao(items) {
   return { labels, data };
 }
 
+// Cores por status — usadas na tabela e nos KPIs, e por buildProcessosSlide
+// em comite.js (que ainda usa a aba Externos/Internos separadamente).
+const STATUS_COLOR_PROC = {'Acompanhando':'blue','Finalizado':'green','Em Acordo':'purple','Arq. Provisório':'yellow','Baixa Definitiva':'gray'};
+
+/**
+ * Planilha única filtrável, no formato do handoff (README, seção "Tela:
+ * Processos Judiciais"): um card com barra de filtros por popover e busca
+ * livre, tabela ordenada, sem abas.
+ *
+ * As abas Resumo/Externos/Internos saíram; "Tipo" agora é um filtro igual
+ * aos outros. KPIs e gráficos que existiam nas abas continuam — decisão da
+ * Cristiane — mas agora abaixo da planilha e recalculados sobre a lista JÁ
+ * FILTRADA, para que o filtro da tabela e os indicadores nunca discordem.
+ */
 function renderProcessos() {
   const cid    = DB.getActiveComite()?.id;
   const comite = DB.getActiveComite();
   if (!cid) { noComiteAlert(); return; }
-  const ext = DB.forComite('processos', cid).filter(p => !p.interno);
-  const int = DB.forComite('processos', cid).filter(p =>  p.interno);
+  const todos = DB.forComite('processos', cid);
 
-  let tabAtiva = window._procTab || 'resumo';
-  const MESES_FULL = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-  const [cy, cm] = (comite.ref || '').split('-').map(Number);
-  const resumoLabel = (cy && cm) ? `${MESES_FULL[cm-1]} ${cy}` : (comite.label || 'Resumo');
+  const F = window._procFiltros || (window._procFiltros = {
+    situacao: [], tipo: [], ano: [], motivo: [], comarca: [], protocolo: [], finalizacao: [], busca: '',
+  });
 
-  // Aba "Resumo do mês": KPIs e gráficos somando externos + internos
-  const renderResumo = (ext, int) => {
-    const all = ext.concat(int);
-    const mes = all.filter(p => processoNoMes(p, comite.ref));
+  const anoDe = (data) => (data || '').slice(0, 4);
+  const buscaAlvo = F.busca.trim().toLowerCase();
+
+  const filtrados = todos.filter((p) =>
+    (!F.situacao.length || F.situacao.includes(p.status)) &&
+    (!F.tipo.length || F.tipo.includes(p.interno ? 'Interno' : 'Externo')) &&
+    (!F.ano.length || F.ano.includes(String(p.ano))) &&
+    (!F.motivo.length || F.motivo.includes(p.motivo)) &&
+    (!F.comarca.length || F.comarca.includes(p.local)) &&
+    (!F.protocolo.length || F.protocolo.includes(anoDe(p.data_citacao))) &&
+    (!F.finalizacao.length || F.finalizacao.includes(anoDe(p.data_finalizacao))) &&
+    (!buscaAlvo || (p.numero || '').toLowerCase().includes(buscaAlvo) || emprName(p.empreendimento_id).toLowerCase().includes(buscaAlvo)));
+
+  // Guardado para o botão Exportar ler a mesma lista, sem recalcular filtro.
+  window._procUltimoFiltrado = filtrados;
+
+  // Opções de cada filtro: só o que existe na carteira deste comitê — nunca
+  // uma lista fixa que poderia sugerir um valor que não ocorre.
+  const opcoesDe = (extrai) => [...new Set(todos.map(extrai).filter(Boolean))].sort();
+  const opcoesSituacao    = opcoesDe((p) => p.status);
+  const opcoesAno         = opcoesDe((p) => String(p.ano));
+  const opcoesMotivo      = opcoesDe((p) => p.motivo);
+  const opcoesComarca     = opcoesDe((p) => p.local);
+  const opcoesProtocolo   = opcoesDe((p) => anoDe(p.data_citacao));
+  const opcoesFinalizacao = opcoesDe((p) => anoDe(p.data_finalizacao));
+
+  const popover = (id, rotulo, opcoes, campo) => {
+    const selecionados = F[campo];
+    const label = selecionados.length ? `${rotulo} · ${selecionados.length}` : `${rotulo} · todas`;
+    const aberto = window._procPopover === id;
     return `
-      <div class="kpi-grid">
-        <div class="kpi-card"><div class="kpi-label">Total</div><div class="kpi-value">${mes.length}</div></div>
-        <div class="kpi-card blue"><div class="kpi-label">Externos</div><div class="kpi-value">${mes.filter(p=>!p.interno).length}</div></div>
-        <div class="kpi-card purple"><div class="kpi-label">Internos</div><div class="kpi-value">${mes.filter(p=>p.interno).length}</div></div>
-      </div>
-      <div class="hint-line">Os cartões acima contam os <strong>${mes.length}</strong> processos com
-      citação/protocolo em ${esc(resumoLabel)}. As abas Externos e Internos trazem os
-      ${all.length} do comitê inteiro.</div>
-      <div class="charts-grid">
-        <div class="chart-card"><div class="chart-title">Externos × Internos</div><div class="chart-wrap"><canvas id="ch_res_ei"></canvas></div></div>
-        <div class="chart-card"><div class="chart-title">Por Empreendimento</div><div class="chart-wrap"><canvas id="ch_res_emp"></canvas></div></div>
-        <div class="chart-card"><div class="chart-title">Por Motivo</div><div class="chart-wrap"><canvas id="ch_res_mot"></canvas></div></div>
-        <div class="chart-card"><div class="chart-title">Por Posição</div><div class="chart-wrap"><canvas id="ch_res_pos"></canvas></div></div>
-      </div>
-    `;
+      <div class="popover-filtro">
+        <button class="flt" onclick="toggleProcPopover('${id}')">${esc(label)}</button>
+        <div class="popover-panel ${aberto ? '' : 'hidden'}">
+          ${opcoes.map((o) => `
+            <div class="popover-item" onclick="toggleProcFiltro('${campo}',${esc(JSON.stringify(o))})">
+              <span class="popover-check ${selecionados.includes(o) ? 'on' : ''}"></span>${esc(o)}
+            </div>`).join('') || '<div class="popover-item" style="color:var(--gray-400);cursor:default">Sem opções</div>'}
+        </div>
+      </div>`;
   };
 
-  // Cores/rótulos por status (usado nos cards dinâmicos da aba Internos)
-  const STATUS_ORDER = ['Acompanhando','Finalizado','Em Acordo','Arq. Provisório','Baixa Definitiva'];
-  const STATUS_COLOR = {'Acompanhando':'blue','Finalizado':'green','Em Acordo':'purple','Arq. Provisório':'yellow','Baixa Definitiva':'gray'};
-  const STATUS_LABEL = {'Finalizado':'Finalizados'};
-
-  const renderTab = (list, tipo) => {
-    // Internos: cards de status dinâmicos (só os status que existem na lista).
-    const statusCards = (() => {
-      const presentes = STATUS_ORDER.filter(s => list.some(p => p.status === s));
-      // inclui status fora da lista conhecida, se houver
-      list.forEach(p => { if (p.status && !presentes.includes(p.status)) presentes.push(p.status); });
-      return presentes.map(s => {
-        const n = list.filter(p => p.status === s).length;
-        return `<div class="kpi-card ${STATUS_COLOR[s]||'gray'}"><div class="kpi-label">${STATUS_LABEL[s]||s}</div><div class="kpi-value">${n}</div></div>`;
-      }).join('');
-    })();
-    return `
-      <div class="kpi-grid">
-        <div class="kpi-card"><div class="kpi-label">Total</div><div class="kpi-value">${list.length}</div></div>
-        ${tipo==='externos' ? `
-        <div class="kpi-card blue"><div class="kpi-label">Acompanhando</div><div class="kpi-value">${list.filter(p=>p.status==='Acompanhando').length}</div></div>
-        <div class="kpi-card green"><div class="kpi-label">Finalizados</div><div class="kpi-value">${list.filter(p=>p.status==='Finalizado').length}</div></div>
-        <div class="kpi-card purple"><div class="kpi-label">Em Acordo</div><div class="kpi-value">${list.filter(p=>p.status==='Em Acordo').length}</div></div>
-        <div class="kpi-card gray"><div class="kpi-label">Baixa Definitiva</div><div class="kpi-value">${list.filter(p=>p.status==='Baixa Definitiva').length}</div></div>
-        <div class="kpi-card yellow"><div class="kpi-label">Arq. Provisório</div><div class="kpi-value">${list.filter(p=>p.status==='Arq. Provisório').length}</div></div>
-        ` : statusCards}
-      </div>
-      <div class="charts-grid">
-        <div class="chart-card"><div class="chart-title">Por Empreendimento</div><div class="chart-wrap"><canvas id="ch_pe_${tipo}"></canvas></div></div>
-        <div class="chart-card"><div class="chart-title">Por Motivo</div><div class="chart-wrap"><canvas id="ch_pm_${tipo}"></canvas></div></div>
-        ${tipo==='internos'?`<div class="chart-card" style="grid-column:1/-1"><div class="chart-title">Evolução por Mês</div><div class="chart-wrap"><canvas id="ch_pevo_internos"></canvas></div></div>`:''}
-        ${tipo==='externos'?`<div class="chart-card"><div class="chart-title">Por Posição</div><div class="chart-wrap"><canvas id="ch_pp_ext"></canvas></div></div>`:''}
-        ${tipo==='externos'?`<div class="chart-card" style="grid-column:1/-1"><div class="chart-title">Evolução por Mês</div><div class="chart-wrap"><canvas id="ch_pevo_externos"></canvas></div></div>`:''}
-      </div>
-      <div class="table-wrap">
-        <table><thead><tr>
-          <th>Nº Processo</th><th>Empreendimento</th><th>Tipo</th><th>Status</th><th>Local</th><th>Ano</th><th>Ações</th>
-        </tr></thead><tbody>
-        ${list.map(p => `<tr>
-          <td style="font-family:monospace;font-size:11px">${esc(p.numero||'—')}</td>
-          <td><span class="empr-chip">${esc(emprName(p.empreendimento_id))}</span></td>
-          <td><span title="${esc(p.tipo||p.motivo)}">${badge(p.motivo,'purple')}</span></td>
-          <td>${badge(p.status)}</td>
-          <td><small>${esc(p.local)}</small></td>
-          <td>${esc(p.ano)}</td>
-          <td>
-            <button class="btn btn-ghost btn-sm" onclick="openProcModal('${p.id}')">✏️</button>
-            <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteProc('${p.id}')">🗑️</button>
-          </td>
-        </tr>`).join('') || '<tr class="empty-row"><td colspan="7">Nenhum processo cadastrado</td></tr>'}
-        </tbody></table>
-      </div>
-    `;
-  };
+  const presentes = Object.keys(STATUS_COLOR_PROC).filter((s) => filtrados.some((p) => p.status === s));
+  filtrados.forEach((p) => { if (p.status && !presentes.includes(p.status)) presentes.push(p.status); });
 
   setView(`
     <div class="page-header">
-      <div><div class="page-title">⚖️ Processos Judiciais</div><div class="page-sub">${esc(comite.label)}</div></div>
-      <div class="page-actions"><button class="btn btn-primary" onclick="openProcModal()">+ Novo Processo</button></div>
+      <div>
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--blue);font-weight:600">Comitê Jurídico · ${esc(comite.label)}</div>
+        <div style="font-size:23px;font-weight:600;letter-spacing:-.3px;color:var(--escuro);margin-top:2px">⚖️ Processos Judiciais</div>
+        <div class="page-sub">Carteira contenciosa consolidada — judiciais internos e externos</div>
+      </div>
+      <div class="page-actions">
+        <button class="btn btn-outline" onclick="exportarProcessosCsv()">Exportar</button>
+        <button class="btn btn-outline" onclick="openProcModal()">+ Novo Processo</button>
+        <button class="btn btn-primary" onclick="Router.navigate('comite')">Gerar apresentação</button>
+      </div>
     </div>
     <div class="content">
-      <div class="tabs">
-        <button class="tab-btn ${tabAtiva==='resumo'?'active':''}" onclick="window._procTab='resumo';renderProcessos()">${esc(resumoLabel)} (${ext.concat(int).filter(p=>processoNoMes(p,comite.ref)).length})</button>
-        <button class="tab-btn ${tabAtiva==='externos'?'active':''}" onclick="window._procTab='externos';renderProcessos()">Externos (${ext.length})</button>
-        <button class="tab-btn ${tabAtiva==='internos'?'active':''}" onclick="window._procTab='internos';renderProcessos()">Internos (${int.length})</button>
+      <div class="section-card">
+        <div class="section-card-head" style="flex-direction:column;align-items:flex-start;gap:2px">
+          <div class="section-card-title">Planilha de processos</div>
+          <div style="font-size:11px;color:var(--gray-400)">Filtre por situação, tipo, natureza, comarca ou busque pelo nº/empreendimento</div>
+        </div>
+        <div class="filter-bar" style="border-bottom:1px solid var(--gray-200)">
+          ${popover('situacao', 'Situação', opcoesSituacao, 'situacao')}
+          ${popover('tipo', 'Tipo', ['Externo', 'Interno'], 'tipo')}
+          ${popover('ano', 'Ano', opcoesAno, 'ano')}
+          ${popover('motivo', 'Natureza', opcoesMotivo, 'motivo')}
+          ${popover('comarca', 'Comarca', opcoesComarca, 'comarca')}
+          ${popover('protocolo', 'Protocolo', opcoesProtocolo, 'protocolo')}
+          ${popover('finalizacao', 'Finalização', opcoesFinalizacao, 'finalizacao')}
+          <input type="text" class="popover-busca" placeholder="Buscar nº / empreendimento…" value="${esc(F.busca)}"
+            oninput="window._procFiltros.busca=this.value;renderProcessos()" />
+        </div>
+        <div class="table-wrap">
+          <table><thead><tr>
+            <th>Nº Processo</th><th>Empreendimento</th><th>Natureza</th><th>Comarca</th><th>Tipo</th><th>Situação</th><th>Ano</th><th>Ações</th>
+          </tr></thead><tbody>
+          ${filtrados.map((p) => `<tr>
+            <td class="num">${esc(p.numero || '—')}</td>
+            <td><span class="empr-chip">${esc(emprName(p.empreendimento_id))}</span></td>
+            <td>${badge(p.motivo, 'purple')}</td>
+            <td><small>${esc(p.local || '—')}</small></td>
+            <td><small>${p.interno ? 'Interno' : 'Externo'}</small></td>
+            <td>${badge(p.status, STATUS_COLOR_PROC[p.status])}</td>
+            <td class="num">${esc(p.ano || '—')}</td>
+            <td>
+              <button class="btn btn-ghost btn-sm" onclick="openProcModal('${p.id}')">✏️</button>
+              <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteProc('${p.id}')">🗑️</button>
+            </td>
+          </tr>`).join('') || '<tr class="empty-row"><td colspan="8">Nenhum processo encontrado com estes filtros</td></tr>'}
+          </tbody></table>
+        </div>
+        <div class="hint-line" style="padding:0 18px 16px;margin:0">Mostrando <strong>${filtrados.length}</strong> de <strong>${todos.length}</strong> processos.</div>
       </div>
-      <div id="proc_content">
-        ${tabAtiva==='resumo' ? renderResumo(ext,int)
-          : tabAtiva==='externos' ? renderTab(ext,'externos')
-          : renderTab(int,'internos')}
+
+      <div class="kpi-grid">
+        <div class="kpi-card"><div class="kpi-label">Total (filtro atual)</div><div class="kpi-value">${filtrados.length}</div></div>
+        <div class="kpi-card blue"><div class="kpi-label">Externos</div><div class="kpi-value">${filtrados.filter((p) => !p.interno).length}</div></div>
+        <div class="kpi-card purple"><div class="kpi-label">Internos</div><div class="kpi-value">${filtrados.filter((p) => p.interno).length}</div></div>
+        ${presentes.map((s) => `<div class="kpi-card ${STATUS_COLOR_PROC[s] || 'gray'}"><div class="kpi-label">${esc(s)}</div><div class="kpi-value">${filtrados.filter((p) => p.status === s).length}</div></div>`).join('')}
+      </div>
+      <div class="charts-grid">
+        <div class="chart-card"><div class="chart-title">Por Empreendimento</div><div class="chart-wrap"><canvas id="ch_proc_empr"></canvas></div></div>
+        <div class="chart-card"><div class="chart-title">Por Natureza</div><div class="chart-wrap"><canvas id="ch_proc_mot"></canvas></div></div>
+        <div class="chart-card"><div class="chart-title">Por Posição</div><div class="chart-wrap"><canvas id="ch_proc_pos"></canvas></div></div>
+        <div class="chart-card" style="grid-column:1/-1"><div class="chart-title">Evolução por Mês (protocolo)</div><div class="chart-wrap"><canvas id="ch_proc_evo"></canvas></div></div>
       </div>
     </div>
   `);
 
   setTimeout(() => {
-    if (tabAtiva === 'resumo') {
-      const all = ext.concat(int);
-      const mes = all.filter(p => processoNoMes(p, comite.ref));
-      ChartManager.donut('ch_res_ei', ['Externos','Internos'],
-        [mes.filter(p=>!p.interno).length, mes.filter(p=>p.interno).length], {pie:true});
-      const emp = mapToLabelData(countBy(mes.map(p=>({...p,_en:emprName(p.empreendimento_id)})),'_en'));
-      ChartManager.donut('ch_res_emp', emp.labels, emp.data);
-      const mot = mapToLabelData(countBy(mes,'motivo'));
-      ChartManager.donut('ch_res_mot', mot.labels, mot.data, {pie:true});
-      const pos = mapToLabelData(countBy(mes,'posicao'));
-      ChartManager.donut('ch_res_pos', pos.labels, pos.data, {pie:true});
-      return;
-    }
-    const list = tabAtiva === 'externos' ? ext : int;
-    const tipo = tabAtiva;
-    const pe = mapToLabelData(countBy(list.map(p=>({...p,_en:emprName(p.empreendimento_id)})),'_en'));
-    ChartManager.donut(`ch_pe_${tipo}`, pe.labels, pe.data);
-    const pm = mapToLabelData(countBy(list,'motivo'));
-    ChartManager.donut(`ch_pm_${tipo}`, pm.labels, pm.data, {pie:true});
-    if (tipo==='externos') {
-      const pp = mapToLabelData(countBy(list,'posicao'));
-      ChartManager.donut('ch_pp_ext', pp.labels, pp.data, {pie:true});
-    }
-    // Evolução por mês (CITAÇÃO/PROTOCOLO): linha do tempo contínua, todos os anos
-    const evo = evolucaoMensalCitacao(list);
-    ChartManager.bar(`ch_pevo_${tipo}`, evo.labels,
-      [{label: tipo==='externos'?'Externos':'Internos', data: evo.data}], {dataLabels:false});
+    const pe = mapToLabelData(countBy(filtrados.map((p) => ({ ...p, _en: emprName(p.empreendimento_id) })), '_en'));
+    ChartManager.donut('ch_proc_empr', pe.labels, pe.data);
+    const pm = mapToLabelData(countBy(filtrados, 'motivo'));
+    ChartManager.donut('ch_proc_mot', pm.labels, pm.data, { pie: true });
+    const pp = mapToLabelData(countBy(filtrados, 'posicao'));
+    ChartManager.donut('ch_proc_pos', pp.labels, pp.data, { pie: true });
+    const evo = evolucaoMensalCitacao(filtrados);
+    ChartManager.bar('ch_proc_evo', evo.labels, [{ label: 'Processos', data: evo.data }], { dataLabels: false });
   }, 50);
+}
+
+function toggleProcPopover(id) {
+  window._procPopover = window._procPopover === id ? null : id;
+  renderProcessos();
+}
+
+function toggleProcFiltro(campo, valor) {
+  const lista = window._procFiltros[campo];
+  const i = lista.indexOf(valor);
+  if (i >= 0) lista.splice(i, 1); else lista.push(valor);
+  renderProcessos();
+}
+
+function exportarProcessosCsv() {
+  const lista = window._procUltimoFiltrado || [];
+  const cabecalho = ['Nº Processo', 'Empreendimento', 'Natureza', 'Comarca', 'Tipo', 'Situação', 'Ano', 'Valor da Causa', 'Data de Citação', 'Data de Finalização'];
+  const linhas = lista.map((p) => [
+    p.numero || '', emprName(p.empreendimento_id), p.motivo || '', p.local || '',
+    p.interno ? 'Interno' : 'Externo', p.status || '', p.ano || '',
+    p.valor_causa || '', p.data_citacao || '', p.data_finalizacao || '',
+  ]);
+  baixarCsv(`processos-judiciais-${isoToday()}.csv`, cabecalho, linhas);
 }
 
 function openProcModal(id) {

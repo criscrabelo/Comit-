@@ -5,17 +5,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Plataforma de Comitês — Jurídico</title>
   <link rel="stylesheet" href="css/fontes.css?v=1" />
-  <link rel="stylesheet" href="css/styles.css?v=14" />
+  <link rel="stylesheet" href="css/styles.css?v=15" />
   <link rel="stylesheet" href="css/print.css?v=12" media="print" />
   <script src="js/vendor/chart.umd.min.js"></script>
 </head>
 <body>
   <aside class="sidebar" id="sidebar">
     <div class="brand">
-      <div class="brand-mark">JC</div>
+      <div class="brand-mark" id="brandMark">DJ</div>
       <div>
-        <div class="brand-title">Comitês</div>
-        <div class="brand-sub">Jurídico</div>
+        <div class="brand-title" id="brandTitle">Departamento Jurídico</div>
+        <div class="brand-sub" id="brandSub">DIGITAL</div>
       </div>
     </div>
 
@@ -30,6 +30,13 @@
     <div class="month-picker" id="navJuridico-mes">
       <label>Mês de referência</label>
       <select id="monthSelector"></select>
+      <div class="month-dropdown" id="monthDropdown">
+        <button class="month-trigger" id="monthTrigger" onclick="toggleMonthPanel()" type="button">
+          <span class="month-trigger-label" id="monthTriggerLabel">—</span>
+          <span class="month-trigger-code" id="monthTriggerCode"></span>
+        </button>
+        <div class="month-panel hidden" id="monthPanel"></div>
+      </div>
       <button class="btn-mini" id="btnNewMonth" title="Criar novo comitê mensal">+ Mês</button>
     </div>
 
@@ -40,14 +47,14 @@
         <a class="nav-item" data-route="comite">📑 Gerar Comitê do Mês</a>
 
         <div class="nav-group-title">Cadastros do Mês</div>
-        <a class="nav-item" data-route="fatos">📌 Fatos Relevantes</a>
-        <a class="nav-item" data-route="notificacoes">📨 Notificações</a>
-        <a class="nav-item" data-route="distratos">❌ Distratos e Retomadas</a>
-        <a class="nav-item" data-route="processos">⚖️ Processos Judiciais</a>
-        <a class="nav-item" data-route="honorarios">💰 Honorários Extrajudiciais</a>
-        <a class="nav-item" data-route="transferencias">🔁 Transferência Intermediada</a>
-        <a class="nav-item" data-route="risco">🏦 Análise de Risco</a>
-        <a class="nav-item" data-route="regulatorio">📋 Temas Regulatórios</a>
+        <a class="nav-item" data-route="fatos"><span class="nav-dot" style="background:var(--purple)"></span> Fatos Relevantes <span class="nav-count" data-count="fatos">—</span></a>
+        <a class="nav-item" data-route="notificacoes"><span class="nav-dot" style="background:var(--blue)"></span> Notificações <span class="nav-count" data-count="notificacoes">—</span></a>
+        <a class="nav-item" data-route="distratos"><span class="nav-dot" style="background:var(--red)"></span> Distratos e Retomadas <span class="nav-count" data-count="distratos">—</span></a>
+        <a class="nav-item" data-route="processos"><span class="nav-dot" style="background:var(--teal)"></span> Processos Judiciais <span class="nav-count" data-count="processos">—</span></a>
+        <a class="nav-item" data-route="honorarios"><span class="nav-dot" style="background:var(--orange)"></span> Honorários Extrajudiciais <span class="nav-count" data-count="honorarios">—</span></a>
+        <a class="nav-item" data-route="transferencias"><span class="nav-dot" style="background:var(--azul-ti)"></span> Transferência Intermediada <span class="nav-count" data-count="transferencias">—</span></a>
+        <a class="nav-item" data-route="risco"><span class="nav-dot" style="background:var(--yellow)"></span> Análise de Risco <span class="nav-count" data-count="riscos">—</span></a>
+        <a class="nav-item" data-route="regulatorio"><span class="nav-dot" style="background:var(--gray-400)"></span> Temas Regulatórios <span class="nav-count" data-count="regulatorios">—</span></a>
 
         <div class="nav-group-title">Base</div>
         <a class="nav-item" data-route="empreendimentos">🏗️ Empreendimentos</a>
@@ -108,9 +115,9 @@
   <script src="js/migracao.js?v=2"></script>
   <!-- Adaptador: mesma interface publica de sempre, dados no PostgreSQL. -->
   <script src="js/db.js?v=17"></script>
-  <script src="js/utils.js?v=11"></script>
+  <script src="js/utils.js?v=12"></script>
   <script src="js/charts.js?v=15"></script>
-  <script src="js/views.js?v=63"></script>
+  <script src="js/views.js?v=64"></script>
   <script src="js/comite.js?v=27"></script>
   <!-- Continuidade: historico, verificacao de checksum, avaliacao de impacto e
        relatorio de restauracao. -->
@@ -119,6 +126,6 @@
   <script src="js/login.js?v=1"></script>
   <!-- Assistente de IA do Juridico (FAB global, fora de #view). -->
   <script src="js/temis.js?v=2"></script>
-  <script src="js/app.js?v=17"></script>
+  <script src="js/app.js?v=18"></script>
 </body>
 </html>
