@@ -5,7 +5,7 @@
  * TRAVADA. Nenhum endpoint foi inventado; nenhuma chamada sai antes da
  * homologação; ausência de dado nunca vira zero.
  */
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
@@ -67,9 +67,42 @@ describe('nenhum endpoint foi confirmado', () => {
   });
 });
 
+/**
+ * Recarrega o cliente com as variaveis do Sienge exatamente como descritas.
+ *
+ * O teste NAO pode depender do que a maquina tem no ambiente. Ele passou meses
+ * verde porque o ambiente estava vazio, e quebrou no dia em que a sessao
+ * ganhou `SIENGE_SUBDOMAIN`, `SIENGE_USER` e `SIENGE_PASSWORD` — sem que nada
+ * no produto mudasse. Um teste que muda de resultado conforme a maquina nao
+ * prova o que diz provar.
+ */
+async function comSienge(variaveis: Record<string, string | undefined>) {
+  const anterior = { ...process.env };
+
+  for (const nome of ['SIENGE_SUBDOMAIN', 'SIENGE_USER', 'SIENGE_PASSWORD', 'SIENGE_HABILITADO']) {
+    delete process.env[nome];
+  }
+  for (const [nome, valor] of Object.entries(variaveis)) {
+    if (valor !== undefined) process.env[nome] = valor;
+  }
+
+  vi.resetModules();
+  const modulo = await import('../src/integracoes/sienge/cliente.js');
+  return {
+    modulo,
+    restaurar: () => {
+      process.env = anterior;
+      vi.resetModules();
+    },
+  };
+}
+
 describe('verificacao de configuracao nao vaza credencial', () => {
-  it('informa o que falta pelo NOME da variavel, nunca pelo valor', () => {
-    const r = verificarConfiguracao();
+  it('informa o que falta pelo NOME da variavel, nunca pelo valor', async () => {
+    const { modulo, restaurar } = await comSienge({});
+    const r = modulo.verificarConfiguracao();
+    restaurar();
+
     expect(r.completa).toBe(false);
     expect(r.faltando).toEqual(['SIENGE_SUBDOMAIN', 'SIENGE_USER', 'SIENGE_PASSWORD']);
 
@@ -85,6 +118,42 @@ describe('verificacao de configuracao nao vaza credencial', () => {
     const serializado = JSON.stringify(r);
     expect(serializado).not.toMatch(/:\/\//);
     expect(serializado).not.toMatch(/sienge\.com\.br/i);
+  });
+
+  it('com tudo configurado, o valor das credenciais nao aparece no resultado', async () => {
+    // O caso que importa de verdade: com as variaveis VAZIAS nao ha o que
+    // vazar. O vazamento so pode acontecer quando ha valor — e e justamente
+    // esse caso que o teste antigo nunca exercitou.
+    const { modulo, restaurar } = await comSienge({
+      SIENGE_SUBDOMAIN: 'coevo-secreto',
+      SIENGE_USER: 'usuario-secreto',
+      SIENGE_PASSWORD: 'senha-secretissima',
+    });
+    const r = modulo.verificarConfiguracao();
+    restaurar();
+
+    expect(r.completa).toBe(true);
+    expect(r.faltando).toEqual([]);
+    expect(r.presentes).toEqual(['SIENGE_SUBDOMAIN', 'SIENGE_USER', 'SIENGE_PASSWORD']);
+
+    const serializado = JSON.stringify(r);
+    for (const valor of ['coevo-secreto', 'usuario-secreto', 'senha-secretissima']) {
+      expect(serializado).not.toContain(valor);
+    }
+  });
+
+  it('configuracao completa NAO liga o conector — quem liga e SIENGE_HABILITADO', async () => {
+    // Credencial presente nao autoriza chamada. A trava e outra variavel, e
+    // esta distincao e o que impede uma carga acidental contra o Sienge real.
+    const { modulo, restaurar } = await comSienge({
+      SIENGE_SUBDOMAIN: 'coevo',
+      SIENGE_USER: 'u',
+      SIENGE_PASSWORD: 's',
+    });
+
+    expect(modulo.verificarConfiguracao().completa).toBe(true);
+    expect(() => modulo.exigirHabilitado()).toThrow(/desligado/i);
+    restaurar();
   });
 });
 

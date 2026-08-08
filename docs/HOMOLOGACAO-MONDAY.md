@@ -503,3 +503,9 @@ por nenhum mascaramento de coluna.
 8. relatórios e apresentações mensais.
 
 Nenhum quadro adicional é ligado antes da aprovação de Processos Judiciais.
+
+**Quadros novos pedidos (Projetos de TI, Honorários, Transferência
+Intermediada):** estado, impedimento e o que falta em
+[`HOMOLOGACAO-QUADROS-NOVOS.md`](HOMOLOGACAO-QUADROS-NOVOS.md). Nenhum foi lido
+— a credencial do Monday em uso foi rejeitada (`401` do Monday, com a rede já
+liberada).

@@ -65,14 +65,51 @@ export class ErroMonday extends Error {
   }
 }
 
+/**
+ * Caracteres possiveis num token do Monday (JWT: base64url e pontos).
+ *
+ * Serve para separar "token invalido" de "valor que nem e um token". O ambiente
+ * de uma sessao real trouxe `MONDAY_TOKEN` com o valor envolto em `<`...`>`,
+ * como o marcador `<token>` da documentacao, e o `.trim()` do config nao pega
+ * isso: a requisicao ia com os delimitadores e o Monday respondia `401
+ * NOT_AUTHENTICATED` — indistinguivel de credencial revogada. Perdeu-se tempo
+ * atras do problema errado, que e exatamente o que esta checagem evita.
+ */
+const CARACTERES_DE_TOKEN = /^[A-Za-z0-9._-]+$/;
+
 function exigirToken(): string {
-  if (!config.monday.token) {
+  const token = config.monday.token;
+
+  if (!token) {
     throw new ErroApi(
       'integracao_desligada',
       'Integracao com o Monday desligada: MONDAY_TOKEN nao configurado no servidor.',
     );
   }
-  return config.monday.token;
+
+  if (!CARACTERES_DE_TOKEN.test(token)) {
+    // A mensagem descreve a forma do defeito, NUNCA o valor: o token nao vai
+    // para log nem para mensagem de erro em nenhuma hipotese.
+    const delimitado = /^[<"'].*[>"']$/s.test(token);
+    // Mesmo codigo de token ausente: com valor malformado a integracao esta,
+    // para todos os efeitos, desligada. O que muda e a mensagem.
+    throw new ErroApi(
+      'integracao_desligada',
+      // Sem acento grave nesta mensagem: a pre-confirmacao da homologacao
+      // extrai as consultas GraphQL deste arquivo delimitando por acento grave,
+      // e um deles em texto comum quebra a extracao — o que aconteceu de fato
+      // quando esta mensagem citava o marcador entre acentos graves.
+      delimitado
+        ? 'MONDAY_TOKEN tem delimitadores em volta do valor, do tipo <token> ou ' +
+            '"token". Guarde apenas o token, sem os delimitadores: com eles a ' +
+            'requisicao sai malformada e o Monday responde 401, como se a ' +
+            'credencial estivesse revogada.'
+        : 'MONDAY_TOKEN contem caracteres que nao existem num token do Monday. ' +
+            'Confira se o valor foi copiado inteiro e sem espaco ou quebra de linha.',
+    );
+  }
+
+  return token;
 }
 
 const esperar = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -344,6 +381,55 @@ export async function lerTodosOsItens(
 
   logger.info({ quadro: quadroId, paginas, itens: itens.length }, 'Quadro do Monday lido');
   return { itens, paginas, truncado: false, ultimoCursor: null };
+}
+
+export interface QuadroListado {
+  id: string;
+  name: string;
+  state: string;
+  items_count: number | null;
+  workspace: { id: string; name: string } | null;
+}
+
+/**
+ * Lista os quadros que a credencial alcanca, percorrendo as paginas.
+ *
+ * Existe para achar o ID de um quadro pelo NOME. Homologar um quadro novo
+ * comeca por saber qual e o id dele, e pedir o id por mensagem convida ao erro
+ * de digitacao — que se manifesta como "quadro nao encontrado" e se parece com
+ * falta de permissao.
+ *
+ * `boards` do Monday pagina por numero de pagina, nao por cursor; pagina vazia
+ * significa fim. O teto existe para que credencial de conta grande nao gire sem
+ * parar.
+ */
+export async function listarQuadros(
+  opcoes: { paginasMaximas?: number } = {},
+): Promise<QuadroListado[]> {
+  const paginasMaximas = opcoes.paginasMaximas ?? 20;
+  const quadros: QuadroListado[] = [];
+
+  for (let pagina = 1; pagina <= paginasMaximas; pagina++) {
+    const dados = await consultar<{ boards: QuadroListado[] | null }>(
+      `query($limite: Int!, $pagina: Int!) {
+         boards(limit: $limite, page: $pagina) {
+           id
+           name
+           state
+           items_count
+           workspace { id name }
+         }
+       }`,
+      { limite: 100, pagina },
+    );
+
+    const lote = dados.boards ?? [];
+    quadros.push(...lote);
+    if (lote.length < 100) break;
+  }
+
+  logger.info({ quadros: quadros.length }, 'Quadros do Monday listados');
+  return quadros;
 }
 
 /** Metadados do quadro, para a tela de descoberta de quadros. */

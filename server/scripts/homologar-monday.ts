@@ -30,6 +30,12 @@ import { QUADROS, mesmoTitulo } from '../src/integracoes/monday/quadros.js';
 import { sincronizarQuadro } from '../src/integracoes/monday/sincronizar.js';
 import { recusarEscrita, testarConexao } from '../src/integracoes/monday/cliente.js';
 import {
+  mascararAtuacao,
+  mascararId,
+  varrerDocumentos,
+  varrerTextoLivre,
+} from '../src/integracoes/monday/sigilo.js';
+import {
   analisarCoberturaJudicializacao,
   COLUNAS_DE_CLASSIFICACAO,
   levantarRotulos,
@@ -136,9 +142,28 @@ async function confirmarAntesDeSincronizar(): Promise<ItemConfirmacao[]> {
     .replace(/\/\*[\s\S]*?\*\//g, '')
     .replace(/^\s*\/\/.*$/gm, '');
 
+  // A consulta tem de COMECAR por query/mutation/subscription, nao apenas
+  // conter a palavra. Um acento grave em texto comum dentro do arquivo desloca
+  // a delimitacao e faz o extrator capturar prosa; com o filtro por "contem",
+  // essa prosa entrava na lista e era submetida a trava como se fosse consulta.
   const consultasDoPipeline = [...semComentarios.matchAll(/`([^`]*\{[^`]*)`/g)]
-    .map((m) => m[1]!)
-    .filter((c) => /\b(query|mutation|subscription)\b/i.test(c));
+    .map((m) => m[1]!.trim())
+    .filter((c) => /^(query|mutation|subscription)\b/i.test(c));
+
+  // Encontrar MENOS consultas do que o pipeline tem significa que a extracao
+  // degradou — e uma extracao degradada aprova por nao ter olhado. O piso e o
+  // que o cliente realmente usa: me, colunas, itens_page e metadados do quadro,
+  // mais a listagem de quadros.
+  const MINIMO_DE_CONSULTAS = 4;
+  if (consultasDoPipeline.length < MINIMO_DE_CONSULTAS) {
+    throw new Error(
+      `Pré-confirmação inconclusiva: a leitura do cliente encontrou apenas ` +
+        `${consultasDoPipeline.length} consulta(s), menos que as ` +
+        `${MINIMO_DE_CONSULTAS} esperadas. Isso indica falha da extração, não ` +
+        `ausência de escrita — e uma verificação que não olhou não aprova nada. ` +
+        `Causa provável: acento grave em texto comum dentro de cliente.ts.`,
+    );
+  }
 
   const suspeitas = consultasDoPipeline.filter((c) => {
     try {
@@ -338,52 +363,6 @@ async function amostraAnonimizada(): Promise<void> {
     );
   }
   escrever();
-}
-
-/**
- * Remove sequencias com cara de documento de texto digitado a mao.
- *
- * `MOTIVO` e campo livre. Alguem pode ter escrito "cobranca do CPF 123.456.789-00"
- * e nenhum mapeamento previu isso. A varredura e sobre o VALOR, nao sobre o nome
- * do campo — e o que pega o caso nao previsto.
- */
-function varrerTextoLivre(texto: string | null): string | null {
-  if (!texto) return texto;
-  return texto
-    .replace(/\b\d{3}\.?\d{3}\.?\d{3}-?\d{2}\b/g, '[documento removido]')
-    .replace(/\b\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}\b/g, '[documento removido]');
-}
-
-/** "EXTERNO Dra. Fulana de Tal" → "EXTERNO Dra. F." */
-function mascararAtuacao(valor: string | null): string | null {
-  if (!valor) return valor;
-  const externo = /^(EXTERNO)\s+(.+)$/i.exec(valor.trim());
-  if (!externo) return valor;
-
-  const termos = externo[2]!.split(/\s+/);
-  const tratamento = /^(dr|dra|sr|sra)\.?$/i.test(termos[0] ?? '') ? termos.shift() : null;
-  const inicial = termos[0] ? `${termos[0][0]}.` : '';
-  return [externo[1], tratamento, inicial].filter(Boolean).join(' ');
-}
-
-/** Procura sequencias com cara de CPF ou CNPJ num texto serializado. */
-function varrerDocumentos(texto: string): string[] {
-  const achados: string[] = [];
-  const padroes = [
-    ['CPF', /\b\d{3}\.?\d{3}\.?\d{3}-?\d{2}\b/g],
-    ['CNPJ', /\b\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}\b/g],
-  ] as const;
-
-  for (const [rotulo, padrao] of padroes) {
-    const encontrados = texto.match(padrao);
-    if (encontrados) achados.push(`${encontrados.length} ${rotulo}`);
-  }
-  return achados;
-}
-
-function mascararId(id: string): string {
-  const so = id.replace(/^monday:/, '');
-  return so.length > 4 ? `***${so.slice(-4)}` : '***';
 }
 
 function mascararProcesso(numero: string | null): string | null {

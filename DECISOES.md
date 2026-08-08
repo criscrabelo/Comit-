@@ -815,3 +815,100 @@ de comitê. Heurística não aprova regra.
 
 A execução rodou em banco local de homologação (`patrono_homolog`), recriado
 pelas 17 migrações — o esquema é o de produção; o banco, não.
+
+
+---
+
+## B17 — Quadros novos: a credencial recusa, e o levantamento nasce antes da definição
+
+Pedido: homologar Projetos de TI, Honorários e Transferência Intermediada.
+**Nenhum foi lido.** Estado completo em `docs/HOMOLOGACAO-QUADROS-NOVOS.md`.
+
+### O bloqueio inverteu de lado
+
+Em 05/08 o gateway recusava o `CONNECT` e o token nunca era apresentado. Agora o
+`CONNECT` responde `200`, o TLS conclui, e quem recusa e o **Monday**:
+`401 NOT_AUTHENTICATED`, `server: cloudflare`. O token no ambiente e
+estruturalmente integro — JWT de tres partes, conta e usuario certos, emitido no
+mesmo dia — e ainda assim rejeitado, que e o sintoma de token pessoal
+regenerado depois de o valor ter sido capturado.
+
+Registrar os dois recortes (momento da recusa e host de controle) e o que evita a
+proxima sessao correr atras do problema errado. Sem eles, `fetch failed` seria
+lido como bloqueio de rede outra vez.
+
+### Dois dos tres quadros nao existem no projeto
+
+`Honorarios` tem definicao (`7231876117`) e tabela de destino. `Projetos de TI` e
+`Transferencia Intermediada` nao aparecem em lugar nenhum: nem no
+`js/monday-sync.js` de producao, nem nas migracoes, nem na documentacao. Nao tem
+id, nao tem mapa de colunas e **nao tem tabela de destino**.
+
+### O que NAO foi feito, e por que
+
+**A definicao dos quadros novos nao foi escrita.** Escrever mapa de colunas de
+quadro que nao se leu e inventar titulo, e o custo disso acabou de ser medido em
+Processos: a coluna real e `'MEU TRABALHO'`, com apostrofos, e o mapa dizia
+`MEU TRABALHO` — 250 registros com situacao nula e a taxa de judicializacao
+indisponivel, sem um erro na tela. Um mapa inventado para um quadro que ninguem
+leu produziria o mesmo silencio, sem homologacao anterior para desconfiar.
+
+**O runner nao foi generalizado.** Ele esta travado no board 5959705266 e
+acoplado a `processos_judiciais`: projecao da amostra, prova 5 sobre `situacao` e
+cobertura de judicializacao. A forma certa da generalizacao depende do que os
+quadros novos tem — mascaramento e campo a perturbar na prova 5 mudam por
+quadro. Projetar a abstracao antes do levantamento seria adivinhar duas vezes.
+
+**Onde os dados aterram e decisao de produto.** Projetos de TI nao e assunto de
+comite; Transferencia Intermediada tem cara de operacao de unidade/contrato e
+pode tocar o motor de vinculos. Estrutura errada custa mais que coluna errada, e
+essa resposta nao se infere do nome do quadro.
+
+### Levantamento antes de destino — a inversao que o script desfaz
+
+`scripts/descobrir-quadro.ts` le o quadro e imprime a forma sem gravar nada. O
+levantamento de `rotulos.ts` sai de `registros_brutos`, ou seja, exige que a
+carga ja tenha acontecido — e carga exige destino decidido. Para quadro novo isso
+e circular: precisaria decidir onde os dados aterram antes de saber quais dados
+existem.
+
+Por isso o script roda com `PATRONO_SEM_BANCO=1`: `DATABASE_URL` deixou de ser
+exigida por `config` quando o flag esta presente, e `db/pool.ts` recusa ser
+importado nesse modo — a folga vale para ferramenta que nao toca o banco, nunca
+para subir o servidor.
+
+O script tambem nao lista valor de coluna de texto livre (relatorio e evidencia
+versionada, e coluna digitada a mao guarda nome de parte), remove CPF e CNPJ
+antes da contagem, e **nao sugere mapeamento**: diz qual campo nao tem coluna, e
+para ai.
+
+### Recusa de token malformado — e a regressao que ela causou
+
+O token de 05/08 vinha envolto em `<`...`>`, o `.trim()` do config nao pega isso,
+e o sintoma era `401` igual ao de credencial revogada. O cliente agora recusa
+antes de qualquer requisicao, distinguindo "tem delimitadores" de "tem caractere
+que nao existe em token". O valor nunca vai para mensagem nem para log.
+
+A primeira versao dessa mensagem citava o marcador entre acentos graves — e a
+pre-confirmacao passou a reprovar, porque ela extrai as consultas GraphQL de
+`cliente.ts` delimitando por acento grave. Um acento grave em prosa deslocou a
+delimitacao e o extrator capturou texto em vez de consulta.
+
+O ensaio ponta a ponta pegou antes do commit. Alem de tirar os acentos graves, o
+extrator ficou capaz de notar a propria degradacao: a consulta precisa COMECAR
+por `query`/`mutation`/`subscription`, e encontrar menos consultas que o piso
+conhecido interrompe a homologacao. Uma verificacao que nao olhou nao aprova —
+esse era o defeito de fundo, e ele existia antes desta sessao.
+
+### Um teste que dependia da maquina
+
+`sienge-estrutura.test.ts` afirmava configuracao do Sienge incompleta, e passava
+so porque o ambiente estava vazio. Esta sessao trouxe `SIENGE_SUBDOMAIN`,
+`SIENGE_USER` e `SIENGE_PASSWORD`, e o teste quebrou sem nada mudar no produto.
+Passou a controlar as variaveis, e ganhou o caso que faltava: com credencial
+PREENCHIDA, nenhum valor aparece no resultado — o vazamento so e possivel quando
+ha valor. Tambem ficou provado que credencial completa nao liga o conector: quem
+liga e `SIENGE_HABILITADO`.
+
+357 testes contra PostgreSQL real (eram 336), 19 novos. Ensaio da homologacao de
+Processos: 7 de 7.

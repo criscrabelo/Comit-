@@ -22,7 +22,9 @@ const esquema = z.object({
 
   CORS_ORIGINS: z.string().optional(),
 
-  DATABASE_URL: z.string().min(1, 'DATABASE_URL e obrigatoria'),
+  // Obrigatoria — a excecao esta logo abaixo de `bruto`, e vale so para
+  // ferramenta que nao toca o banco.
+  DATABASE_URL: z.string().min(1, 'DATABASE_URL e obrigatoria').optional(),
   DATABASE_POOL_MAX: z.coerce.number().int().positive().max(100).default(10),
 
   SESSAO_DURACAO_HORAS: z.coerce.number().int().positive().max(720).default(12),
@@ -72,6 +74,27 @@ if (!bruto.success) {
 
 const env = bruto.data;
 
+/**
+ * Ferramenta que nao toca o banco pode rodar sem `DATABASE_URL`.
+ *
+ * O levantamento de quadro do Monday (`scripts/descobrir-quadro.ts`) le a API e
+ * imprime um relatorio; nao grava linha nenhuma. Exigir banco para OLHAR um
+ * quadro inverte a ordem das coisas: seria preciso ter destino definido antes de
+ * saber quais dados o quadro tem — e destino e justamente o que se decide DEPOIS
+ * do levantamento.
+ *
+ * O flag e explicito e so afrouxa esta variavel. Nao serve para subir o
+ * servidor: `db/pool.ts` recusa ser importado sem `DATABASE_URL`, e e ele que
+ * todo caminho de dados atravessa.
+ */
+const semBanco = process.env.PATRONO_SEM_BANCO === '1';
+
+if (!env.DATABASE_URL && !semBanco) {
+  throw new Error(
+    'Configuracao de ambiente invalida:\n  DATABASE_URL: DATABASE_URL e obrigatoria',
+  );
+}
+
 const origens = paraLista(env.CORS_ORIGINS);
 
 // CORS aberto e uma das falhas do servidor atual (server.js:84).
@@ -103,7 +126,8 @@ export const config = {
   corsOrigens: origens,
 
   banco: {
-    url: env.DATABASE_URL,
+    /** Vazia apenas em modo sem banco; `db/pool.ts` recusa nesse caso. */
+    url: env.DATABASE_URL ?? '',
     poolMax: env.DATABASE_POOL_MAX,
   },
 

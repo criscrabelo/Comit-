@@ -66,9 +66,26 @@ versionado. O modelo completo está em [`.env.example`](.env.example).
 | `CORS_ORIGINS` | em produção | Lista de origens. `*` é recusado fora de development |
 | `PORT` | não | Padrão 3131 |
 | `SESSAO_DURACAO_HORAS` | não | Padrão 12 |
-| `MONDAY_TOKEN` | não | Ausente = integração desligada. **Só no servidor** |
+| `MONDAY_TOKEN` | não | Ausente = integração desligada. **Só no servidor**. Cole sem delimitador em volta |
 | `SIENGE_SUBDOMAIN` / `SIENGE_USER` / `SIENGE_PASSWORD` | não | Conector nasce desligado |
 | `SIENGE_HABILITADO` | não | Mantenha `false` até confirmar os endpoints no ambiente real |
+| `PATRONO_SEM_BANCO` | não | `1` dispensa `DATABASE_URL`, **só** para ferramenta que não toca o banco (ver abaixo). O acesso ao banco recusa ser importado nesse modo |
+
+## Levantamento de quadro do Monday
+
+Passo zero de homologar um quadro: descobrir o id dele e quais colunas ele tem.
+Somente leitura, e **não grava nada** — nem no Monday, nem no banco.
+
+```bash
+PATRONO_SEM_BANCO=1 npx tsx scripts/descobrir-quadro.ts --listar
+PATRONO_SEM_BANCO=1 npx tsx scripts/descobrir-quadro.ts --nome 'PROJETOS DE TI'
+PATRONO_SEM_BANCO=1 npx tsx scripts/descobrir-quadro.ts \
+  --quadro <id> --conferir honorarios --saida forma.md
+```
+
+Não exige banco de propósito: o destino de um quadro novo é o que se decide
+**depois** do levantamento. Detalhe em
+[`../docs/HOMOLOGACAO-QUADROS-NOVOS.md`](../docs/HOMOLOGACAO-QUADROS-NOVOS.md).
 
 ## Estrutura
 

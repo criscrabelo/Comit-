@@ -26,6 +26,17 @@ pg.types.setTypeParser(pg.types.builtins.INT8, (v) => Number(v));
 // tipos em db/schema.ts ja declaravam (`Dia` e string).
 pg.types.setTypeParser(pg.types.builtins.DATE, (v) => v);
 
+// Guarda do modo sem banco (`PATRONO_SEM_BANCO=1`, ver config.ts): sem esta
+// recusa, um Pool com string vazia seria criado e a falha apareceria mais tarde,
+// como erro de conexao, longe da causa.
+if (!config.banco.url) {
+  throw new Error(
+    'DATABASE_URL nao configurada: o acesso ao banco foi importado em modo sem ' +
+      'banco (PATRONO_SEM_BANCO=1). Esse modo serve so para ferramenta que nao ' +
+      'toca o banco, como scripts/descobrir-quadro.ts.',
+  );
+}
+
 export const pool = new pg.Pool({
   connectionString: config.banco.url,
   max: config.banco.poolMax,
