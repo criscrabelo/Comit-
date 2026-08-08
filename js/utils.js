@@ -105,7 +105,7 @@ function updateStorageInfo() {
 // ---- Confirm delete ----
 function confirmDelete(msg, cb) {
   openModal('Confirmar exclusão',
-    `<p style="font-size:14px;color:#374151;">${msg}</p>`,
+    `<p style="font-size:14px;color:var(--gray-700);">${msg}</p>`,
     `<button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
      <button class="btn btn-danger" onclick="closeModal();(${cb})()">Excluir</button>`
   );

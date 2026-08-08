@@ -17,7 +17,7 @@ const barValueLabels = {
         if (val == null || val === 0) return;
         ctx.save();
         ctx.font = '600 11px sans-serif';
-        ctx.fillStyle = '#374151';
+        ctx.fillStyle = '#3c424b'; // var(--gray-700) — Canvas nao le variavel CSS
         if (horizontal) {
           ctx.textAlign = 'left';
           ctx.textBaseline = 'middle';
@@ -67,7 +67,7 @@ const stackedBarLabels = {
 
     ctx.save();
     ctx.font = '700 12px sans-serif';
-    ctx.fillStyle = '#111827';
+    ctx.fillStyle = '#161b24'; // var(--gray-900) — Canvas nao le variavel CSS
     ctx.textAlign = 'center';
     ctx.textBaseline = 'bottom';
     meta0.data.forEach((el, i) => {
